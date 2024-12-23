@@ -392,6 +392,13 @@ public:
 		AddPinValueWatcher(NSN_VideoScanType, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			VideoScanTypePinValue = InterpretPinValue<const char>(newVal);
 			auto newVideoScanType = nosMediaIO->GetVideoScanTypeFromString(VideoScanTypePinValue.c_str());
+			if (newVideoScanType == NOS_MEDIAIO_VIDEO_SCAN_TYPE_INVALID)
+			{
+				// Initial value
+				std::string_view scanTypeCstr = nosMediaIO->GetVideoScanTypeName(Channel.VideoScanType);
+				SetPinValue(NSN_VideoScanType, nos::Buffer(scanTypeCstr.data(), scanTypeCstr.size() + 1));
+				return;
+			}
 			Channel.Update<&ChannelHandler::VideoScanType>(newVideoScanType, Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT);
 			if (oldValue)
 			{
@@ -477,10 +484,6 @@ public:
 			}
 			UpdateAfter(ChangedPinType::PixelFormat, !oldValue);
 		});
-
-		// Initial values
-		std::string_view scanTypeCstr = nosMediaIO->GetVideoScanTypeName(Channel.VideoScanType);
-		SetPinValue(NSN_VideoScanType, nos::Buffer(scanTypeCstr.data(), scanTypeCstr.size() + 1));
 	}
 
 	void AutoSelectIfSingle(nosName pinName, std::vector<std::string> const& list)
