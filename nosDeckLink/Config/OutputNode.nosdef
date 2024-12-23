@@ -157,7 +157,7 @@
         },
         {
           "id": "75a5139b-da60-4b34-9ced-a971d7ca834a",
-          "name": "Source",
+          "name": "Output",
           "type_name": "nos.sys.vulkan.Texture",
           "show_as": "INPUT_PIN",
           "can_show_as": "INPUT_PIN_OR_PROPERTY",

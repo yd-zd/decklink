@@ -107,7 +107,7 @@
         },
         {
           "id": "4aa7c5a3-26f1-42cf-a0f1-66733c221f08",
-          "name": "Output",
+          "name": "Input",
           "type_name": "nos.sys.vulkan.Texture",
           "show_as": "OUTPUT_PIN",
           "can_show_as": "OUTPUT_PIN_ONLY",
@@ -1705,7 +1705,7 @@
           },
           {
             "id": "a96cd079-84ef-40f4-ad1a-3f079e2b22d9",
-            "name": "Output",
+            "name": "Input",
             "class_name": "nos.internal.GraphOutput",
             "pins": [
               {
