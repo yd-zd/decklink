@@ -440,6 +440,18 @@ bool Device::StopStream(nosDeckLinkChannel channel)
 	return subDevice->StopStream(mode);
 }
 
+bool Device::ResetInputFrames(nosDeckLinkChannel channel)
+{
+	auto it = OpenChannels.find(channel);
+	if (it == OpenChannels.end())
+	{
+		nosEngine.LogE("No open channel found for channel %s", GetChannelName(channel));
+		return false;
+	}
+	auto [subDevice, mode] = it->second;
+	return subDevice->ResetInputFrames();
+}
+
 void Device::ClearSubDevices()
 {
 	Channel2SubDevice.clear();

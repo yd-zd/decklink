@@ -255,6 +255,16 @@ bool SubDevice::CloseInput()
 	return Input.CloseStream();
 }
 
+bool SubDevice::ResetInputFrames()
+{
+	if (!Input)
+	{
+		nosEngine.LogE("SubDevice: Input interface is not available for device: %s", ModelName.c_str());
+		return false;
+	}
+	return Input.ResetReadFrames();
+}
+
 constexpr IOHandlerBaseI& SubDevice::GetIO(nosMediaIODirection dir)
 {
 	if (dir == NOS_MEDIAIO_DIRECTION_INPUT)

@@ -52,6 +52,7 @@ public:
 	bool StartStream(nosDeckLinkChannel channel);
 	bool StopStream(nosDeckLinkChannel channel);
 	bool CloseChannel(nosDeckLinkChannel channel);
+	bool ResetInputFrames(nosDeckLinkChannel channel);
 	std::optional<nosVec2u> GetCurrentDeltaSecondsOfChannel(nosDeckLinkChannel channel);
 
 	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout);

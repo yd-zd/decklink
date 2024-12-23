@@ -16,6 +16,7 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 	std::deque<std::unique_ptr<VideoFrame>> ReadFrames;
 	std::mutex ReadFramesMutex;
 
+	bool ResetReadFrames();
 	bool Flush();
 	bool WaitFrame(std::chrono::milliseconds timeout) override;
 	void DmaTransfer(void* buffer, size_t size) override;

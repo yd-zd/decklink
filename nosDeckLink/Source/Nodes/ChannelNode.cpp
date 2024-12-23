@@ -65,12 +65,14 @@ struct ChannelHandler
 	int32_t FrameResultCallbackId = -1;
 	int32_t DeviceInvalidatedCallbackId = -1;
 
+	std::atomic_uint32_t DropCount = 0;
+	std::mutex DecklinkThreadMutex;
 	struct
 	{
-		uint32_t DropCount = 0;
+		bool DropDetectionEnabled = false;
 		uint32_t FramesSinceLastDrop = 0;
 		bool DropDetected = false;
-	} DeckLinkThread;
+	} DeckLinkThreadStatus;
 
 	template<auto Member, typename T>
 	ChannelUpdateResult Update(const T& value, bool reopen = true)
@@ -112,22 +114,25 @@ struct ChannelHandler
 
 	void OnFrameEnd_DeckLinkThread(nosDeckLinkFrameResult result, uint32_t processedFrameNumber)
 	{
+		std::unique_lock lock(DecklinkThreadMutex);
+		if (!DeckLinkThreadStatus.DropDetectionEnabled)
+			return;
 		switch (result)
 		{
 		case NOS_DECKLINK_FRAME_DROPPED:
 		{
-			++DeckLinkThread.DropCount;
-			DeckLinkThread.FramesSinceLastDrop = 0;
-			DeckLinkThread.DropDetected = true;
-			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DeckLinkThread.DropCount));
+			++DropCount;
+			DeckLinkThreadStatus.FramesSinceLastDrop = 0;
+			DeckLinkThreadStatus.DropDetected = true;
+			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount));
 			UpdateStatus();
 			break;
 		}
 		case NOS_DECKLINK_FRAME_COMPLETED:
 		{
-			if (DeckLinkThread.DropDetected)
-				++DeckLinkThread.FramesSinceLastDrop;
-			if (DeckLinkThread.FramesSinceLastDrop > 50)
+			if (DeckLinkThreadStatus.DropDetected)
+				++DeckLinkThreadStatus.FramesSinceLastDrop;
+			if (DeckLinkThreadStatus.FramesSinceLastDrop > 50)
 			{
 				nosEngine.LogW("Requesting path restart due to frame drops");
 				nosEngine.SendPathRestart(OutChannelPinId);
@@ -146,11 +151,16 @@ struct ChannelHandler
 	{
 		if (!ShouldOpen || DeviceIndex == -1 || Channel == NOS_DECKLINK_CHANNEL_INVALID)
 			return false;
-		if (Direction == NOS_MEDIAIO_DIRECTION_OUTPUT)
+		if (!IsInput())
 			return Resolution != NOS_MEDIAIO_FRAME_GEOMETRY_INVALID && FrameRate != NOS_MEDIAIO_FRAME_RATE_INVALID && PixelFormat != NOS_MEDIAIO_PIXEL_FORMAT_INVALID;
 		return true;
 	}
 	
+	bool IsInput()
+	{
+		return Direction == NOS_MEDIAIO_DIRECTION_INPUT;
+	}
+
 	bool Open()
 	{
 		if (IsOpen)
@@ -160,10 +170,10 @@ struct ChannelHandler
 		nosDeckLinkOpenChannelParams params {
 			.Direction = Direction,
 			.Channel = Channel,
-			.PixelFormat = Direction == NOS_MEDIAIO_DIRECTION_INPUT ? NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT : PixelFormat,
+			.PixelFormat = IsInput() ? NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT : PixelFormat,
 			.Output = {}
 		};
-		if (Direction == NOS_MEDIAIO_DIRECTION_OUTPUT)
+		if (!IsInput())
 		{
 			params.Output.Geometry = Resolution;
 			params.Output.FrameRate = FrameRate;
@@ -182,8 +192,12 @@ struct ChannelHandler
 			nosEngine.SetPinValue(OutChannelPinId, nos::Buffer::From(id));
 			nosEngine.SendPathRestart(OutChannelPinId);
 			FrameResultCallbackId = nosDeckLink->RegisterFrameResultCallback(DeviceIndex, Channel, &FrameResultCallback, this);
-			DeckLinkThread = {};
-			ClearStatus(StatusType::DropCount);
+			{
+				std::unique_lock lock(DecklinkThreadMutex);
+				DropCount = 0;
+				DeckLinkThreadStatus = {};
+				ClearStatus(StatusType::DropCount);
+			}
 			UpdateStatus();
 		}
 		UpdateChannelStatusAndOutPins();
@@ -201,14 +215,14 @@ struct ChannelHandler
 		if (IsOpen)
 		{
 			nosDeckLink->StopStream(DeviceIndex, Channel);
-			DeckLinkThread.DropDetected = false;
-			DeckLinkThread.FramesSinceLastDrop = 0;
+			std::unique_lock lock(DecklinkThreadMutex);
+			DeckLinkThreadStatus = {};
 		}
 	}
 
 	void Close()
 	{
-		if (Direction == NOS_MEDIAIO_DIRECTION_INPUT)
+		if (IsInput())
 			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
 		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
@@ -391,7 +405,7 @@ public:
 		AddPinValueWatcher(NSN_Resolution, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ResolutionPinValue = InterpretPinValue<const char>(newVal);
 			auto newResolution = nosMediaIO->GetFrameGeometryFromString(ResolutionPinValue.c_str());
-			Channel.Update<&ChannelHandler::Resolution>(newResolution, Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT);
+			Channel.Update<&ChannelHandler::Resolution>(newResolution, !Channel.IsInput());
 			if (ResolutionPinValue != "NONE" && newResolution == NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
 				ResetPin(NSN_Resolution);
 			else
@@ -406,7 +420,7 @@ public:
 		AddPinValueWatcher(NSN_FrameRate, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			FrameRatePinValue = InterpretPinValue<const char>(newVal);
 			auto newFrameRate = nosMediaIO->GetFrameRateFromString(FrameRatePinValue.c_str());
-			Channel.Update<&ChannelHandler::FrameRate>(newFrameRate, Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT);
+			Channel.Update<&ChannelHandler::FrameRate>(newFrameRate, !Channel.IsInput());
 			if (FrameRatePinValue != "NONE" && newFrameRate == NOS_MEDIAIO_FRAME_RATE_INVALID)
 				ResetPin(NSN_FrameRate);
 			else
@@ -421,7 +435,7 @@ public:
 		AddPinValueWatcher(NSN_PixelFormat, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			PixelFormatPinValue = InterpretPinValue<const char>(newVal);
 			auto newPixelFormat = nosMediaIO->GetPixelFormatFromString(PixelFormatPinValue.c_str());
-			Channel.Update<&ChannelHandler::PixelFormat>(newPixelFormat, Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT);
+			Channel.Update<&ChannelHandler::PixelFormat>(newPixelFormat, !Channel.IsInput());
 			if (PixelFormatPinValue != "NONE" && newPixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID)
 				ResetPin(NSN_FrameRate);
 			else
@@ -443,7 +457,7 @@ public:
 
 	void UpdateAfter(ChangedPinType pin, bool first)
 	{
-		bool isInput = Channel.Direction == NOS_MEDIAIO_DIRECTION_INPUT;
+		bool isInput = Channel.IsInput();
 		switch (pin)
 		{
 		case ChangedPinType::IsInput: {
@@ -518,7 +532,13 @@ public:
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
-		Channel.StartIfOpen();
+		{
+			std::unique_lock lock(Channel.DecklinkThreadMutex);
+			if (params->IsFreeRun)
+				Channel.DeckLinkThreadStatus = {};
+			else
+				Channel.DeckLinkThreadStatus.DropDetectionEnabled = true;
+		}
 		return Channel.IsOpen ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
 	}
 	
@@ -612,6 +632,25 @@ public:
 	std::string PixelFormatPinValue = "NONE";
 
 	ChannelHandler Channel;
+
+
+	void OnPathStartInitiated() override
+	{
+		if(Channel.IsInput())
+			Channel.StartIfOpen();
+	}
+
+	void OnPathStart() override
+	{
+		if (!Channel.IsOpen)
+			return;
+		if (Channel.IsInput())
+			nosDeckLink->ResetInputFrames(Channel.DeviceIndex, Channel.Channel);
+		// Output is started here since decklink api counts drops
+		// and we need to start the stream when we are sure that frames will arrive
+		else
+			Channel.StartIfOpen();
+	}
 
 	void OnPathStop() override
 	{

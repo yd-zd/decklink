@@ -355,6 +355,18 @@ nosResult NOSAPI_CALL StopStream(uint32_t deviceIndex, nosDeckLinkChannel channe
 	return device->StopStream(channel) ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
 }
 
+nosResult NOSAPI_CALL ResetInputFrames(uint32_t deviceIndex, nosDeckLinkChannel channel)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	return device->ResetInputFrames(channel) ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
+}
+
 int32_t NOSAPI_CALL RegisterFrameResultCallback(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkFrameResultCallback callback, void* userData)
 {
 	DeviceLock lock(deviceIndex);
@@ -464,6 +476,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->UnregisterInputVideoFormatChangeCallback = UnregisterInputVideoFormatChangeCallback;
 	subsystem->StartStream = StartStream;
 	subsystem->StopStream = StopStream;
+	subsystem->ResetInputFrames = ResetInputFrames;
 	subsystem->RegisterFrameResultCallback = RegisterFrameResultCallback;
 	subsystem->UnregisterFrameResultCallback = UnregisterFrameResultCallback;
 	subsystem->RegisterDeviceInvalidatedCallback = RegisterDeviceInvalidatedCallback;

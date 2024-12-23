@@ -35,6 +35,23 @@ struct WaitFrameNode : NodeContext
 		return NOS_RESULT_SUCCESS;
 	}
 
+	void OnPathStartInitiated() override
+	{
+		auto deviceIndex = CurChannelId.device_index();
+		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
+		// This possibly takes a long time(more than a frame)
+		if(CurChannelId.is_input())
+			nosDeckLink->WaitFrame(deviceIndex, channel, 1000);
+	}
+
+	// This is to ensure that the first frame aligns with decklink frame
+	void OnPathStart() override
+	{
+		auto deviceIndex = CurChannelId.device_index();
+		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
+		nosDeckLink->WaitFrame(deviceIndex, channel, 100);
+	}
+
 	ChannelId CurChannelId;
 	
 };

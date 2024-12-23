@@ -44,6 +44,7 @@ public:
 	// Input
 	bool OpenInput(BMDPixelFormat pixelFormat);
 	bool CloseInput();
+	bool ResetInputFrames();
 
 	// Input/Output
 	bool StartStream(nosMediaIODirection mode);

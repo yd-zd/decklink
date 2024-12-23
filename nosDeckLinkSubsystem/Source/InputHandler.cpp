@@ -128,6 +128,13 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 	FrameAvailableCond.notify_one();
 }
 
+bool InputHandler::ResetReadFrames()
+{
+	std::unique_lock lock(ReadFramesMutex);
+	ReadFrames.clear();
+	return true;
+}
+
 bool InputHandler::Flush()
 {
 	auto res = Interface->PauseStreams();
