@@ -173,8 +173,9 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceInd
 		return NOS_RESULT_NOT_FOUND;
 	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates({NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
 	std::set<nosMediaIOFrameRate> frameRates;
-	for (auto& [_, frs] : supported)
-		frameRates.insert(frs.begin(), frs.end());
+	for (auto& [curFrameGeo, frs] : supported)
+		if (curFrameGeo == frameGeo)
+			frameRates.insert(frs.begin(), frs.end());
 	int i = 0;
 	outFrameRates->Count = frameRates.size();
 	for (auto it = frameRates.rbegin(); it != frameRates.rend(); ++it)
