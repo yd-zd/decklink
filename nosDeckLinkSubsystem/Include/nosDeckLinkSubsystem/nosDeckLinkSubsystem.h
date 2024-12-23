@@ -68,7 +68,8 @@ typedef struct nosDeckLinkOpenChannelParams
 	struct
 	{
 		nosMediaIOFrameGeometry Geometry;
-		nosMediaIOFrameRate FrameRate;	
+		nosMediaIOFrameRate FrameRate;
+		nosMediaIOVideoScanType ScanType;
 	} Output; // Don't care if Direction == NOS_MEDIAIO_DIRECTION_INPUT
 } nosDeckLinkOpenOutputParams;
 
@@ -78,7 +79,7 @@ typedef enum nosDeckLinkFrameResult
 	NOS_DECKLINK_FRAME_DROPPED,
 } nosDeckLinkFrameResult;
 
-typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
+typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 typedef void (NOSAPI_CALL* nosDeckLinkDeviceInvalidatedCallback)(void* userData);
 
@@ -91,9 +92,9 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult			(NOSAPI_CALL* GetDeviceInfoByIndex)(uint32_t deviceIndex, nosDeckLinkDeviceInfo* outInfo);
 
 	// Channels
-	nosResult (NOSAPI_CALL* GetSupportedOutputFrameGeometries)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOFrameGeometryList* outGeometries);
-	nosResult (NOSAPI_CALL* GetSupportedOutputFrameRatesForGeometry)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRateList* outFrameRates);
-	nosResult (NOSAPI_CALL* GetSupportedOutputPixelFormats)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormatList* outPixelFormats);
+	nosResult (NOSAPI_CALL* GetSupportedOutputFrameGeometries)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometryList* outGeometries);
+	nosResult (NOSAPI_CALL* GetSupportedOutputFrameRatesForGeometry)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRateList* outFrameRates);
+	nosResult (NOSAPI_CALL* GetSupportedOutputPixelFormats)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormatList* outPixelFormats);
 	nosResult (NOSAPI_CALL* OpenChannel)(uint32_t deviceIndex, nosDeckLinkOpenChannelParams* params);
 	nosResult (NOSAPI_CALL* CloseChannel)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosResult (NOSAPI_CALL* GetCurrentDeltaSecondsOfChannel)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosVec2u* outDeltaSeconds);
@@ -125,8 +126,8 @@ typedef struct nosDeckLinkSubsystem {
 
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 3
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 0
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;

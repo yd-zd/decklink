@@ -85,7 +85,40 @@ constexpr std::vector<BMDDisplayMode> GetDisplayModesForFrameGeometry(nosMediaIO
 	}
 }
 
-constexpr BMDDisplayMode GetDeckLinkDisplayMode(nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate) {
+constexpr BMDDisplayMode GetDeckLinkDisplayMode(nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate) {
+	if (scanType == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN)
+	{
+		switch (geometry)
+		{
+			case NOS_MEDIAIO_FRAME_GEOMETRY_HD1080:
+			{
+				switch (frameRate)
+				{
+					case NOS_MEDIAIO_FRAME_RATE_50: return bmdModeHD1080i50;
+					case NOS_MEDIAIO_FRAME_RATE_5994: return bmdModeHD1080i5994;
+					case NOS_MEDIAIO_FRAME_RATE_60: return bmdModeHD1080i6000;
+					default: return bmdModeUnknown;
+				}
+			}
+			case NOS_MEDIAIO_FRAME_GEOMETRY_NTSC:
+			{
+				switch (frameRate)
+				{
+					case NOS_MEDIAIO_FRAME_RATE_2398: return bmdModeNTSC2398;
+					case NOS_MEDIAIO_FRAME_RATE_2997: return bmdModeNTSC;
+					default: return bmdModeUnknown;
+				}
+			}
+			case NOS_MEDIAIO_FRAME_GEOMETRY_PAL:
+			{
+				switch (frameRate)
+				{
+					default: return bmdModePAL;
+				}
+			}
+			default: return bmdModeUnknown;
+		}
+	}
 	switch (geometry) {
 		case NOS_MEDIAIO_FRAME_GEOMETRY_NTSC:
 			switch (frameRate) {
@@ -509,5 +542,26 @@ constexpr FrameGeometryAndRatePair GetFrameGeometryAndRatePairFromDeckLinkDispla
 	}
 }
 
+// Function to determine the video scan type based on BMDDisplayMode
+inline nosMediaIOVideoScanType GetVideoScanType(BMDDisplayMode displayMode) {
+	// Define a map of interlaced modes for quick lookup
+	static const std::map<BMDDisplayMode, nosMediaIOVideoScanType> modeScanTypeMap = {
+		{bmdModeHD1080i50, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN},
+		{bmdModeHD1080i5994, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN},
+		{bmdModeHD1080i6000, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN},
+		{bmdModeNTSC, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN},
+		{bmdModeNTSC2398, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN},
+		{bmdModePAL, NOS_MEDIAIO_VIDEO_INTERLACED_SCAN}
+	};
+
+	// Check if the mode is in the interlaced map
+	if (modeScanTypeMap.find(displayMode) != modeScanTypeMap.end()) {
+		return modeScanTypeMap.at(displayMode);
+	}
+
+	// Default to progressive for all other modes
+	return NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN;
+}
+	
 const char* NOSAPI_CALL GetChannelName(nosDeckLinkChannel channel);
 }

@@ -10,6 +10,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	std::array<IDeckLinkMutableVideoFrame*, 2> VideoFrames{};
 	
 	std::atomic_uint32_t TotalFramesScheduled = 0;
+	uint32_t RequestedWaits = 0;
 
 	std::mutex VideoFramesMutex;
 	std::condition_variable WriteCond;

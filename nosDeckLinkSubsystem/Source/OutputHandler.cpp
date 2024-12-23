@@ -108,6 +108,8 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 		std::unique_lock lock(PlaybackStoppedMutex);
 		Closed = false;
 	}
+
+	IsInterlaced = GetVideoScanType(displayMode) == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN;
 	return true;
 }
 
@@ -169,6 +171,11 @@ bool OutputHandler::Close()
 
 bool OutputHandler::WaitFrame(std::chrono::milliseconds timeout)
 {
+	if (IsInterlaced)
+	{
+		if (RequestedWaits++ % 2 == 0)
+			return true;
+	}
 	util::Stopwatch sw;
 	bool res;
 	{
@@ -191,6 +198,14 @@ bool OutputHandler::WaitFrame(std::chrono::milliseconds timeout)
 
 void OutputHandler::DmaTransfer(void* buffer, size_t size)
 {
+	if (IsInterlaced)
+	{
+		if (RequestedWaits % 2 == 1)
+		{
+			// Skip writing for this half-frame.
+			return;
+		}
+	}
 	util::Stopwatch sw;
 	IDeckLinkVideoFrame* frame;
 	{

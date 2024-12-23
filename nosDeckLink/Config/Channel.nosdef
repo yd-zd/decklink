@@ -46,6 +46,13 @@
                     "can_show_as": "PROPERTY_ONLY"
                 },
                 {
+                    "name": "VideoScanType",
+                    "display_name": "Video Scan Type",
+                    "type_name": "string",
+                    "show_as": "PROPERTY",
+                    "can_show_as": "PROPERTY_ONLY"
+                },
+                {
                     "name": "Device",
                     "type_name": "string",
                     "show_as": "PROPERTY",
@@ -93,6 +100,14 @@
                     "name": "ChannelPixelFormat",
                     "display_name": "Channel Pixel Format",
                     "type_name": "nos.mediaio.YCbCrPixelFormat",
+                    "show_as": "OUTPUT_PIN",
+                    "can_show_as": "OUTPUT_PIN_OR_PROPERTY",
+                    "readonly": true
+                },
+                {
+                    "name": "ChannelIsInterlaced",
+                    "display_name": "Is Interlaced",
+                    "type_name": "bool",
                     "show_as": "OUTPUT_PIN",
                     "can_show_as": "OUTPUT_PIN_OR_PROPERTY",
                     "readonly": true

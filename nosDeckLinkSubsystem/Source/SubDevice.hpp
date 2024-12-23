@@ -18,8 +18,8 @@ public:
 	~SubDevice();
 	bool IsBusyWith(nosMediaIODirection mode);
 	bool IsBusy();
-	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> GetSupportedOutputFrameGeometryAndFrameRates(std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats);
-	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> GetSupportedOutputVideoFormats();
+	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoScanType scanType, std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats);
+	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> GetSupportedOutputVideoFormats(nosMediaIOVideoScanType scanType);
 	int32_t AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData);
 	void RemoveInputVideoFormatChangeCallback(uint32_t callbackId);
 	int32_t AddFrameResultCallback(nosMediaIODirection dir, nosDeckLinkFrameResultCallback callback, void* user_data);

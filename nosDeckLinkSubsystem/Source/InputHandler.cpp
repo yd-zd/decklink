@@ -153,6 +153,8 @@ bool InputHandler::Flush()
 
 bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 {
+	IsInterlaced = GetVideoScanType(displayMode) == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN;
+
 	// Create an instance of notification callback
 	auto callback = new InputCallback(this);
 	if (callback == nullptr)
@@ -263,6 +265,8 @@ void InputHandler::DmaTransfer(void* buffer, size_t size)
 
 void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat)
 {
+	IsInterlaced = GetVideoScanType(newDisplayMode) == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN;
+
 	// Pause video capture
 	Interface->PauseStreams();
 			
@@ -281,7 +285,7 @@ void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDi
 		for (auto& [_, pair] : VideoFormatChangeCallbacks)
 		{
 			auto& [callback, userData] = pair;
-			callback(userData, frameGeometry, frameRate, GetPixelFormatFromDeckLink(pixelFormat));
+			callback(userData, GetVideoScanType(newDisplayMode), frameGeometry, frameRate, GetPixelFormatFromDeckLink(pixelFormat));
 		}
 	}
 }

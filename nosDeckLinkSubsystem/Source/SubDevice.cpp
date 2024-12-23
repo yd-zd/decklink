@@ -98,7 +98,7 @@ bool SubDevice::IsBusy()
 	return Input.IsCurrentlyOpen() || Output.IsCurrentlyOpen();
 }
 
-std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetSupportedOutputFrameGeometryAndFrameRates(std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats)
+std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoScanType scanType, std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats)
 {
 	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> supported;
 	if (!Output)
@@ -106,7 +106,7 @@ std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetS
 		nosEngine.LogE("SubDevice: Output interface is not available for device: %s", ModelName.c_str());
 		return supported;
 	}
-
+	
 	for (auto& pixelFormat : pixelFormats)
 	{
 		for (int i = NOS_MEDIAIO_FRAME_GEOMETRY_MIN; i < NOS_MEDIAIO_FRAME_GEOMETRY_MAX; ++i)
@@ -114,7 +114,7 @@ std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetS
 			auto fg = static_cast<nosMediaIOFrameGeometry>(i);
 			for (auto& displayMode : GetDisplayModesForFrameGeometry(fg))
 			{
-				if (DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
+				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
 				{
 					supported[fg].insert(GetFrameRateFromDisplayMode(displayMode));
 				}
@@ -124,7 +124,7 @@ std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetS
 	return supported;
 }
 
-std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> SubDevice::GetSupportedOutputVideoFormats()
+std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> SubDevice::GetSupportedOutputVideoFormats(nosMediaIOVideoScanType scanType)
 {
 	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> supported;
 	if (!Output)
@@ -143,7 +143,7 @@ std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMedi
 			auto fg = static_cast<nosMediaIOFrameGeometry>(i);
 			for (auto& displayMode : GetDisplayModesForFrameGeometry(fg))
 			{
-				if (DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
+				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
 				{
 					supported[fg][GetFrameRateFromDisplayMode(displayMode)].insert(pixelFormat);
 				}

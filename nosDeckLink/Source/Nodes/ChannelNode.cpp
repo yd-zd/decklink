@@ -12,6 +12,7 @@ namespace nos::decklink
 NOS_REGISTER_NAME(Device);
 NOS_REGISTER_NAME(ChannelName);
 NOS_REGISTER_NAME(IsInput);
+NOS_REGISTER_NAME(VideoScanType);
 NOS_REGISTER_NAME(Resolution);
 NOS_REGISTER_NAME(FrameRate);
 NOS_REGISTER_NAME(PixelFormat);
@@ -19,6 +20,7 @@ NOS_REGISTER_NAME(IsOpen);
 NOS_REGISTER_NAME(ChannelId);
 NOS_REGISTER_NAME(ChannelResolution);
 NOS_REGISTER_NAME(ChannelPixelFormat);
+NOS_REGISTER_NAME(ChannelIsInterlaced);
 
 enum class ChangedPinType
 {
@@ -28,6 +30,7 @@ enum class ChangedPinType
 	Resolution,
 	FrameRate,
 	PixelFormat,
+	VideoScanType,
 };
 
 enum class ChannelUpdateResult
@@ -37,7 +40,7 @@ enum class ChannelUpdateResult
 	Opened,
 };
 
-void InputVideoFormatChanged(void* userData, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
+void InputVideoFormatChanged(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 void FrameResultCallback(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 void DeviceInvalidated(void* userData);
 	
@@ -49,12 +52,15 @@ struct ChannelHandler
 	bool IsStreamStarted = false;
 	nosUUID IsOpenPinId;
 	nosUUID ChannelNamePinId;
+	nosUUID VideoScanTypePinId;
 	nosUUID OutChannelPinId;
 	nosUUID OutResolutionPinId;
 	nosUUID OutPixelFormatPinId;
+	nosUUID OutChannelIsInterlacedPinId;
 	nosUUID ResolutionPinId;
 	nosUUID FrameRatePinId;
-	nosUUID PixelFormatPinId; 
+	nosUUID PixelFormatPinId;
+	nosMediaIOVideoScanType VideoScanType = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; // Default value
 	int32_t DeviceIndex = -1;
 	nosMediaIODirection Direction = NOS_MEDIAIO_DIRECTION_OUTPUT;
 	nosDeckLinkChannel Channel = NOS_DECKLINK_CHANNEL_INVALID;
@@ -98,14 +104,17 @@ struct ChannelHandler
 		Close();
 	}
 
-	void OnInputVideoFormatChanged_DeckLinkThread(nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat)
+	void OnInputVideoFormatChanged_DeckLinkThread(nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat)
 	{
+		const char* scanTypeCstr = nosMediaIO->GetVideoScanTypeName(scanType);
 		const char* frameGeometryCstr = nosMediaIO->GetFrameGeometryName(frameGeometry);
 		const char* frameRateCstr = nosMediaIO->GetFrameRateName(frameRate);
 		const char* pixelFormatCstr = nosMediaIO->GetPixelFormatName(pixelFormat);
+		VideoScanType = scanType;
 		Resolution = frameGeometry;
 		FrameRate = frameRate;
 		PixelFormat = pixelFormat;
+		nosEngine.SetPinValue(VideoScanTypePinId, nos::Buffer(scanTypeCstr, strlen(scanTypeCstr) + 1));
 		nosEngine.SetPinValue(ResolutionPinId, nos::Buffer(frameGeometryCstr, strlen(frameGeometryCstr) + 1));
 		nosEngine.SetPinValue(FrameRatePinId, nos::Buffer(frameRateCstr, strlen(frameRateCstr) + 1));
 		nosEngine.SetPinValue(PixelFormatPinId, nos::Buffer(pixelFormatCstr, strlen(pixelFormatCstr) + 1));
@@ -177,6 +186,7 @@ struct ChannelHandler
 		{
 			params.Output.Geometry = Resolution;
 			params.Output.FrameRate = FrameRate;
+			params.Output.ScanType = VideoScanType;
 		}
 		else
 		{
@@ -235,24 +245,29 @@ struct ChannelHandler
 
 	void UpdateChannelStatus()
 	{
-		std::string channelString(256, '\0');
-		auto res = nosDeckLink->GetPortMappedChannelName(DeviceIndex, Channel, channelString.data(), channelString.size());
+		std::stringstream channelString;
+		char nameBuffer[256]{};
+		auto res = nosDeckLink->GetPortMappedChannelName(DeviceIndex, Channel, nameBuffer, sizeof(nameBuffer));
 		if (res != NOS_RESULT_SUCCESS)
-			channelString = "Unknown Channel";
-		channelString += " ";
+			channelString << "Unknown Channel";
+		else
+			channelString << nameBuffer;
+		channelString << " ";
 		if (Resolution != NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
 		{
-			channelString += nosMediaIO->GetFrameGeometryName(Resolution);
-			channelString += " ";
+			channelString << nosMediaIO->GetFrameGeometryName(Resolution);
+			channelString << " ";
 		}
 		if (FrameRate != NOS_MEDIAIO_FRAME_RATE_INVALID)
-			channelString += nosMediaIO->GetFrameRateName(FrameRate);
+			channelString << nosMediaIO->GetFrameRateName(FrameRate);
+		if (VideoScanType != NOS_MEDIAIO_VIDEO_SCAN_TYPE_INVALID)
+			channelString << (VideoScanType == NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN ? " (p)" : " (i)");
 		fb::NodeStatusMessageType type;
 		std::string statusText;
 		if (ShouldOpen && IsOpen)
 		{
 			type = fb::NodeStatusMessageType::INFO;
-			statusText = channelString;
+			statusText = channelString.str();
 			Node->SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ACTIVE);
 		}
 		else
@@ -260,7 +275,7 @@ struct ChannelHandler
 			if (ShouldOpen && !IsOpen && CanOpen())
 			{
 				type = fb::NodeStatusMessageType::FAILURE;
-				statusText = "Failed to open: " + channelString;
+				statusText = "Failed to open: " + channelString.str();
 				
 			}
 			else if (!ShouldOpen)
@@ -295,6 +310,7 @@ struct ChannelHandler
 			break;
 		}
 		nosEngine.SetPinValue(OutPixelFormatPinId, nos::Buffer::From(ycbcrFormat));
+		nosEngine.SetPinValue(OutChannelIsInterlacedPinId, nos::Buffer::From(VideoScanType == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN));
 	}
 
 	void UpdateChannelStatusAndOutPins()
@@ -320,9 +336,9 @@ struct ChannelHandler
 	std::map<StatusType, fb::TNodeStatusMessage> StatusMessages;
 };
 
-void InputVideoFormatChanged(void* userData, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat)
+void InputVideoFormatChanged(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat)
 {
-	static_cast<ChannelHandler*>(userData)->OnInputVideoFormatChanged_DeckLinkThread(frameGeometry, frameRate, pixelFormat);
+	static_cast<ChannelHandler*>(userData)->OnInputVideoFormatChanged_DeckLinkThread(scanType, frameGeometry, frameRate, pixelFormat);
 }
 
 void FrameResultCallback(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber)
@@ -340,6 +356,7 @@ class ChannelNode : public nos::NodeContext
 public:
 	ChannelNode(const nosFbNode* node) : NodeContext(node), Channel(this)
 	{
+		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetVideoScanTypeStringListName()});
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetDeviceStringListName()});
 		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetChannelStringListName()});
 		SetPinVisualizer(NSN_Resolution, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetResolutionStringListName()});
@@ -347,14 +364,17 @@ public:
 		SetPinVisualizer(NSN_PixelFormat, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetPixelFormatStringListName()});
 
 		Channel.IsOpenPinId = *GetPinId(NSN_IsOpen);
+		Channel.VideoScanTypePinId = *GetPinId(NSN_VideoScanType);
 		Channel.ChannelNamePinId = *GetPinId(NSN_ChannelName);
 		Channel.OutChannelPinId = *GetPinId(NSN_ChannelId);
 		Channel.OutResolutionPinId = *GetPinId(NSN_ChannelResolution);
 		Channel.OutPixelFormatPinId = *GetPinId(NSN_ChannelPixelFormat);
+		Channel.OutChannelIsInterlacedPinId = *GetPinId(NSN_ChannelIsInterlaced);
 		Channel.ResolutionPinId = *GetPinId(NSN_Resolution);
 		Channel.FrameRatePinId = *GetPinId(NSN_FrameRate);
 		Channel.PixelFormatPinId = *GetPinId(NSN_PixelFormat);
 
+		UpdateStringList(GetVideoScanTypeStringListName(), GetPossibleVideoScanTypes());
 		UpdateStringList(GetDeviceStringListName(), GetPossibleDeviceNames());
 
 		AddPinValueWatcher(NSN_IsOpen, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
@@ -368,6 +388,17 @@ public:
 			auto newValue = *InterpretPinValue<bool>(newVal) ? NOS_MEDIAIO_DIRECTION_INPUT : NOS_MEDIAIO_DIRECTION_OUTPUT;
 			Channel.Update<&ChannelHandler::Direction>(newValue);
 			UpdateAfter(ChangedPinType::IsInput, !oldValue);
+		});
+		AddPinValueWatcher(NSN_VideoScanType, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
+			VideoScanTypePinValue = InterpretPinValue<const char>(newVal);
+			auto newVideoScanType = nosMediaIO->GetVideoScanTypeFromString(VideoScanTypePinValue.c_str());
+			Channel.Update<&ChannelHandler::VideoScanType>(newVideoScanType, Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT);
+			if (oldValue)
+			{
+				auto oldVideoScanType = nosMediaIO->GetVideoScanTypeFromString(InterpretPinValue<const char>(*oldValue));
+				if (oldVideoScanType != newVideoScanType)
+					ResetAfter(ChangedPinType::VideoScanType);
+			}
 		});
 		AddPinValueWatcher(NSN_Device, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			DevicePinValue = InterpretPinValue<const char>(newVal);
@@ -400,7 +431,6 @@ public:
 					AutoSelectIfSingle(NSN_ChannelName, GetPossibleChannelNames());
 			}
 			UpdateAfter(ChangedPinType::ChannelName, !oldValue);
-			
 		});
 		AddPinValueWatcher(NSN_Resolution, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ResolutionPinValue = InterpretPinValue<const char>(newVal);
@@ -447,6 +477,10 @@ public:
 			}
 			UpdateAfter(ChangedPinType::PixelFormat, !oldValue);
 		});
+
+		// Initial values
+		std::string_view scanTypeCstr = nosMediaIO->GetVideoScanTypeName(Channel.VideoScanType);
+		SetPinValue(NSN_VideoScanType, nos::Buffer(scanTypeCstr.data(), scanTypeCstr.size() + 1));
 	}
 
 	void AutoSelectIfSingle(nosName pinName, std::vector<std::string> const& list)
@@ -461,6 +495,7 @@ public:
 		switch (pin)
 		{
 		case ChangedPinType::IsInput: {
+			ChangePinReadOnly(NSN_VideoScanType, isInput);
 			ChangePinReadOnly(NSN_Resolution, isInput);
 			ChangePinReadOnly(NSN_FrameRate, isInput);
 			ChangePinReadOnly(NSN_PixelFormat, isInput);
@@ -507,6 +542,7 @@ public:
 		switch (pin)
 		{
 		case ChangedPinType::IsInput: 
+		case ChangedPinType::VideoScanType: 
 			pinToSet = NSN_Device;
 			break;
 		case ChangedPinType::Device: 
@@ -547,6 +583,7 @@ public:
 	std::string GetResolutionStringListName() { return "decklink.ResolutionList." + UUID2STR(NodeId); }
 	std::string GetFrameRateStringListName() { return "decklink.FrameRateList." + UUID2STR(NodeId); }
 	std::string GetPixelFormatStringListName() { return "decklink.PixelFormatList." + UUID2STR(NodeId); }
+	std::string GetVideoScanTypeStringListName() { return "decklink.VideoScanList." + UUID2STR(NodeId); }
 
 	std::vector<std::string> GetPossibleDeviceNames()
 	{
@@ -576,6 +613,17 @@ public:
 		}
 		return channels;
 	}
+
+	std::vector<std::string> GetPossibleVideoScanTypes() 
+	{
+		std::vector<std::string> videoScanTypeNames;
+		for (int i = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; i <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; i++)
+		{
+			auto name = nosMediaIO->GetVideoScanTypeName((nosMediaIOVideoScanType)i);
+			videoScanTypeNames.push_back(name);
+		}
+		return videoScanTypeNames;
+	}
 	
 	std::vector<std::string> GetPossibleResolutions() 
 	{
@@ -583,7 +631,7 @@ public:
 		if (Channel.DeviceIndex == -1 || Channel.Channel == NOS_DECKLINK_CHANNEL_INVALID)
 			return possibleResolutions;
 		nosMediaIOFrameGeometryList frameGeometryList{};
-		nosDeckLink->GetSupportedOutputFrameGeometries(Channel.DeviceIndex, Channel.Channel, &frameGeometryList);
+		nosDeckLink->GetSupportedOutputFrameGeometries(Channel.DeviceIndex, Channel.Channel, Channel.VideoScanType, &frameGeometryList);
 		for (size_t i = 0; i < frameGeometryList.Count; i++)
 		{
 			auto& fg = frameGeometryList.Geometries[i];
@@ -599,7 +647,7 @@ public:
 		if (Channel.DeviceIndex == -1 || Channel.Channel == NOS_DECKLINK_CHANNEL_INVALID || Channel.Resolution == NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
 			return possibleFrameRates;
 		nosMediaIOFrameRateList frameRates{};
-		nosDeckLink->GetSupportedOutputFrameRatesForGeometry(Channel.DeviceIndex, Channel.Channel, Channel.Resolution, &frameRates);
+		nosDeckLink->GetSupportedOutputFrameRatesForGeometry(Channel.DeviceIndex, Channel.Channel, Channel.VideoScanType, Channel.Resolution, &frameRates);
 		for (size_t i = 0; i < frameRates.Count; i++)
 		{
 			auto& rate = frameRates.FrameRates[i];
@@ -615,7 +663,7 @@ public:
 		if (Channel.DeviceIndex == -1 || Channel.FrameRate == NOS_MEDIAIO_FRAME_RATE_INVALID)
 			return possiblePixelFormats;
 		nosMediaIOPixelFormatList pixelFormats{};
-		nosDeckLink->GetSupportedOutputPixelFormats(Channel.DeviceIndex, Channel.Channel, Channel.Resolution, Channel.FrameRate, &pixelFormats);
+		nosDeckLink->GetSupportedOutputPixelFormats(Channel.DeviceIndex, Channel.Channel, Channel.VideoScanType, Channel.Resolution, Channel.FrameRate, &pixelFormats);
 		for (size_t i = 0; i < pixelFormats.Count; i++)
 		{
 			auto& format = pixelFormats.PixelFormats[i];
@@ -624,7 +672,8 @@ public:
 		}
 		return possiblePixelFormats;
 	}
-	
+
+	std::string VideoScanTypePinValue;
 	std::string DevicePinValue = "NONE";
 	std::string ChannelPinValue = "NONE";
 	std::string ResolutionPinValue = "NONE";

@@ -138,6 +138,8 @@ struct IOHandlerBaseI
 	
 	uint32_t FramesProcessed = 0;
 
+	bool IsInterlaced = false;
+
 	virtual bool Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat) = 0;
 	virtual bool Close() = 0;
 
@@ -256,7 +258,8 @@ inline std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
 {
 	if (!IsOpen)
 		return std::nullopt;
-	return nosVec2u{ (uint32_t)FrameDuration, (uint32_t)TimeScale };
+	uint32_t effectiveTimeScale = TimeScale * (IsInterlaced ? 2 : 1);
+	return nosVec2u{ (uint32_t)FrameDuration, (uint32_t)effectiveTimeScale };
 }
 
 inline int32_t IOHandlerBaseI::AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData)
