@@ -212,7 +212,7 @@ bool InputHandler::Close()
 	return true;
 }
 
-bool InputHandler::WaitFrame(std::chrono::milliseconds timeout)
+bool InputHandler::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
 {
 	util::Stopwatch sw;
 	bool res;

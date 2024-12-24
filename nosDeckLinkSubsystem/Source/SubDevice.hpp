@@ -37,7 +37,7 @@ public:
 	bool DoesSupportOutputVideoMode(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
 	bool OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
 	bool CloseOutput();
-	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout);
+	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType);
 	void DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
 	std::optional<nosVec2u> GetDeltaSeconds(nosMediaIODirection dir);
 

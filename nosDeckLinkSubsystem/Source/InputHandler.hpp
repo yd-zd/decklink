@@ -18,7 +18,7 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 
 	bool ResetReadFrames();
 	bool Flush();
-	bool WaitFrame(std::chrono::milliseconds timeout) override;
+	bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
 	void DmaTransfer(void* buffer, size_t size) override;
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);

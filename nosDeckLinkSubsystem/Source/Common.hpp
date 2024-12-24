@@ -148,7 +148,7 @@ struct IOHandlerBaseI
 	bool StopStream();
 	bool CloseStream();
 
-	virtual bool WaitFrame(std::chrono::milliseconds timeout) = 0;
+	virtual bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) = 0;
 	virtual void DmaTransfer(void* buffer, size_t size) = 0;
 	std::optional<nosVec2u> GetDeltaSeconds() const;
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);

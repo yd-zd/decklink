@@ -24,6 +24,12 @@
                     "type_name": "nos.decklink.ChannelId",
                     "show_as": "INPUT_PIN",
                     "can_show_as": "INPUT_PIN_ONLY"
+                },
+                {
+                    "name": "WaitField",
+                    "type_name": "nos.sys.vulkan.FieldType",
+                    "show_as": "INPUT_PIN",
+                    "can_show_as": "INPUT_PIN_ONLY"
                 }
             ],
             "functions": [

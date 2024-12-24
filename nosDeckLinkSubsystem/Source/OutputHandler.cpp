@@ -115,6 +115,7 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 
 bool OutputHandler::Start()
 {
+	LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 	{
 		std::unique_lock lock(VideoFramesMutex);
 		TotalFramesScheduled = 0;
@@ -169,11 +170,12 @@ bool OutputHandler::Close()
 	return true;
 }
 
-bool OutputHandler::WaitFrame(std::chrono::milliseconds timeout)
+bool OutputHandler::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
 {
 	if (IsInterlaced)
 	{
-		if (RequestedWaits++ % 2 == 0)
+		LastWaitedFieldType = optFieldType;
+		if (optFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
 			return true;
 	}
 	util::Stopwatch sw;
@@ -200,7 +202,7 @@ void OutputHandler::DmaTransfer(void* buffer, size_t size)
 {
 	if (IsInterlaced)
 	{
-		if (RequestedWaits % 2 == 1)
+		if (LastWaitedFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
 		{
 			// Skip writing for this half-frame.
 			return;
