@@ -115,7 +115,6 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 
 bool OutputHandler::Start()
 {
-	LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 	{
 		std::unique_lock lock(VideoFramesMutex);
 		TotalFramesScheduled = 0;
@@ -170,45 +169,22 @@ bool OutputHandler::Close()
 	return true;
 }
 
-bool OutputHandler::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
 {
-	if (IsInterlaced)
+	std::unique_lock lock(VideoFramesMutex);
+	bool res = WriteCond.wait_for(lock, timeout, [this] {
+		return !WriteQueue.empty();
+	});
+	if (!res)
 	{
-		LastWaitedFieldType = optFieldType;
-		if (optFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
-			return true;
+		nosEngine.LogE("(Device %d) %s Output: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
+		return false;
 	}
-	util::Stopwatch sw;
-	bool res;
-	{
-		std::unique_lock lock(VideoFramesMutex);
-		res = WriteCond.wait_for(lock, timeout, [this] {
-			return !WriteQueue.empty();
-		});
-		if (!res)
-		{
-			nosEngine.LogE("(Device %d) %s Output: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
-			return false;
-		}
-	}
-	auto seconds = sw.Elapsed();
-	char watchLogBuf[128];
-	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s WaitFrame", DeviceIndex, GetChannelName(Channel));
-	nosEngine.WatchLog(watchLogBuf, util::Stopwatch::ElapsedString(seconds).c_str());
 	return res;
 }
 
-void OutputHandler::DmaTransfer(void* buffer, size_t size)
+void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
-	if (IsInterlaced)
-	{
-		if (LastWaitedFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
-		{
-			// Skip writing for this half-frame.
-			return;
-		}
-	}
-	util::Stopwatch sw;
 	IDeckLinkVideoFrame* frame;
 	{
 		std::unique_lock lock(VideoFramesMutex);
@@ -235,9 +211,6 @@ void OutputHandler::DmaTransfer(void* buffer, size_t size)
 		}
 		output.EndAccess();
 	}
-	char watchLogBuf[128];
-	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s DMAWrite", DeviceIndex, GetChannelName(Channel));
-	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
 	ScheduleNextFrame();
 }
 

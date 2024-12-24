@@ -10,7 +10,6 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	std::array<IDeckLinkMutableVideoFrame*, 2> VideoFrames{};
 	
 	std::atomic_uint32_t TotalFramesScheduled = 0;
-	nosMediaIOInterlacedFieldType LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 
 	std::mutex VideoFramesMutex;
 	std::condition_variable WriteCond;
@@ -18,8 +17,8 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 
 	~OutputHandler() override;
 
-	bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
-	void DmaTransfer(void* buffer, size_t size) override;
+	bool WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
+	void DmaTransferImpl(void* buffer, size_t size) override;
 	
 	void ScheduleNextFrame();
 	void ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);

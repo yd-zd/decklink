@@ -20,6 +20,9 @@
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 
 #include <Nodos/Modules.h>
+#include <nosUtil/Stopwatch.hpp>
+
+#include "EnumConversions.hpp"
 
 namespace nos::decklink
 {
@@ -137,6 +140,7 @@ struct IOHandlerBaseI
 	BMDTimeScale TimeScale = 0;
 	
 	uint32_t FramesProcessed = 0;
+	nosMediaIOInterlacedFieldType LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 
 	bool IsInterlaced = false;
 
@@ -148,14 +152,16 @@ struct IOHandlerBaseI
 	bool StopStream();
 	bool CloseStream();
 
-	virtual bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) = 0;
-	virtual void DmaTransfer(void* buffer, size_t size) = 0;
+	bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType);
+	void DmaTransfer(void* buffer, size_t size);
 	std::optional<nosVec2u> GetDeltaSeconds() const;
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
 
 protected:
 	virtual bool Start() = 0;
+	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) = 0;
+	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
 	virtual bool Stop() = 0;
 	void OnFrameEnd(nosDeckLinkFrameResult result)
 	{
@@ -217,6 +223,7 @@ inline bool IOHandlerBaseI::StartStream()
 		return false;
 	if (IsStreamRunning)
 		return true;
+	LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 	FramesProcessed = 0;
 	if (Start())
 	{
@@ -252,6 +259,47 @@ inline bool IOHandlerBaseI::CloseStream()
 		return true;
 	}
 	return false;
+}
+
+inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+{
+	util::Stopwatch sw;
+	bool shouldSkip = false;
+	if (IsInterlaced)
+	{
+		LastWaitedFieldType = optFieldType;
+		if (optFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
+			shouldSkip = true;
+	}
+	bool res;
+	if (!shouldSkip)
+		res = WaitFrameImpl(timeout, optFieldType);
+	else
+		res = true;
+	auto seconds = sw.Elapsed();
+	char watchLogBuf[128];
+	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s WaitFrame", DeviceIndex, GetChannelName(Channel));
+	nosEngine.WatchLog(watchLogBuf, util::Stopwatch::ElapsedString(seconds).c_str());
+	return res;
+}
+
+inline void IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
+{
+	util::Stopwatch sw;
+	bool shouldSkip = false;
+	if (IsInterlaced)
+	{
+		if (LastWaitedFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
+		{
+			// Skip writing for this half-frame.
+			shouldSkip = true;
+		}
+	}
+	if (!shouldSkip)
+		DmaTransferImpl(buffer, size);
+	char watchLogBuf[128];
+	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s DMAWrite", DeviceIndex, GetChannelName(Channel));
+	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
 }
 
 inline std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const

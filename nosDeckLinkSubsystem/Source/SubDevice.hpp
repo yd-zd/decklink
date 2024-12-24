@@ -59,6 +59,7 @@ public:
 	IDeckLink* DLDevice = nullptr;
 protected:
 	IDeckLinkProfileAttributes* ProfileAttributes = nullptr;
+	IDeckLinkConfiguration* Configuration = nullptr;
 
 	OutputHandler Output;
 	InputHandler Input;

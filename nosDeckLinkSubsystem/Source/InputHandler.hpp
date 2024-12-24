@@ -18,8 +18,8 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 
 	bool ResetReadFrames();
 	bool Flush();
-	bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
-	void DmaTransfer(void* buffer, size_t size) override;
+	bool WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
+	void DmaTransferImpl(void* buffer, size_t size) override;
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);
 	void OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat);
@@ -31,8 +31,6 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 	std::unordered_map<int32_t, std::pair<nosDeckLinkInputVideoFormatChangeCallback, void*>> VideoFormatChangeCallbacks;
 	int32_t NextCallbackId = 0;
 
-	
-	
 protected:
 	bool Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat) override;
 	bool Start() override;

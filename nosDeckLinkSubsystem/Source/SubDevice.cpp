@@ -30,6 +30,13 @@ SubDevice::SubDevice(IDeckLink* deviceInterface)
 		return;
 	}
 
+	res = DLDevice->QueryInterface(IID_IDeckLinkConfiguration, (void**)&Configuration);
+	if (res != S_OK || !Configuration)
+	{
+		nosEngine.LogE("DeckLinkDevice: Failed to get configuration for device: %s", ModelName.c_str());
+		return;
+	}
+
 	BOOL supported{};
 	res = ProfileAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supported);
 	if ((res != S_OK) || (supported == false))
@@ -77,6 +84,7 @@ SubDevice::SubDevice(IDeckLink* deviceInterface)
 
 SubDevice::~SubDevice()
 {
+	Release(Configuration);
 	Release(ProfileAttributes);
 	Release(ProfileManager);
 }
