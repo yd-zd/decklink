@@ -212,7 +212,7 @@ bool InputHandler::Close()
 	return true;
 }
 
-bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(ReadFramesMutex);
 	bool res = FrameAvailableCond.wait_for(lock, timeout, [this]{

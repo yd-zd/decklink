@@ -104,7 +104,7 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult (NOSAPI_CALL* UnregisterFrameResultCallback)(uint32_t deviceIndex, nosDeckLinkChannel channel, int32_t callbackId);
 
 	// I/O
-	nosResult (NOSAPI_CALL* WaitFrame)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t timeoutMs, nosMediaIOInterlacedFieldType fieldType);
+	nosResult (NOSAPI_CALL* WaitFrame)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t timeoutMs);
 	nosResult (NOSAPI_CALL* DMATransfer)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, size_t size);
 	nosResult (NOSAPI_CALL* StartStream)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosResult (NOSAPI_CALL* StopStream)(uint32_t deviceIndex, nosDeckLinkChannel channel);

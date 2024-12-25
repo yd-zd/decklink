@@ -28,19 +28,13 @@ struct WaitFrameNode : NodeContext
 				return;
 			CurChannelId = newChannelId;
 		}
-		else if (pinName == NOS_NAME("WaitField"))
-		{
-			WaitField = *InterpretPinValue<nosTextureFieldType>(value);
-		}
 	}
-
-	nosTextureFieldType WaitField = NOS_TEXTURE_FIELD_TYPE_UNKNOWN;
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
 		auto deviceIndex = CurChannelId.device_index();
 		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
-		nosDeckLink->WaitFrame(deviceIndex, channel, 100, static_cast<nosMediaIOInterlacedFieldType>(WaitField));
+		nosDeckLink->WaitFrame(deviceIndex, channel, 100);
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -50,7 +44,7 @@ struct WaitFrameNode : NodeContext
 		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
 		// This possibly takes a long time(more than a frame)
 		if(CurChannelId.is_input())
-			nosDeckLink->WaitFrame(deviceIndex, channel, 100, NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID);
+			nosDeckLink->WaitFrame(deviceIndex, channel, 100);
 	}
 
 	// This is to ensure that the first frame aligns with decklink frame
@@ -58,7 +52,7 @@ struct WaitFrameNode : NodeContext
 	{
 		auto deviceIndex = CurChannelId.device_index();
 		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
-		nosDeckLink->WaitFrame(deviceIndex, channel, 100, static_cast<nosMediaIOInterlacedFieldType>(WaitField));
+		nosDeckLink->WaitFrame(deviceIndex, channel, 100);
 	}
 
 	ChannelId CurChannelId;

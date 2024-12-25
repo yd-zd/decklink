@@ -17,7 +17,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 
 	~OutputHandler() override;
 
-	bool WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) override;
+	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
 	void DmaTransferImpl(void* buffer, size_t size) override;
 	
 	void ScheduleNextFrame();

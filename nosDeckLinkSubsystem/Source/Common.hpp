@@ -151,7 +151,7 @@ struct IOHandlerBaseI
 	bool StopStream();
 	bool CloseStream();
 
-	bool WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType);
+	bool WaitFrame(std::chrono::milliseconds timeout);
 	void DmaTransfer(void* buffer, size_t size);
 	std::optional<nosVec2u> GetDeltaSeconds() const;
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
@@ -159,7 +159,7 @@ struct IOHandlerBaseI
 
 protected:
 	virtual bool Start() = 0;
-	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType) = 0;
+	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
 	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
 	virtual bool Stop() = 0;
 	void OnFrameEnd(nosDeckLinkFrameResult result)
@@ -259,10 +259,10 @@ inline bool IOHandlerBaseI::CloseStream()
 	return false;
 }
 
-inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout)
 {
 	util::Stopwatch sw;
-	bool res = WaitFrameImpl(timeout, optFieldType);
+	bool res = WaitFrameImpl(timeout);
 	auto seconds = sw.Elapsed();
 	char watchLogBuf[128];
 	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s WaitFrame", DeviceIndex, GetChannelName(Channel));

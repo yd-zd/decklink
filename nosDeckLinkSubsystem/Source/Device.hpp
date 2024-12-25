@@ -55,7 +55,7 @@ public:
 	bool ResetInputFrames(nosDeckLinkChannel channel);
 	std::optional<nosVec2u> GetCurrentDeltaSecondsOfChannel(nosDeckLinkChannel channel);
 
-	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType);
+	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout);
 	bool DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size);
 
 	void ClearSubDevices();

@@ -375,7 +375,7 @@ std::optional<nosVec2u> Device::GetCurrentDeltaSecondsOfChannel(nosDeckLinkChann
 	return subDevice->GetDeltaSeconds(mode);
 }
 
-bool Device::WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+bool Device::WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout)
 {
 	auto it = OpenChannels.find(channel);
 	if (it == OpenChannels.end())
@@ -384,7 +384,7 @@ bool Device::WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds tim
 		return false;
 	}
 	auto [subDevice, mode] = it->second;
-	return subDevice->WaitFrame(mode, timeout, optFieldType);
+	return subDevice->WaitFrame(mode, timeout);
 }
 
 bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)

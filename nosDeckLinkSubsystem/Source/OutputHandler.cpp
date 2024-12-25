@@ -169,7 +169,7 @@ bool OutputHandler::Close()
 	return true;
 }
 
-bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(VideoFramesMutex);
 	bool res = WriteCond.wait_for(lock, timeout, [this] {

@@ -280,9 +280,9 @@ constexpr IOHandlerBaseI& SubDevice::GetIO(nosMediaIODirection dir)
 	return Output;
 }
 
-bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
+bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout)
 {
-	return GetIO(dir).WaitFrame(timeout, optFieldType);
+	return GetIO(dir).WaitFrame(timeout);
 }
 
 void SubDevice::DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size)

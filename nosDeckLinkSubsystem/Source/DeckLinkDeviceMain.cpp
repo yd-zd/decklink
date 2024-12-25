@@ -272,7 +272,7 @@ nosResult NOSAPI_CALL GetCurrentDeltaSecondsOfChannel(uint32_t deviceIndex, nosD
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL WaitFrame(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t timeoutMs, nosMediaIOInterlacedFieldType fieldType)
+nosResult NOSAPI_CALL WaitFrame(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t timeoutMs)
 {
 	DeviceLock lock(deviceIndex);
 	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
@@ -281,7 +281,7 @@ nosResult NOSAPI_CALL WaitFrame(uint32_t deviceIndex, nosDeckLinkChannel channel
 		nosEngine.LogE("No such device with index %d", deviceIndex);
 		return NOS_RESULT_NOT_FOUND;
 	}
-	if (!device->WaitFrame(channel, std::chrono::milliseconds(timeoutMs), fieldType))
+	if (!device->WaitFrame(channel, std::chrono::milliseconds(timeoutMs)))
 		return NOS_RESULT_FAILED;
 	return NOS_RESULT_SUCCESS;
 }
