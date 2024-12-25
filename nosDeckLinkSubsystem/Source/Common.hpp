@@ -140,7 +140,6 @@ struct IOHandlerBaseI
 	BMDTimeScale TimeScale = 0;
 	
 	uint32_t FramesProcessed = 0;
-	nosMediaIOInterlacedFieldType LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 
 	bool IsInterlaced = false;
 
@@ -223,7 +222,6 @@ inline bool IOHandlerBaseI::StartStream()
 		return false;
 	if (IsStreamRunning)
 		return true;
-	LastWaitedFieldType = NOS_MEDIAIO_INTERLACED_FIELD_TYPE_INVALID;
 	FramesProcessed = 0;
 	if (Start())
 	{
@@ -264,18 +262,7 @@ inline bool IOHandlerBaseI::CloseStream()
 inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout, nosMediaIOInterlacedFieldType optFieldType)
 {
 	util::Stopwatch sw;
-	bool shouldSkip = false;
-	if (IsInterlaced)
-	{
-		LastWaitedFieldType = optFieldType;
-		if (optFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
-			shouldSkip = true;
-	}
-	bool res;
-	if (!shouldSkip)
-		res = WaitFrameImpl(timeout, optFieldType);
-	else
-		res = true;
+	bool res = WaitFrameImpl(timeout, optFieldType);
 	auto seconds = sw.Elapsed();
 	char watchLogBuf[128];
 	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s WaitFrame", DeviceIndex, GetChannelName(Channel));
@@ -286,17 +273,7 @@ inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout, nosMedi
 inline void IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
 {
 	util::Stopwatch sw;
-	bool shouldSkip = false;
-	if (IsInterlaced)
-	{
-		if (LastWaitedFieldType == NOS_MEDIAIO_INTERLACED_EVEN_FIELD)
-		{
-			// Skip writing for this half-frame.
-			shouldSkip = true;
-		}
-	}
-	if (!shouldSkip)
-		DmaTransferImpl(buffer, size);
+	DmaTransferImpl(buffer, size);
 	char watchLogBuf[128];
 	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s DMAWrite", DeviceIndex, GetChannelName(Channel));
 	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
@@ -306,8 +283,7 @@ inline std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
 {
 	if (!IsOpen)
 		return std::nullopt;
-	uint32_t effectiveTimeScale = TimeScale * (IsInterlaced ? 2 : 1);
-	return nosVec2u{ (uint32_t)FrameDuration, (uint32_t)effectiveTimeScale };
+	return nosVec2u{ (uint32_t)FrameDuration, (uint32_t)TimeScale };
 }
 
 inline int32_t IOHandlerBaseI::AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData)

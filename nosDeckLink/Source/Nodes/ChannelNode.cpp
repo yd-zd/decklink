@@ -571,6 +571,7 @@ public:
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
+		params->MarkAllOutsDirty = NOS_FALSE;
 		{
 			std::unique_lock lock(Channel.DecklinkThreadMutex);
 			if (params->IsFreeRun)
