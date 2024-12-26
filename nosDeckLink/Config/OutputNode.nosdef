@@ -3631,7 +3631,7 @@
       "function_category": "Default Node",
       "status_messages": [],
       "meta_data_map": [
-        { "key": "NodeStatusPortal", "value": "/Channel" },
+        { "key": "NodeStatusPortal", "value": "/Auto Resize/ShowStatus;/Channel" },
         { "key": "PluginVersion", "value": "0.2.0" }
       ],
       "description": "",
