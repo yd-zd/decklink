@@ -413,7 +413,7 @@ public:
 			if (oldValue)
 			{
 				auto oldVideoScanType = nosMediaIO->GetVideoScanTypeFromString(InterpretPinValue<const char>(*oldValue));
-				if (oldVideoScanType != newVideoScanType)
+				if (oldVideoScanType != newVideoScanType && Channel.Direction != NOS_MEDIAIO_DIRECTION_INPUT)
 					ResetAfter(ChangedPinType::VideoScanType);
 			}
 		});
