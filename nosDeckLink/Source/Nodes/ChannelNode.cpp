@@ -75,6 +75,7 @@ struct ChannelHandler
 	std::mutex DecklinkThreadMutex;
 	struct
 	{
+		std::string ChannelName = "Unknown Channel";
 		bool DropDetectionEnabled = false;
 		uint32_t FramesSinceLastDrop = 0;
 		bool DropDetected = false;
@@ -133,6 +134,7 @@ struct ChannelHandler
 			++DropCount;
 			DeckLinkThreadStatus.FramesSinceLastDrop = 0;
 			DeckLinkThreadStatus.DropDetected = true;
+			nosEngine.LogI("DeckLink %s dropped a frame", DeckLinkThreadStatus.ChannelName.c_str());
 			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount));
 			UpdateStatus();
 			break;
@@ -243,7 +245,7 @@ struct ChannelHandler
 		UpdateChannelStatus();
 	}
 
-	void UpdateChannelStatus()
+	std::string GetChannelName()
 	{
 		std::stringstream channelString;
 		char nameBuffer[256]{};
@@ -252,6 +254,14 @@ struct ChannelHandler
 			channelString << "Unknown Channel";
 		else
 			channelString << nameBuffer;
+		return channelString.str();
+	}
+
+	void UpdateChannelStatus()
+	{
+		std::stringstream channelString;
+		char nameBuffer[256]{};
+		channelString << GetChannelName();
 		channelString << " ";
 		if (Resolution != NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
 		{
@@ -574,10 +584,16 @@ public:
 		params->MarkAllOutsDirty = NOS_FALSE;
 		{
 			std::unique_lock lock(Channel.DecklinkThreadMutex);
-			if (params->IsFreeRun)
-				Channel.DeckLinkThreadStatus = {};
-			else
-				Channel.DeckLinkThreadStatus.DropDetectionEnabled = true;
+			if (Channel.DeckLinkThreadStatus.DropDetectionEnabled == params->IsFreeRun)
+			{
+				if (params->IsFreeRun)
+					Channel.DeckLinkThreadStatus = {};
+				else
+				{
+					Channel.DeckLinkThreadStatus.DropDetectionEnabled = true;
+					Channel.DeckLinkThreadStatus.ChannelName = Channel.GetChannelName();
+				}
+			}
 		}
 		return Channel.IsOpen ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
 	}
