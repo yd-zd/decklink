@@ -131,7 +131,7 @@ bool OutputHandler::Start()
 	}
 	BMDReferenceStatus referenceStatus;
 	res = Interface->GetReferenceStatus(&referenceStatus);
-	if (res == Interface->GetReferenceStatus(&referenceStatus))
+	if (res == S_OK)
 		ReferenceStatus = referenceStatus;
 	else
 		nosEngine.LogE("SubDevice: Failed to get reference status with code %08x", res);
