@@ -129,6 +129,12 @@ bool OutputHandler::Start()
 		nosEngine.LogE("SubDevice: Failed to start scheduled playback");
 		return false;
 	}
+	BMDReferenceStatus referenceStatus;
+	res = Interface->GetReferenceStatus(&referenceStatus);
+	if (res == Interface->GetReferenceStatus(&referenceStatus))
+		ReferenceStatus = referenceStatus;
+	else
+		nosEngine.LogE("SubDevice: Failed to get reference status with code %08x", res);
 	return true;
 }
 
@@ -139,6 +145,7 @@ bool OutputHandler::Stop()
 		nosEngine.LogE("Failed to stop scheduled playback");
 		return false;
 	}
+	ReferenceStatus = std::nullopt;
 	return true;
 }
 

@@ -42,6 +42,7 @@
           "id": "530bab96-f4eb-4e40-92c1-2a4c048b81a2",
           "name": "Device",
           "type_name": "string",
+          "display_name": "Device",
           "show_as": "PROPERTY",
           "can_show_as": "PROPERTY_ONLY",
           "pin_category": "",
@@ -57,6 +58,7 @@
         {
           "id": "9a67553a-d232-4cda-8457-b5f4e1e08b18",
           "name": "ChannelName",
+          "display_name": "Channel Name",
           "type_name": "string",
           "show_as": "PROPERTY",
           "can_show_as": "PROPERTY_ONLY",
@@ -73,6 +75,7 @@
         {
           "id": "bfeda47b-69fe-4b62-9a6b-86d7a34909ef",
           "name": "Resolution",
+          "display_name": "Resolution",
           "type_name": "string",
           "show_as": "PROPERTY",
           "can_show_as": "PROPERTY_ONLY",
@@ -90,6 +93,7 @@
         {
           "id": "e6865f65-e2e9-4652-8767-45dd6ace60bd",
           "name": "FrameRate",
+          "display_name": "Frame Rate",
           "type_name": "string",
           "show_as": "PROPERTY",
           "can_show_as": "PROPERTY_ONLY",
@@ -102,12 +106,12 @@
           "meta_data_map": [],
           "contents_type": "PortalPin",
           "contents": { "source_id": "08a9113c-6157-4a96-9d0d-fe7a0c29a183" },
-          "description": "",
-          "display_name": "DeckLink Channel.Frame Rate"
+          "description": ""
         },
         {
           "id": "385bcec9-aa88-43b1-b7e6-d35767a2b5b2",
           "name": "PixelFormat",
+          "display_name": "Pixel Format",
           "type_name": "string",
           "show_as": "PROPERTY",
           "can_show_as": "PROPERTY_ONLY",
@@ -120,8 +124,7 @@
           "meta_data_map": [],
           "contents_type": "PortalPin",
           "contents": { "source_id": "52e0f4b4-e91b-420e-9dba-c14b59921038" },
-          "description": "",
-          "display_name": "DeckLink Channel.Pixel Format"
+          "description": ""
         },
         {
           "id": "1cb571d2-2297-4b27-a444-4a45315ad627",

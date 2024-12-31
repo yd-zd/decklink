@@ -40,6 +40,66 @@ public:
 	int64_t DeviceGroupId;
 };
 
+class NotificationCallback : public Object<IDeckLinkNotificationCallback>
+{
+public:
+	NotificationCallback(IDeckLinkStatus* status) : Status(status)
+	{
+		Status->AddRef();
+	}
+	~NotificationCallback()
+	{
+		Status->Release();
+	}
+
+	// Implement the IDeckLinkNotificationCallback interface
+	HRESULT STDMETHODCALLTYPE Notify(BMDNotifications topic, uint64_t param1, uint64_t param2)
+	{
+		// Check whether the notification we received is a status notification
+		if (topic != bmdStatusChanged)
+			return S_OK;
+
+		// Print the updated status value
+		BMDDeckLinkStatusID statusId = (BMDDeckLinkStatusID)param1;
+		switch (statusId)
+		{
+		case bmdDeckLinkStatusDeviceTemperature:
+			{
+				Status->GetInt(statusId, &DeviceTemperature);
+				break;
+			}
+		case bmdDeckLinkStatusReferenceSignalLocked:
+			{
+				auto res = Status->GetFlag(statusId, &ReferenceSignalLocked);
+				if (res != S_OK)
+					nosEngine.LogE("NotificationCallback: Failed to get reference lock status");
+				break;
+			}
+		case bmdDeckLinkStatusReferenceSignalMode:
+			{
+				int64_t mode;
+				auto res = Status->GetInt(statusId, &mode);
+				if (res != S_OK)
+					nosEngine.LogE("NotificationCallback: Failed to get reference signal mode");
+				ReferenceSignalMode = (BMDDisplayMode)mode;
+				break;
+			}
+		default:
+			{
+				break;
+			}
+		}
+
+		return S_OK;
+	}
+protected:
+	IDeckLinkStatus* Status;
+	BOOL ReferenceSignalLocked = FALSE;
+	BMDDisplayMode ReferenceSignalMode = bmdModeUnknown;
+	int64_t DeviceTemperature = 0;
+};
+	
+
 std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t> optGroupId)
 {
 	IDeckLinkIterator* deckLinkIterator = nullptr;
@@ -97,6 +157,28 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 	return devices;
 }
 
+void Device::SetupFromMainSubDevice()
+{
+	auto mainSubDevice = GetMainSubDevice();
+	ModelName = mainSubDevice->ModelName;
+	GroupId = mainSubDevice->DeviceGroupId;
+	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&Status);
+	if (res != S_OK)
+		nosEngine.LogE("DeckLinkDevice: Failed to get status interface for device: %s", ModelName.c_str());
+	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&Notification);
+	if (res != S_OK)
+		nosEngine.LogE("DeckLinkDevice: Failed to get notification interface for device: %s", ModelName.c_str());
+	NotifCallback = new NotificationCallback(Status);
+	if (NotifCallback == nullptr)
+		nosEngine.LogE("DeckLinkDevice: Failed to create notification callback for device: %s", ModelName.c_str());
+	else
+	{
+		res = Notification->Subscribe(bmdStatusChanged, NotifCallback);
+		if (res != S_OK)
+			nosEngine.LogE("DeckLinkDevice: Failed to subscribe to status change for device: %s", ModelName.c_str());
+	}
+}
+
 Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices)
 	: Index(index), SubDevices(std::move(subDevices)), DeviceInvalidatedCallbacksMutex(new std::mutex)
 {
@@ -104,8 +186,7 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 		nosEngine.LogE("No sub-device provided for device index: %d", index);
 	else
 	{
-		ModelName = SubDevices[0]->ModelName;
-		GroupId = SubDevices[0]->DeviceGroupId;
+		SetupFromMainSubDevice();
 	}
 
 	for (auto& subDevice : SubDevices)
@@ -152,9 +233,18 @@ void Device::Reinit(uint32_t groupId)
 {
 	{
 		IDeckLink* dlDevice = nullptr;
-		if (auto mainSubDevice = GetSubDevice(0))
+		if (auto mainSubDevice = GetMainSubDevice())
 			dlDevice = mainSubDevice->DLDevice;
 		ClearSubDevices();
+		if (Notification && NotifCallback)
+		{
+			auto res = Notification->Unsubscribe(bmdStatusChanged, NotifCallback);
+			if (res != S_OK)
+				nosEngine.LogE("DeckLinkDevice: Failed to unsubscribe from status change for device: %s", ModelName.c_str());
+		}
+		Release(Notification);
+		Release(NotifCallback);
+		Release(Status);
 		Release(dlDevice);
 	}
 	auto devices = CreateDevices(groupId);
@@ -241,6 +331,11 @@ SubDevice* Device::GetSubDevice(int64_t index) const
 	if (index < SubDevices.size())
 		return SubDevices[index].get();
 	return nullptr;
+}
+
+SubDevice* Device::GetMainSubDevice() const
+{
+	return GetSubDevice(0);
 }
 
 IDeckLinkProfileManager* Device::GetProfileManager() const
@@ -457,10 +552,10 @@ void Device::ClearSubDevices()
 	Channel2SubDevice.clear();
 	OpenChannels.clear();
 	std::vector<IDeckLink*> siblings;
-	auto* mainSubDevice = GetSubDevice(0);
+	auto* mainSubDevice = GetMainSubDevice();
 	for (auto& subDevice : SubDevices)
 	{
-		if (mainSubDevice && mainSubDevice->DLDevice == subDevice->DLDevice)
+		if (mainSubDevice->DLDevice == subDevice->DLDevice)
 			// Main sub-device will be released later to avoid deadlock during profile change callback. 
 			continue;
 		siblings.push_back(subDevice->DLDevice);

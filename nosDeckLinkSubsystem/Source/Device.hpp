@@ -25,6 +25,7 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 class Device
 {
 public:
+	void SetupFromMainSubDevice();
 	Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices);
 
 	void Reinit(uint32_t groupId);
@@ -45,6 +46,7 @@ public:
 	SubDevice* GetSubDeviceOfChannel(nosMediaIODirection dir, nosDeckLinkChannel channel) const;
 	std::pair<SubDevice*, nosMediaIODirection> GetSubDeviceOfOpenChannel(nosDeckLinkChannel channel) const;
 	SubDevice* GetSubDevice(int64_t index) const;
+	SubDevice* GetMainSubDevice() const;
 
 	// Channels
 	bool OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
@@ -67,6 +69,10 @@ public:
 	int64_t GroupId = -1;
 	std::string ModelName;
 protected:
+	IDeckLinkStatus* Status = nullptr;
+	IDeckLinkNotification* Notification = nullptr;
+	class NotificationCallback* NotifCallback = nullptr;
+	
 	std::vector<std::unique_ptr<SubDevice>> SubDevices;
 	std::unordered_map<nosMediaIODirection, std::unordered_map<nosDeckLinkChannel, SubDevice*>> Channel2SubDevice;
 	std::unordered_map<nosDeckLinkChannel, std::pair<SubDevice*, nosMediaIODirection>> OpenChannels;
