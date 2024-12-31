@@ -94,7 +94,7 @@ public:
 	}
 protected:
 	IDeckLinkStatus* Status;
-	BOOL ReferenceSignalLocked = FALSE;
+	BOOL ReferenceSignalLocked = false;
 	BMDDisplayMode ReferenceSignalMode = bmdModeUnknown;
 	int64_t DeviceTemperature = 0;
 };
