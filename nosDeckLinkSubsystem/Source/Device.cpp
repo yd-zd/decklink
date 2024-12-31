@@ -59,7 +59,7 @@ public:
 		if (topic != bmdStatusChanged)
 			return S_OK;
 
-		// Print the updated status value
+		// TODO: Add & call necessary callbacks for these status changes.
 		BMDDeckLinkStatusID statusId = (BMDDeckLinkStatusID)param1;
 		switch (statusId)
 		{

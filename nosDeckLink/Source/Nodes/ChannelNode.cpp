@@ -70,6 +70,7 @@ struct ChannelHandler
 	int32_t VideoInputChangeCallbackId = -1;
 	int32_t FrameResultCallbackId = -1;
 	int32_t DeviceInvalidatedCallbackId = -1;
+	std::optional<nosDeckLinkReferenceStatus> ReferenceStatus;
 
 	std::atomic_uint32_t DropCount = 0;
 	std::mutex DecklinkThreadMutex;
@@ -89,7 +90,7 @@ struct ChannelHandler
 		if (reopen && IsOpen)
 			Close();
 		this->*Member = value;
-		UpdateChannelStatusAndOutPins();
+		UpdateStatusAndOutPins();
 		if (reopen && !Open())
 			return ChannelUpdateResult::UnsupportedSettings;
 		return ChannelUpdateResult::Opened;
@@ -212,7 +213,7 @@ struct ChannelHandler
 			}
 			UpdateStatus();
 		}
-		UpdateChannelStatusAndOutPins();
+		UpdateStatusAndOutPins();
 		return res == NOS_RESULT_SUCCESS;
 	}
 
@@ -239,10 +240,12 @@ struct ChannelHandler
 		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
 		IsOpen = false;
+		ReferenceStatus = std::nullopt;
 		nosEngine.SetPinValue(OutChannelPinId, nos::Buffer::From(ChannelId(-1, 0, false)));
 		nosEngine.SetPinValue(OutResolutionPinId, nos::Buffer::From(nosVec2u{ 0, 0 }));
 		nosEngine.SendPathRestart(OutChannelPinId);
 		UpdateChannelStatus();
+		UpdateReferenceStatus();
 	}
 
 	std::string GetChannelName()
@@ -260,7 +263,6 @@ struct ChannelHandler
 	void UpdateChannelStatus()
 	{
 		std::stringstream channelString;
-		char nameBuffer[256]{};
 		channelString << GetChannelName();
 		channelString << " ";
 		if (Resolution != NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
@@ -323,8 +325,35 @@ struct ChannelHandler
 		nosEngine.SetPinValue(OutChannelIsInterlacedPinId, nos::Buffer::From(VideoScanType == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN));
 	}
 
-	void UpdateChannelStatusAndOutPins()
+	void UpdateReferenceStatus()
 	{
+		std::string refString;
+		fb::NodeStatusMessageType type = fb::NodeStatusMessageType::WARNING;
+		if (ReferenceStatus)
+		{
+			switch (*ReferenceStatus)
+			{
+			case NOS_DECKLINK_REFERENCE_STATUS_LOCKED:
+				type = fb::NodeStatusMessageType::INFO;
+				refString = "Reference: Locked";
+				break;
+			case NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED:
+				refString = "Reference: Unlocked";
+				break;
+			case NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN:
+				refString = "Reference Lock: Unknown";
+				break;
+			}
+		}
+		if (refString.empty())
+			ClearStatus(StatusType::Reference);
+		else
+			SetStatus(StatusType::Reference, type, refString);
+	}
+
+	void UpdateStatusAndOutPins()
+	{
+		UpdateReferenceStatus();
 		UpdateChannelStatus();
 		UpdateOutPins();
 	}
@@ -592,6 +621,18 @@ public:
 				{
 					Channel.DeckLinkThreadStatus.DropDetectionEnabled = true;
 					Channel.DeckLinkThreadStatus.ChannelName = Channel.GetChannelName();
+				}
+			}
+		}
+		if (Channel.IsOpen)
+		{
+			if (Channel.Direction == NOS_MEDIAIO_DIRECTION_OUTPUT)
+			{
+				// Get Reference Status and update status
+				nosDeckLinkReferenceStatus refStatus;	
+				if (NOS_RESULT_SUCCESS == nosDeckLink->GetOutputReferenceStatus(Channel.DeviceIndex, Channel.Channel, &refStatus))
+				{
+					Channel.Update<&ChannelHandler::ReferenceStatus>(refStatus);
 				}
 			}
 		}

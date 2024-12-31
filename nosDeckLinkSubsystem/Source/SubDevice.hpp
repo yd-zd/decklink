@@ -37,9 +37,7 @@ public:
 	bool DoesSupportOutputVideoMode(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
 	bool OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
 	bool CloseOutput();
-	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout);
-	void DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
-	std::optional<nosVec2u> GetDeltaSeconds(nosMediaIODirection dir);
+	std::optional<nosDeckLinkReferenceStatus> GetOutputReferenceStatus();
 
 	// Input
 	bool OpenInput(BMDPixelFormat pixelFormat);
@@ -48,6 +46,9 @@ public:
 
 	// Input/Output
 	bool StartStream(nosMediaIODirection mode);
+	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout);
+	void DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
+	std::optional<nosVec2u> GetDeltaSeconds(nosMediaIODirection dir);
 	bool StopStream(nosMediaIODirection mode);
 
 	void TagChannel(nosMediaIODirection dir, nosDeckLinkChannel channel);

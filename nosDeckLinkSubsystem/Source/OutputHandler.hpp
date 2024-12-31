@@ -34,6 +34,5 @@ protected:
 	std::mutex PlaybackStoppedMutex;
 	std::condition_variable PlaybackStoppedCond;
 	bool Closed = true;
-	std::optional<BMDReferenceStatus> ReferenceStatus = std::nullopt;
 };
 }

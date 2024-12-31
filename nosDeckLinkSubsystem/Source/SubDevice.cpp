@@ -243,6 +243,36 @@ bool SubDevice::CloseOutput()
 	return Output.CloseStream();
 }
 
+std::optional<nosDeckLinkReferenceStatus> SubDevice::GetOutputReferenceStatus()
+{
+	if (!Output)
+	{
+		nosEngine.LogE("SubDevice: Output interface is not available for device: %s", ModelName.c_str());
+		return std::nullopt;
+	}
+	BMDReferenceStatus status{};
+	auto res = Output->GetReferenceStatus(&status);
+	if (res != S_OK)
+	{
+		nosEngine.LogE("SubDevice: Failed to get reference status for device: %s", ModelName.c_str());
+		return std::nullopt;
+	}
+	nosDeckLinkReferenceStatus ref = NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN;
+	switch (status)
+	{
+	case bmdReferenceNotSupportedByHardware:
+		ref = NOS_DECKLINK_REFERENCE_STATUS_NOT_SUPPORTED;
+		break;
+	case bmdReferenceLocked:
+		ref = NOS_DECKLINK_REFERENCE_STATUS_LOCKED;
+		break;
+	case bmdReferenceUnlocked:
+		ref = NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED;
+		break;
+	}
+	return ref;
+}
+
 bool SubDevice::OpenInput(BMDPixelFormat pixelFormat)
 {
 	if (!Input)

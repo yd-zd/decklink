@@ -455,6 +455,31 @@ nosDeckLinkChannel NOSAPI_CALL GetChannelFromPortMappedName(uint32_t deviceIndex
 	return DeviceManager::Instance()->GetChannelFromPortMappedName(deviceIndex, portMappedName);
 }
 
+nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkReferenceStatus* outReferenceStatus)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto ref = subDevice->GetOutputReferenceStatus();
+	if (!ref)
+	{
+		nosEngine.LogE("Failed to get output reference status for channel %s", GetChannelName(channel));
+		return NOS_RESULT_FAILED;
+	}
+	*outReferenceStatus = *ref;
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -489,6 +514,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->UnregisterDeviceInvalidatedCallback = UnregisterDeviceInvalidatedCallback;
 	subsystem->GetPortMappedChannelName = GetPortMappedChannelName;
 	subsystem->GetChannelFromPortMappedName = GetChannelFromPortMappedName;
+	subsystem->GetOutputReferenceStatus = GetOutputReferenceStatus;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

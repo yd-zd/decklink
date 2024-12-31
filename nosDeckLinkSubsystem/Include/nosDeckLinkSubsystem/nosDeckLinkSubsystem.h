@@ -79,6 +79,14 @@ typedef enum nosDeckLinkFrameResult
 	NOS_DECKLINK_FRAME_DROPPED,
 } nosDeckLinkFrameResult;
 
+typedef enum nosDeckLinkReferenceStatus
+{
+	NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN,
+	NOS_DECKLINK_REFERENCE_STATUS_LOCKED,
+	NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED,
+	NOS_DECKLINK_REFERENCE_STATUS_NOT_SUPPORTED
+} nosDeckLinkReferenceStatus;
+
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 typedef void (NOSAPI_CALL* nosDeckLinkDeviceInvalidatedCallback)(void* userData);
@@ -120,6 +128,7 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult			(NOSAPI_CALL* GetPortMappedChannelName)(uint32_t deviceIndex, nosDeckLinkChannel channel, char* outName, size_t maxSize);
 	nosDeckLinkChannel	(NOSAPI_CALL* GetChannelFromPortMappedName)(uint32_t deviceIndex, const char* portMappedChannelName);
 	nosResult (NOSAPI_CALL* ResetInputFrames)(uint32_t deviceIndex, nosDeckLinkChannel channel);
+	nosResult (NOSAPI_CALL* GetOutputReferenceStatus)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkReferenceStatus* outStatus);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -127,7 +136,7 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 0
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 1
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;
