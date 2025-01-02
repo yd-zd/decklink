@@ -229,24 +229,27 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 	Release(onProfileChange);
 }
 
+void Device::Destroy()
+{
+	IDeckLink* dlDevice = nullptr;
+	if (auto mainSubDevice = GetMainSubDevice())
+		dlDevice = mainSubDevice->DLDevice;
+	ClearSubDevices();
+	if (Notification && NotifCallback)
+	{
+		auto res = Notification->Unsubscribe(bmdStatusChanged, NotifCallback);
+		if (res != S_OK)
+			nosEngine.LogE("DeckLinkDevice: Failed to unsubscribe from status change for device: %s", ModelName.c_str());
+	}
+	Release(Notification);
+	Release(NotifCallback);
+	Release(Status);
+	Release(dlDevice);
+}
+
 void Device::Reinit(uint32_t groupId)
 {
-	{
-		IDeckLink* dlDevice = nullptr;
-		if (auto mainSubDevice = GetMainSubDevice())
-			dlDevice = mainSubDevice->DLDevice;
-		ClearSubDevices();
-		if (Notification && NotifCallback)
-		{
-			auto res = Notification->Unsubscribe(bmdStatusChanged, NotifCallback);
-			if (res != S_OK)
-				nosEngine.LogE("DeckLinkDevice: Failed to unsubscribe from status change for device: %s", ModelName.c_str());
-		}
-		Release(Notification);
-		Release(NotifCallback);
-		Release(Status);
-		Release(dlDevice);
-	}
+	Destroy();
 	auto devices = CreateDevices(groupId);
 	if (devices.empty())
 	{

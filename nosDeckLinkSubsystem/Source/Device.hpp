@@ -28,6 +28,7 @@ public:
 	void SetupFromMainSubDevice();
 	Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices);
 
+	void Destroy();
 	void Reinit(uint32_t groupId);
 
 	std::string GetUniqueDisplayName() const;

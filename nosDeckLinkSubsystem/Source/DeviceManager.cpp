@@ -202,14 +202,10 @@ void DeviceManager::ClearDeviceList()
 	for (auto it = Devices.begin(); it != Devices.end(); ++it)
 	{
 		auto device = it->get();
-		IDeckLink* dlDevice = nullptr;
-		if (auto mainSubDevice = device->GetSubDevice(0))
-			dlDevice = mainSubDevice->DLDevice;
 		auto index = it->get()->Index;
 		LockDevice(index, false);
+		device->Destroy();
 		it->reset();
-		if (dlDevice)
-			Release(dlDevice);
 		UnlockDevice(index, false);
 	}
 	Devices.clear();

@@ -235,9 +235,10 @@ struct ChannelHandler
 
 	void Close()
 	{
+		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
+		nosDeckLink->UnregisterDeviceInvalidatedCallback(DeviceIndex, DeviceInvalidatedCallbackId);
 		if (IsInput())
 			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
-		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
 		IsOpen = false;
 		ReferenceStatus = std::nullopt;
