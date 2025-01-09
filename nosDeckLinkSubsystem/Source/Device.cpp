@@ -43,13 +43,76 @@ public:
 class NotificationCallback : public Object<IDeckLinkNotificationCallback>
 {
 public:
-	NotificationCallback(IDeckLinkStatus* status) : Status(status)
+	NotificationCallback(Device* device) : DeviceRef(*device), StatusInterface(*device->StatusInterface)
 	{
-		Status->AddRef();
+		StatusInterface.AddRef();
+		ReadStatus(bmdDeckLinkStatusPCIExpressLinkWidth);
+		ReadStatus(bmdDeckLinkStatusPCIExpressLinkSpeed);
+		ReadStatus(bmdDeckLinkStatusReferenceSignalMode);
+		ReadStatus(bmdDeckLinkStatusReferenceSignalLocked);
 	}
-	~NotificationCallback()
+
+	virtual ~NotificationCallback()
 	{
-		Status->Release();
+		StatusInterface.Release();
+	}
+
+	void ReadStatus(BMDDeckLinkStatusID statusId)
+	{
+		bool updated = false;
+		switch (statusId)
+		{
+		case bmdDeckLinkStatusDeviceTemperature:
+			{
+				StatusInterface.GetInt(statusId, &Status.Temperature);
+				updated = true;
+				break;
+			}
+		case bmdDeckLinkStatusReferenceSignalLocked:
+			{
+				BOOL referenceSignalLocked;
+				auto res = StatusInterface.GetFlag(statusId, &referenceSignalLocked);
+				if (res != S_OK)
+				{
+					nosEngine.LogE("NotificationCallback: Failed to get reference lock status");
+					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN;
+				}
+				else if (referenceSignalLocked)
+					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_LOCKED;
+				else
+					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED;
+				updated = true;
+				break;
+			}
+		case bmdDeckLinkStatusReferenceSignalMode:
+			{
+				int64_t mode;
+				auto res = StatusInterface.GetInt(statusId, &mode);
+				if (res != S_OK)
+					nosEngine.LogE("NotificationCallback: Failed to get reference signal mode");
+				ReferenceSignalMode = (BMDDisplayMode)mode;
+				updated = true;
+				break;
+			}
+		case bmdDeckLinkStatusPCIExpressLinkWidth:
+			{
+				StatusInterface.GetInt(statusId, &Status.PCIeLink.Width);
+				updated = true;
+				break;
+			}
+		case bmdDeckLinkStatusPCIExpressLinkSpeed:
+			{
+				StatusInterface.GetInt(statusId, &Status.PCIeLink.Speed);
+				updated = true;
+				break;
+			}
+		default:
+			{
+				break;
+			}
+		}
+		if (updated)
+			NotifyStatusChange();
 	}
 
 	// Implement the IDeckLinkNotificationCallback interface
@@ -61,42 +124,23 @@ public:
 
 		// TODO: Add & call necessary callbacks for these status changes.
 		BMDDeckLinkStatusID statusId = (BMDDeckLinkStatusID)param1;
-		switch (statusId)
-		{
-		case bmdDeckLinkStatusDeviceTemperature:
-			{
-				Status->GetInt(statusId, &DeviceTemperature);
-				break;
-			}
-		case bmdDeckLinkStatusReferenceSignalLocked:
-			{
-				auto res = Status->GetFlag(statusId, &ReferenceSignalLocked);
-				if (res != S_OK)
-					nosEngine.LogE("NotificationCallback: Failed to get reference lock status");
-				break;
-			}
-		case bmdDeckLinkStatusReferenceSignalMode:
-			{
-				int64_t mode;
-				auto res = Status->GetInt(statusId, &mode);
-				if (res != S_OK)
-					nosEngine.LogE("NotificationCallback: Failed to get reference signal mode");
-				ReferenceSignalMode = (BMDDisplayMode)mode;
-				break;
-			}
-		default:
-			{
-				break;
-			}
-		}
+		ReadStatus(statusId);
 
 		return S_OK;
 	}
+
+	void NotifyStatusChange()
+	{
+		std::shared_lock lock(*DeviceRef.DeviceCallbacksMutex);
+		for (auto& [callback, userData] : DeviceRef.DeviceCallbacks.Status | std::views::values)
+			callback(userData, &Status);
+	}
+	
 protected:
-	IDeckLinkStatus* Status;
-	BOOL ReferenceSignalLocked = false;
+	Device& DeviceRef;
+	IDeckLinkStatus& StatusInterface;
 	BMDDisplayMode ReferenceSignalMode = bmdModeUnknown;
-	int64_t DeviceTemperature = 0;
+	nosDeckLinkDeviceStatus Status{};
 };
 	
 
@@ -162,25 +206,25 @@ void Device::SetupFromMainSubDevice()
 	auto mainSubDevice = GetMainSubDevice();
 	ModelName = mainSubDevice->ModelName;
 	GroupId = mainSubDevice->DeviceGroupId;
-	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&Status);
+	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&StatusInterface);
 	if (res != S_OK)
 		nosEngine.LogE("DeckLinkDevice: Failed to get status interface for device: %s", ModelName.c_str());
-	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&Notification);
+	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&NotificationInterface);
 	if (res != S_OK)
 		nosEngine.LogE("DeckLinkDevice: Failed to get notification interface for device: %s", ModelName.c_str());
-	NotifCallback = new NotificationCallback(Status);
+	NotifCallback = new NotificationCallback(this);
 	if (NotifCallback == nullptr)
 		nosEngine.LogE("DeckLinkDevice: Failed to create notification callback for device: %s", ModelName.c_str());
 	else
 	{
-		res = Notification->Subscribe(bmdStatusChanged, NotifCallback);
+		res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback);
 		if (res != S_OK)
 			nosEngine.LogE("DeckLinkDevice: Failed to subscribe to status change for device: %s", ModelName.c_str());
 	}
 }
 
 Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices)
-	: Index(index), SubDevices(std::move(subDevices)), DeviceInvalidatedCallbacksMutex(new std::mutex)
+	: Index(index), SubDevices(std::move(subDevices)), DeviceCallbacksMutex(new std::shared_mutex)
 {
 	if (SubDevices.empty())
 		nosEngine.LogE("No sub-device provided for device index: %d", index);
@@ -235,15 +279,15 @@ void Device::Destroy()
 	if (auto mainSubDevice = GetMainSubDevice())
 		dlDevice = mainSubDevice->DLDevice;
 	ClearSubDevices();
-	if (Notification && NotifCallback)
+	if (NotificationInterface && NotifCallback)
 	{
-		auto res = Notification->Unsubscribe(bmdStatusChanged, NotifCallback);
+		auto res = NotificationInterface->Unsubscribe(bmdStatusChanged, NotifCallback);
 		if (res != S_OK)
 			nosEngine.LogE("DeckLinkDevice: Failed to unsubscribe from status change for device: %s", ModelName.c_str());
 	}
-	Release(Notification);
+	Release(NotificationInterface);
 	Release(NotifCallback);
-	Release(Status);
+	Release(StatusInterface);
 	Release(dlDevice);
 }
 
@@ -567,8 +611,8 @@ void Device::ClearSubDevices()
 	for (auto sibling : siblings)
 		Release(sibling);
 	{
-		std::unique_lock lock(*DeviceInvalidatedCallbacksMutex);
-		for (auto& [callbackId, pair] : DeviceInvalidatedCallbacks)
+		std::unique_lock lock(*DeviceCallbacksMutex);
+		for (auto& [callbackId, pair] : DeviceCallbacks.Invalidated)
 		{
 			auto& [callback, userData] = pair;
 			callback(userData);
@@ -578,14 +622,27 @@ void Device::ClearSubDevices()
 
 int32_t Device::AddDeviceInvalidatedCallback(nosDeckLinkDeviceInvalidatedCallback callback, void* userData)
 {
-	std::unique_lock lock(*DeviceInvalidatedCallbacksMutex);
-	DeviceInvalidatedCallbacks[NextDeviceInvalidatedCallbackId] = { callback, userData };
-	return NextDeviceInvalidatedCallbackId++;
+	std::unique_lock lock(*DeviceCallbacksMutex);
+	DeviceCallbacks.Invalidated[DeviceCallbacks.NextId.Invalidated] = { callback, userData };
+	return DeviceCallbacks.NextId.Invalidated++;
 }
 
 void Device::RemoveDeviceInvalidatedCallback(int32_t callbackId)
 {
-	std::unique_lock lock(*DeviceInvalidatedCallbacksMutex);
-	DeviceInvalidatedCallbacks.erase(callbackId);
+	std::unique_lock lock(*DeviceCallbacksMutex);
+	DeviceCallbacks.Invalidated.erase(callbackId);
+}
+
+int32_t Device::AddDeviceStatusCallback(nosDeckLinkDeviceStatusCallback callback, void* user_data)
+{
+	std::unique_lock lock(*DeviceCallbacksMutex);
+	DeviceCallbacks.Status[DeviceCallbacks.NextId.Status] = { callback, user_data };
+	return DeviceCallbacks.NextId.Status++;
+}
+
+void Device::RemoveDeviceStatusCallback(int32_t callbackId)
+{
+	std::unique_lock lock(*DeviceCallbacksMutex);
+	DeviceCallbacks.Status.erase(callbackId);
 }
 }

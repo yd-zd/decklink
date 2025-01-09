@@ -435,7 +435,32 @@ nosResult NOSAPI_CALL UnregisterDeviceInvalidatedCallback(uint32_t deviceIndex, 
 	return NOS_RESULT_SUCCESS;
 }
 
-	nosResult NOSAPI_CALL GetPortMappedChannelName(uint32_t deviceIndex, nosDeckLinkChannel channel, char* outName, size_t maxSize)
+int32_t NOSAPI_CALL RegisterDeviceStatusCallback(uint32_t deviceIndex, nosDeckLinkDeviceStatusCallback callback, void* userData)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	return device->AddDeviceStatusCallback(callback, userData);
+}
+
+nosResult NOSAPI_CALL UnregisterDeviceStatusCallback(uint32_t deviceIndex, int32_t callbackId)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	device->RemoveDeviceStatusCallback(callbackId);
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL GetPortMappedChannelName(uint32_t deviceIndex, nosDeckLinkChannel channel, char* outName, size_t maxSize)
 {
 	auto mappedName = DeviceManager::Instance()->GetPortMappedChannelName(deviceIndex, channel);
 	if (!mappedName)
@@ -515,6 +540,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetPortMappedChannelName = GetPortMappedChannelName;
 	subsystem->GetChannelFromPortMappedName = GetChannelFromPortMappedName;
 	subsystem->GetOutputReferenceStatus = GetOutputReferenceStatus;
+	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
+	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

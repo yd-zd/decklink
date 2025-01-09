@@ -87,9 +87,20 @@ typedef enum nosDeckLinkReferenceStatus
 	NOS_DECKLINK_REFERENCE_STATUS_NOT_SUPPORTED
 } nosDeckLinkReferenceStatus;
 
+typedef struct nosDeckLinkDeviceStatus
+{
+	int64_t Temperature;
+	struct {
+		int64_t Width;
+		int64_t Speed;
+	} PCIeLink;
+	nosDeckLinkReferenceStatus ReferenceStatus;
+} nosDeckLinkDeviceStatus;
+
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 typedef void (NOSAPI_CALL* nosDeckLinkDeviceInvalidatedCallback)(void* userData);
+typedef void (NOSAPI_CALL* nosDeckLinkDeviceStatusCallback)(void* userData, const nosDeckLinkDeviceStatus* status);
 
 typedef struct nosDeckLinkSubsystem {
 	void				(NOSAPI_CALL* GetDevices)(size_t *inoutCount, nosDeckLinkDeviceDesc* outDeviceDescriptors);
@@ -129,6 +140,9 @@ typedef struct nosDeckLinkSubsystem {
 	nosDeckLinkChannel	(NOSAPI_CALL* GetChannelFromPortMappedName)(uint32_t deviceIndex, const char* portMappedChannelName);
 	nosResult (NOSAPI_CALL* ResetInputFrames)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosResult (NOSAPI_CALL* GetOutputReferenceStatus)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkReferenceStatus* outStatus);
+
+	int32_t   (NOSAPI_CALL* RegisterDeviceStatusCallback)(uint32_t deviceIndex, nosDeckLinkDeviceStatusCallback callback, void* userData);
+	nosResult (NOSAPI_CALL* UnregisterDeviceStatusCallback)(uint32_t deviceIndex, int32_t callbackId);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -136,7 +150,7 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 1
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 2
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;

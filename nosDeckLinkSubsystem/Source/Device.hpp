@@ -25,6 +25,7 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 class Device
 {
 public:
+	friend class NotificationCallback;
 	void SetupFromMainSubDevice();
 	Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices);
 
@@ -66,21 +67,32 @@ public:
 	int32_t AddDeviceInvalidatedCallback(nosDeckLinkDeviceInvalidatedCallback callback, void* userData);
 	void RemoveDeviceInvalidatedCallback(int32_t callbackId);
 
+	int32_t AddDeviceStatusCallback(nosDeckLinkDeviceStatusCallback callback, void* user_data);
+	void RemoveDeviceStatusCallback(int32_t callbackId);
+
 	uint32_t Index = -1;
 	int64_t GroupId = -1;
 	std::string ModelName;
 protected:
-	IDeckLinkStatus* Status = nullptr;
-	IDeckLinkNotification* Notification = nullptr;
+	IDeckLinkStatus* StatusInterface = nullptr;
+	IDeckLinkNotification* NotificationInterface = nullptr;
 	class NotificationCallback* NotifCallback = nullptr;
 	
 	std::vector<std::unique_ptr<SubDevice>> SubDevices;
 	std::unordered_map<nosMediaIODirection, std::unordered_map<nosDeckLinkChannel, SubDevice*>> Channel2SubDevice;
 	std::unordered_map<nosDeckLinkChannel, std::pair<SubDevice*, nosMediaIODirection>> OpenChannels;
 
-	int32_t NextDeviceInvalidatedCallbackId = 0;
-	std::unordered_map<int32_t, std::pair<nosDeckLinkDeviceInvalidatedCallback, void*>> DeviceInvalidatedCallbacks;
-	std::unique_ptr<std::mutex> DeviceInvalidatedCallbacksMutex;
+	struct
+	{
+		std::unordered_map<int32_t, std::pair<nosDeckLinkDeviceInvalidatedCallback, void*>> Invalidated;
+		std::unordered_map<int32_t, std::pair<nosDeckLinkDeviceStatusCallback, void*>> Status;
+		struct
+		{
+			int32_t Invalidated = 0;
+			int32_t Status = 0;
+		} NextId;
+	} DeviceCallbacks;
+	std::unique_ptr<std::shared_mutex> DeviceCallbacksMutex;
 };
 	
 }

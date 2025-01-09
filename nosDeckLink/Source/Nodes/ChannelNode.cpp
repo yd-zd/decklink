@@ -43,6 +43,7 @@ enum class ChannelUpdateResult
 void InputVideoFormatChanged(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 void FrameResultCallback(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 void DeviceInvalidated(void* userData);
+void DeviceStatusCallback(void* userData, const nosDeckLinkDeviceStatus* status);
 	
 struct ChannelHandler
 {
@@ -70,6 +71,7 @@ struct ChannelHandler
 	int32_t VideoInputChangeCallbackId = -1;
 	int32_t FrameResultCallbackId = -1;
 	int32_t DeviceInvalidatedCallbackId = -1;
+	int32_t DeviceStatusCallbackId = -1;
 	std::optional<nosDeckLinkReferenceStatus> ReferenceStatus;
 
 	std::atomic_uint32_t DropCount = 0;
@@ -154,6 +156,16 @@ struct ChannelHandler
 		}
 	}
 
+	void OnDeviceStatusUpdate_DeckLinkThread(const nosDeckLinkDeviceStatus* status)
+	{
+		char watchLogKey[256];
+		std::snprintf(watchLogKey, sizeof(watchLogKey), "DeckLink Device %d Status", DeviceIndex);
+		
+		char statusStr[256];
+		std::snprintf(statusStr, sizeof(statusStr), "PCIe Link Status: Gen%lld x%lld\nOn-Board Temperature: %lld Celcius", status->PCIeLink.Speed, status->PCIeLink.Width, status->Temperature);
+		nosEngine.WatchLog(watchLogKey, statusStr);
+	}
+
 	void DeviceInvalidated()
 	{
 		nosEngine.SetPinValue(ChannelNamePinId, nos::Buffer("NONE", 5));
@@ -196,6 +208,7 @@ struct ChannelHandler
 			VideoInputChangeCallbackId = nosDeckLink->RegisterInputVideoFormatChangeCallback(DeviceIndex, Channel, &InputVideoFormatChanged, this);
 		}
 		DeviceInvalidatedCallbackId = nosDeckLink->RegisterDeviceInvalidatedCallback(DeviceIndex, &decklink::DeviceInvalidated, this);
+		DeviceStatusCallbackId = nosDeckLink->RegisterDeviceStatusCallback(DeviceIndex, &decklink::DeviceStatusCallback, this);
 		auto res = nosDeckLink->OpenChannel(DeviceIndex, &params);
 		if (res == NOS_RESULT_SUCCESS)
 		{
@@ -236,6 +249,7 @@ struct ChannelHandler
 	void Close()
 	{
 		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
+		nosDeckLink->UnregisterDeviceStatusCallback(DeviceIndex, DeviceStatusCallbackId);
 		nosDeckLink->UnregisterDeviceInvalidatedCallback(DeviceIndex, DeviceInvalidatedCallbackId);
 		if (IsInput())
 			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
@@ -389,6 +403,11 @@ void FrameResultCallback(void* userData, nosDeckLinkFrameResult result, uint32_t
 void DeviceInvalidated(void* userData)
 {
 	static_cast<ChannelHandler*>(userData)->DeviceInvalidated();
+}
+
+void DeviceStatusCallback(void* userData, const nosDeckLinkDeviceStatus* status)
+{
+	static_cast<ChannelHandler*>(userData)->OnDeviceStatusUpdate_DeckLinkThread(status);
 }
 
 class ChannelNode : public nos::NodeContext
