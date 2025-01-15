@@ -82,6 +82,7 @@ struct ChannelHandler
 		bool DropDetectionEnabled = false;
 		uint32_t FramesSinceLastDrop = 0;
 		bool DropDetected = false;
+		bool PathRestartRequested = false;
 	} DeckLinkThreadStatus;
 
 	template<auto Member, typename T>
@@ -146,10 +147,11 @@ struct ChannelHandler
 		{
 			if (DeckLinkThreadStatus.DropDetected)
 				++DeckLinkThreadStatus.FramesSinceLastDrop;
-			if (DeckLinkThreadStatus.FramesSinceLastDrop > 50)
+			if (!DeckLinkThreadStatus.PathRestartRequested && DeckLinkThreadStatus.FramesSinceLastDrop > 50)
 			{
 				nosEngine.LogW("Requesting path restart due to frame drops");
 				nosEngine.SendPathRestart(OutChannelPinId);
+				DeckLinkThreadStatus.PathRestartRequested = true;
 			}
 			break;
 		}
