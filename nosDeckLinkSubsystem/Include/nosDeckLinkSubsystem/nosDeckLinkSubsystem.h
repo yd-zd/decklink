@@ -87,6 +87,19 @@ typedef enum nosDeckLinkReferenceStatus
 	NOS_DECKLINK_REFERENCE_STATUS_NOT_SUPPORTED
 } nosDeckLinkReferenceStatus;
 
+typedef enum nosDeckLinkDeviceMessageType
+{
+	NOS_DECKLINK_DEVICE_MESSAGE_TYPE_INFO,
+	NOS_DECKLINK_DEVICE_MESSAGE_TYPE_WARNING,
+	NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR
+} nosDeckLinkDeviceMessageType;
+
+typedef struct nosDeckLinkDeviceMessage
+{
+	nosDeckLinkDeviceMessageType Type;
+	char Message[256];
+} nosDeckLinkDeviceMessage;
+
 typedef struct nosDeckLinkDeviceStatus
 {
 	int64_t Temperature;
@@ -95,6 +108,11 @@ typedef struct nosDeckLinkDeviceStatus
 		int64_t Speed;
 	} PCIeLink;
 	nosDeckLinkReferenceStatus ReferenceStatus;
+	struct
+	{
+		size_t Count;
+		nosDeckLinkDeviceMessage List[16];
+	} Messages;
 } nosDeckLinkDeviceStatus;
 
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
@@ -150,7 +168,7 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 2
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 3
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;

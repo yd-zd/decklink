@@ -278,14 +278,12 @@ void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDi
 int32_t InputHandler::AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData)
 {
 	std::unique_lock lock(CallbacksMutex);
-	auto callbackId = NextCallbackId++;
-	VideoFormatChangeCallbacks[callbackId] = {callback, userData};
-	return callbackId;
+	return VideoFormatChangeCallbacks.Add(callback, userData);
 }
 
 void InputHandler::RemoveInputVideoFormatChangeCallback(int32_t callbackId)
 {
 	std::unique_lock lock(CallbacksMutex);
-	VideoFormatChangeCallbacks.erase(callbackId);
+	VideoFormatChangeCallbacks.Remove(callbackId);
 }
 }

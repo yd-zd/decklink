@@ -228,8 +228,19 @@ Device* DeviceManager::GetDevice(uint32_t deviceIndex)
 	return nullptr;
 }
 
+thread_local std::unordered_map<uint32_t, DeviceManager::RecursiveMutex> DeviceManager::LockedByThisThread = {};
+
 void DeviceManager::LockDevice(uint32_t deviceIndex, bool shared)
 {
+	auto& [lockCount, isSharedLock] = LockedByThisThread[deviceIndex];
+	if (lockCount > 0)
+	{
+		lockCount++;
+		if (isSharedLock)
+			assert(shared);
+		return;
+	}
+	// Not locked yet
 	auto it = DeviceMutexes.find(deviceIndex);
 	if (it == DeviceMutexes.end())
 		return;
@@ -237,17 +248,28 @@ void DeviceManager::LockDevice(uint32_t deviceIndex, bool shared)
 		it->second->lock_shared();
 	else
 		it->second->lock();
+	// Mark as locked
+	++lockCount;
+	isSharedLock = shared;
 }
 
 void DeviceManager::UnlockDevice(uint32_t deviceIndex, bool shared)
 {
-	auto it = DeviceMutexes.find(deviceIndex);
-	if (it == DeviceMutexes.end())
+	auto& [lockCount, isSharedLock] = LockedByThisThread[deviceIndex];
+	if (lockCount == 0)
 		return;
-	if (shared)
-		it->second->unlock_shared();
-	else
-		it->second->unlock();
+	if (--lockCount == 0)
+	{
+		if (isSharedLock)
+			assert(shared);
+		auto it = DeviceMutexes.find(deviceIndex);
+		if (it == DeviceMutexes.end())
+			return;
+		if (shared)
+			it->second->unlock_shared();
+		else
+			it->second->unlock();
+	}
 }
 
 DeviceManager* DeviceManager::Instance()

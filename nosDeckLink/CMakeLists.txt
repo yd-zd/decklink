@@ -14,7 +14,7 @@ nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
 
 # nos.device.decklink
-nos_get_module("nos.sys.decklink" "1.2" NOS_SYS_DECKLINK_TARGET)
+nos_get_module("nos.sys.decklink" "1.3" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.mediaio: TODO: Add transitive dependency support to nosman or CMake Nodos toolchain
 nos_get_module("nos.sys.mediaio" "0.2" NOS_SYS_MEDIAIO_TARGET)

@@ -36,6 +36,12 @@ public:
 protected:
 	std::unordered_map<uint32_t, std::unique_ptr<std::shared_mutex>> DeviceMutexes;
 	std::vector<std::unique_ptr<Device>> Devices;
+	struct RecursiveMutex
+	{
+		uint32_t LockCount = 0;
+		bool IsSharedLock = false;
+	};
+	static thread_local std::unordered_map<uint32_t, RecursiveMutex> LockedByThisThread; // deviceIndex, <locked, shared>
 private:
 	DeviceManager();
 	static DeviceManager* SingleInstance;

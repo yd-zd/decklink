@@ -27,13 +27,15 @@
 namespace nos::decklink
 {
 template <typename T>
-void Release(T& obj)
+auto Release(T& obj)
 {
 	if (obj)
 	{
-		obj->Release();
+		auto refCount = obj->Release();
 		obj = nullptr;
+		return refCount;
 	}
+	return 0ul;
 }
 
 #if _WIN32
@@ -104,6 +106,8 @@ public:
 	{
 	}
 
+	virtual ~Object() = default;
+
 	// IUnknown needs only a dummy implementation
 	HRESULT	STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv) override
 	{
@@ -127,6 +131,30 @@ public:
 
 private:
 	std::atomic<int32_t> RefCount;
+};
+
+template <typename T>
+struct Callbacks
+{
+	std::unordered_map<int32_t, std::pair<T, void*>> Map;
+	int32_t NextId = 0;
+	int32_t Add(T callback, void* userData)
+	{
+		Map[NextId] = { callback, userData };
+		return NextId++;
+	}
+	void Remove(int32_t callbackId)
+	{
+		Map.erase(callbackId);
+	}
+	auto begin()
+	{
+		return Map.begin();
+	}
+	auto end()
+	{
+		return Map.end();
+	}
 };
 
 struct IOHandlerBaseI
@@ -171,8 +199,7 @@ protected:
 			callback(userData, result, FramesProcessed);
 		}
 	}
-	std::unordered_map<int32_t, std::pair<nosDeckLinkFrameResultCallback, void*>> FrameResultCallbacks;
-	int32_t NextFrameResultCallbackId = 0;
+	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
 private:
 	std::atomic_bool IsOpen = false;
 	std::atomic_bool IsStreamRunning = false;
@@ -288,12 +315,11 @@ inline std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
 
 inline int32_t IOHandlerBaseI::AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData)
 {
-	FrameResultCallbacks[NextFrameResultCallbackId] = { callback, userData };
-	return NextFrameResultCallbackId++;
+	return FrameResultCallbacks.Add(callback, userData);
 }
 
 inline void IOHandlerBaseI::RemoveFrameResultCallback(int32_t callbackId)
 {
-	FrameResultCallbacks.erase(callbackId);
+	FrameResultCallbacks.Remove(callbackId);
 }
 }

@@ -24,9 +24,6 @@ struct DMAReadNode : NodeContext
 		nosResourceShareInfo bufferToWrite = vkss:: ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*execParams[NOS_NAME_STATIC("BufferToWrite")].Data));
 		ChannelId* channelId = InterpretPinValue<ChannelId>(*execParams[NOS_NAME_STATIC("ChannelId")].Data);
 
-		//if (channelId->device_index() == -1)
-		//	return NOS_RESULT_FAILED;
-
 		if (!bufferToWrite.Memory.Handle)
 		{
 			nosEngine.LogE("DMA read target buffer is not valid.");

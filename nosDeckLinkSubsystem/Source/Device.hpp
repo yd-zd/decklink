@@ -19,9 +19,7 @@
 
 namespace nos::decklink
 {
-
 std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t> optGroupId = std::nullopt);
-
 class Device
 {
 public:
@@ -30,7 +28,9 @@ public:
 	Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices);
 
 	void Destroy();
-	void Reinit(uint32_t groupId);
+
+	void SetupNotifications();
+	void RemoveNotifications();
 
 	std::string GetUniqueDisplayName() const;
 
@@ -73,7 +73,9 @@ public:
 	uint32_t Index = -1;
 	int64_t GroupId = -1;
 	std::string ModelName;
+	std::optional<BMDProfileID> ActiveProfile;
 protected:
+	void PrepareChannelSubDeviceMap();
 	IDeckLinkStatus* StatusInterface = nullptr;
 	IDeckLinkNotification* NotificationInterface = nullptr;
 	class NotificationCallback* NotifCallback = nullptr;
@@ -84,15 +86,12 @@ protected:
 
 	struct
 	{
-		std::unordered_map<int32_t, std::pair<nosDeckLinkDeviceInvalidatedCallback, void*>> Invalidated;
-		std::unordered_map<int32_t, std::pair<nosDeckLinkDeviceStatusCallback, void*>> Status;
-		struct
-		{
-			int32_t Invalidated = 0;
-			int32_t Status = 0;
-		} NextId;
+		Callbacks<nosDeckLinkDeviceInvalidatedCallback> Invalidated;
+		Callbacks<nosDeckLinkDeviceStatusCallback> Status;
 	} DeviceCallbacks;
-	std::unique_ptr<std::shared_mutex> DeviceCallbacksMutex;
+	std::unique_ptr<std::shared_mutex> InvalidatedCallbacksMutex;
+	std::unique_ptr<std::shared_mutex> StatusCallbacksMutex;
+
+	std::unordered_set<BMDProfileID> SupportedProfiles;
 };
-	
 }

@@ -3,7 +3,6 @@
 
 // Nodos
 #include <Nodos/Modules.h>
-#include <nosUtil/Stopwatch.hpp>
 
 #include "ChannelMapping.inl"
 #include "DeviceManager.hpp"
@@ -23,16 +22,11 @@ public:
 
 	HRESULT	STDMETHODCALLTYPE ProfileChanging(IDeckLinkProfile* newProfile, dlbool_t streamsWillBeForcedToStop) override
 	{
-		DeviceLock lock(DeviceIndex, false);
-		if (auto device = DeviceManager::Instance()->GetDevice(DeviceIndex))
-			device->ClearSubDevices();
+		nosEngine.ReloadModule();
 		return S_OK;
 	}
 	HRESULT	STDMETHODCALLTYPE ProfileActivated(IDeckLinkProfile* newProfile) override
 	{
-		DeviceLock lock(DeviceIndex, false);
-		if (auto device = DeviceManager::Instance()->GetDevice(DeviceIndex))
-			device->Reinit(DeviceGroupId);
 		return S_OK;
 	}
 
@@ -43,9 +37,10 @@ public:
 class NotificationCallback : public Object<IDeckLinkNotificationCallback>
 {
 public:
-	NotificationCallback(Device* device) : DeviceRef(*device), StatusInterface(*device->StatusInterface)
+	friend class Device;
+	NotificationCallback(Device* device) : DevicePtr(device), StatusInterface(device->StatusInterface)
 	{
-		StatusInterface.AddRef();
+		StatusInterface->AddRef();
 		ReadStatus(bmdDeckLinkStatusPCIExpressLinkWidth);
 		ReadStatus(bmdDeckLinkStatusPCIExpressLinkSpeed);
 		ReadStatus(bmdDeckLinkStatusReferenceSignalMode);
@@ -54,61 +49,64 @@ public:
 
 	virtual ~NotificationCallback()
 	{
-		StatusInterface.Release();
+		StatusInterface->Release();
 	}
 
 	void ReadStatus(BMDDeckLinkStatusID statusId)
 	{
 		bool updated = false;
-		switch (statusId)
 		{
-		case bmdDeckLinkStatusDeviceTemperature:
+			std::unique_lock lock(StatusMutex);
+			switch (statusId)
 			{
-				StatusInterface.GetInt(statusId, &Status.Temperature);
-				updated = true;
-				break;
-			}
-		case bmdDeckLinkStatusReferenceSignalLocked:
-			{
-				BOOL referenceSignalLocked;
-				auto res = StatusInterface.GetFlag(statusId, &referenceSignalLocked);
-				if (res != S_OK)
+			case bmdDeckLinkStatusDeviceTemperature:
 				{
-					nosEngine.LogE("NotificationCallback: Failed to get reference lock status");
-					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN;
+					StatusInterface->GetInt(statusId, &Status.Temperature);
+					updated = true;
+					break;
 				}
-				else if (referenceSignalLocked)
-					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_LOCKED;
-				else
-					Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED;
-				updated = true;
-				break;
-			}
-		case bmdDeckLinkStatusReferenceSignalMode:
-			{
-				int64_t mode;
-				auto res = StatusInterface.GetInt(statusId, &mode);
-				if (res != S_OK)
-					nosEngine.LogE("NotificationCallback: Failed to get reference signal mode");
-				ReferenceSignalMode = (BMDDisplayMode)mode;
-				updated = true;
-				break;
-			}
-		case bmdDeckLinkStatusPCIExpressLinkWidth:
-			{
-				StatusInterface.GetInt(statusId, &Status.PCIeLink.Width);
-				updated = true;
-				break;
-			}
-		case bmdDeckLinkStatusPCIExpressLinkSpeed:
-			{
-				StatusInterface.GetInt(statusId, &Status.PCIeLink.Speed);
-				updated = true;
-				break;
-			}
-		default:
-			{
-				break;
+			case bmdDeckLinkStatusReferenceSignalLocked:
+				{
+					BOOL referenceSignalLocked;
+					auto res = StatusInterface->GetFlag(statusId, &referenceSignalLocked);
+					if (res != S_OK)
+					{
+						nosEngine.LogE("NotificationCallback: Failed to get reference lock status");
+						Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNKNOWN;
+					}
+					else if (referenceSignalLocked)
+						Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_LOCKED;
+					else
+						Status.ReferenceStatus = NOS_DECKLINK_REFERENCE_STATUS_UNLOCKED;
+					updated = true;
+					break;
+				}
+			case bmdDeckLinkStatusReferenceSignalMode:
+				{
+					int64_t mode;
+					auto res = StatusInterface->GetInt(statusId, &mode);
+					if (res != S_OK)
+						nosEngine.LogE("NotificationCallback: Failed to get reference signal mode");
+					ReferenceSignalMode = (BMDDisplayMode)mode;
+					updated = true;
+					break;
+				}
+			case bmdDeckLinkStatusPCIExpressLinkWidth:
+				{
+					StatusInterface->GetInt(statusId, &Status.PCIeLink.Width);
+					updated = true;
+					break;
+				}
+			case bmdDeckLinkStatusPCIExpressLinkSpeed:
+				{
+					StatusInterface->GetInt(statusId, &Status.PCIeLink.Speed);
+					updated = true;
+					break;
+				}
+			default:
+				{
+					break;
+				}
 			}
 		}
 		if (updated)
@@ -131,19 +129,64 @@ public:
 
 	void NotifyStatusChange()
 	{
-		std::shared_lock lock(*DeviceRef.DeviceCallbacksMutex);
-		for (auto& [callback, userData] : DeviceRef.DeviceCallbacks.Status | std::views::values)
+		std::shared_lock lock(*DevicePtr->StatusCallbacksMutex);
+		std::shared_lock statusLock(StatusMutex);
+		for (auto& [callback, userData] : DevicePtr->DeviceCallbacks.Status.Map | std::views::values)
 			callback(userData, &Status);
 	}
-	
+
+	void CheckProfileSupportAndNotify(BMDProfileID const& currentProfile, std::unordered_set<BMDProfileID> const& supportedProfiles)
+	{
+		if (!supportedProfiles.contains(currentProfile))
+		{
+			ProfileStatusMessageIndex = AddMessage("Active device profile is not supported yet", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+		}
+		else if (ProfileStatusMessageIndex != -1)
+		{
+			RemoveMessage(ProfileStatusMessageIndex);
+		} 
+		NotifyStatusChange();
+	}
+
 protected:
-	Device& DeviceRef;
-	IDeckLinkStatus& StatusInterface;
+	int AddMessage(std::string const& message, nosDeckLinkDeviceMessageType type)
+	{
+		std::unique_lock lock(StatusMutex);
+		auto currentCount = Status.Messages.Count;
+		if (currentCount >= std::size(Status.Messages.List))
+		{
+			nosEngine.LogE("NotificationCallback: Message list is full");
+			return -1;
+		}
+		auto& messageList = Status.Messages.List[currentCount];
+		strncpy(messageList.Message, message.c_str(), std::size(messageList.Message));
+		messageList.Type = type;
+		Status.Messages.Count = currentCount + 1;
+		return currentCount;
+	}
+
+	void RemoveMessage(int index)
+	{
+		std::unique_lock lock(StatusMutex);
+		if (index < 0 || index >= Status.Messages.Count)
+		{
+			nosEngine.LogE("NotificationCallback: Invalid message index to remove: %d", index);
+			return;
+		}
+		auto& messageList = Status.Messages.List;
+		for (int i = index; i < Status.Messages.Count - 1; ++i)
+			messageList[i] = messageList[i + 1];
+		Status.Messages.Count -= 1;
+	}
+	
+	Device* DevicePtr;
+	IDeckLinkStatus* StatusInterface;
 	BMDDisplayMode ReferenceSignalMode = bmdModeUnknown;
 	nosDeckLinkDeviceStatus Status{};
+	std::shared_mutex StatusMutex;
+	int ProfileStatusMessageIndex = -1;
 };
 	
-
 std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t> optGroupId)
 {
 	IDeckLinkIterator* deckLinkIterator = nullptr;
@@ -153,7 +196,7 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 	result = CoInitialize(NULL);
 	if (FAILED(result))
 	{
-		nosEngine.LogE("DeckLinkDevice: Initialization of COM failed with error: %s", _com_error(result).ErrorMessage());
+		nosEngine.LogE("Initialization of COM failed with error: %s", _com_error(result).ErrorMessage());
 		return {};
 	}
 #endif
@@ -161,7 +204,7 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 	result = GetDeckLinkIterator(&deckLinkIterator);
 	if (FAILED(result) || deckLinkIterator == nullptr)
 	{
-		nosEngine.LogE("DeckLinkDevice: Could not obtain DeckLink iterator");
+		nosEngine.LogE("Could not obtain DeckLink iterator");
 		return {};
 	}
 
@@ -206,25 +249,13 @@ void Device::SetupFromMainSubDevice()
 	auto mainSubDevice = GetMainSubDevice();
 	ModelName = mainSubDevice->ModelName;
 	GroupId = mainSubDevice->DeviceGroupId;
-	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&StatusInterface);
-	if (res != S_OK)
-		nosEngine.LogE("DeckLinkDevice: Failed to get status interface for device: %s", ModelName.c_str());
-	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&NotificationInterface);
-	if (res != S_OK)
-		nosEngine.LogE("DeckLinkDevice: Failed to get notification interface for device: %s", ModelName.c_str());
-	NotifCallback = new NotificationCallback(this);
-	if (NotifCallback == nullptr)
-		nosEngine.LogE("DeckLinkDevice: Failed to create notification callback for device: %s", ModelName.c_str());
-	else
-	{
-		res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback);
-		if (res != S_OK)
-			nosEngine.LogE("DeckLinkDevice: Failed to subscribe to status change for device: %s", ModelName.c_str());
-	}
 }
 
 Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevices)
-	: Index(index), SubDevices(std::move(subDevices)), DeviceCallbacksMutex(new std::shared_mutex)
+	: Index(index)
+	, SubDevices(std::move(subDevices))
+	, InvalidatedCallbacksMutex(new std::shared_mutex)
+	, StatusCallbacksMutex(new std::shared_mutex)
 {
 	if (SubDevices.empty())
 		nosEngine.LogE("No sub-device provided for device index: %d", index);
@@ -235,35 +266,16 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 
 	for (auto& subDevice : SubDevices)
 		subDevice->TagDevice(Index);
-	
-	// Determine which sub-devices are capable of opening the channel
-	auto& channelMap = GetChannelMap();
-	auto modelIt = channelMap.find(ModelName);
-	if (modelIt == channelMap.end())
+
+	ActiveProfile = GetActiveProfile();
+	if (!ActiveProfile)
 	{
-		nosEngine.LogE("No channel map found for device: %s", ModelName.c_str());
+		nosEngine.LogE("Failed to get active profile for device: %s", ModelName.c_str());
 		return;
 	}
-	auto& mapping = modelIt->second;
-	for (auto& [profile, rest2] : mapping)
-	{
-		if (profile != bmdProfileFourSubDevicesHalfDuplex)
-			continue; // TODO.
-		for (auto& [subDeviceIndex, rest3] : rest2)
-		{
-			for (auto& [curChannel, modes] : rest3)
-			{
-				if (auto subDevice = GetSubDevice(subDeviceIndex))
-				{
-					for (auto mode : modes)
-					{
-						Channel2SubDevice[mode][curChannel] = subDevice;
-						subDevice->TagChannel(mode, curChannel);
-					}
-				}
-			}
-		}
-	}
+
+	// Determine which sub-devices are capable of opening the channel
+	PrepareChannelSubDeviceMap();
 
 	auto onProfileChange = new ProfileChangeCallback(Index, GroupId);
 	if (onProfileChange == nullptr)
@@ -271,40 +283,54 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 	else
 		GetProfileManager()->SetCallback(onProfileChange);
 	Release(onProfileChange);
+
+	SetupNotifications();
 }
 
 void Device::Destroy()
 {
-	IDeckLink* dlDevice = nullptr;
+	IDeckLink* mainDlDevice = nullptr;
 	if (auto mainSubDevice = GetMainSubDevice())
-		dlDevice = mainSubDevice->DLDevice;
+		mainDlDevice = mainSubDevice->DLDevice;
 	ClearSubDevices();
+	RemoveNotifications();
+	Release(mainDlDevice);
+	InvalidatedCallbacksMutex.reset();
+	StatusCallbacksMutex.reset();
+}
+
+void Device::SetupNotifications()
+{
+	auto mainSubDevice = GetMainSubDevice();
+	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&StatusInterface);
+	if (res != S_OK)
+		nosEngine.LogE("Failed to get status interface for device: %s", ModelName.c_str());
+	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&NotificationInterface);
+	if (res != S_OK)
+		nosEngine.LogE("Failed to get notification interface for device: %s", ModelName.c_str());
+	NotifCallback = new NotificationCallback(this);
+	if (NotifCallback == nullptr)
+		nosEngine.LogE("Failed to create notification callback for device: %s", ModelName.c_str());
+	else
+	{
+		res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback);
+		if (res != S_OK)
+			nosEngine.LogE("Failed to subscribe to status change for device: %s", ModelName.c_str());
+		NotifCallback->CheckProfileSupportAndNotify(*ActiveProfile, SupportedProfiles);
+	}
+}
+
+void Device::RemoveNotifications()
+{
 	if (NotificationInterface && NotifCallback)
 	{
 		auto res = NotificationInterface->Unsubscribe(bmdStatusChanged, NotifCallback);
 		if (res != S_OK)
-			nosEngine.LogE("DeckLinkDevice: Failed to unsubscribe from status change for device: %s", ModelName.c_str());
+			nosEngine.LogE("Failed to unsubscribe from status change for device: %s", ModelName.c_str());
 	}
-	Release(NotificationInterface);
 	Release(NotifCallback);
 	Release(StatusInterface);
-	Release(dlDevice);
-}
-
-void Device::Reinit(uint32_t groupId)
-{
-	Destroy();
-	auto devices = CreateDevices(groupId);
-	if (devices.empty())
-	{
-		nosEngine.LogE("DeckLinkDevice: Failed to reinitialize device with index: %d", Index);
-		return;
-	}
-	if (devices.size() > 1)
-	{
-		nosEngine.LogE("DeckLinkDevice: Reinitialized device with index: %d, but found more than one device with same group ID!", Index);
-	}
-	*this = std::move(*devices[0]);
+	Release(NotificationInterface);
 }
 
 std::string Device::GetUniqueDisplayName() const
@@ -401,7 +427,7 @@ std::optional<BMDProfileID> Device::GetActiveProfile() const
 	auto res = subDevice->ProfileManager->GetProfiles(&profileIterator);
 	if (res != S_OK)
 	{
-		nosEngine.LogE("DeckLinkDevice: Failed to get profile iterator for device: %s", ModelName.c_str());
+		nosEngine.LogE("Failed to get profile iterator for device: %s", ModelName.c_str());
 		return std::nullopt;
 	}
 	IDeckLinkProfile* profile = nullptr;
@@ -437,7 +463,7 @@ void Device::UpdateProfile(BMDProfileID newProfileId)
 	auto res = subDevice->ProfileManager->GetProfiles(&profileIter);
 	if (res != S_OK || !profileIter)
 	{
-		nosEngine.LogE("DeckLinkDevice: Failed to get profile iterator for device: %s", ModelName.c_str());
+		nosEngine.LogE("Failed to get profile iterator for device: %s", ModelName.c_str());
 		return;
 	}
 	IDeckLinkProfile* profile = nullptr;
@@ -454,7 +480,7 @@ void Device::UpdateProfile(BMDProfileID newProfileId)
 				{
 					exit = true;
 					if (profile->SetActive() != S_OK)
-						nosEngine.LogE("DeckLinkDevice: Failed to set profile for device: %s", ModelName.c_str());
+						nosEngine.LogE("Failed to set profile for device: %s", ModelName.c_str());
 				}
 			}
 			Release(profileAttr);
@@ -611,7 +637,7 @@ void Device::ClearSubDevices()
 	for (auto sibling : siblings)
 		Release(sibling);
 	{
-		std::unique_lock lock(*DeviceCallbacksMutex);
+		std::unique_lock lock(*InvalidatedCallbacksMutex);
 		for (auto& [callbackId, pair] : DeviceCallbacks.Invalidated)
 		{
 			auto& [callback, userData] = pair;
@@ -622,27 +648,64 @@ void Device::ClearSubDevices()
 
 int32_t Device::AddDeviceInvalidatedCallback(nosDeckLinkDeviceInvalidatedCallback callback, void* userData)
 {
-	std::unique_lock lock(*DeviceCallbacksMutex);
-	DeviceCallbacks.Invalidated[DeviceCallbacks.NextId.Invalidated] = { callback, userData };
-	return DeviceCallbacks.NextId.Invalidated++;
+	std::unique_lock lock(*InvalidatedCallbacksMutex);
+	return DeviceCallbacks.Invalidated.Add(callback, userData);
 }
 
 void Device::RemoveDeviceInvalidatedCallback(int32_t callbackId)
 {
-	std::unique_lock lock(*DeviceCallbacksMutex);
-	DeviceCallbacks.Invalidated.erase(callbackId);
+	std::unique_lock lock(*InvalidatedCallbacksMutex);
+	DeviceCallbacks.Invalidated.Remove(callbackId);
 }
 
 int32_t Device::AddDeviceStatusCallback(nosDeckLinkDeviceStatusCallback callback, void* user_data)
 {
-	std::unique_lock lock(*DeviceCallbacksMutex);
-	DeviceCallbacks.Status[DeviceCallbacks.NextId.Status] = { callback, user_data };
-	return DeviceCallbacks.NextId.Status++;
+	int32_t id;
+	{
+		std::unique_lock lock(*StatusCallbacksMutex);
+		id = DeviceCallbacks.Status.Add(callback, user_data);
+	}
+	NotifCallback->NotifyStatusChange();
+	return id;
 }
 
 void Device::RemoveDeviceStatusCallback(int32_t callbackId)
 {
-	std::unique_lock lock(*DeviceCallbacksMutex);
-	DeviceCallbacks.Status.erase(callbackId);
+	std::unique_lock lock(*StatusCallbacksMutex);
+	DeviceCallbacks.Status.Remove(callbackId);
+}
+
+void Device::PrepareChannelSubDeviceMap()
+{
+	auto& channelMap = GetChannelMap();
+	auto modelIt = channelMap.find(ModelName);
+	if (modelIt == channelMap.end())
+	{
+		nosEngine.LogE("No channel map found for device: %s", ModelName.c_str());
+		return;
+	}
+	auto& mapping = modelIt->second;
+
+	SupportedProfiles.clear();
+	for (auto& [profile, rest2] : mapping)
+	{
+		SupportedProfiles.insert(profile);
+		if (*ActiveProfile != profile)
+			continue;
+		for (auto& [subDeviceIndex, rest3] : rest2)
+		{
+			for (auto& [curChannel, modes] : rest3)
+			{
+				if (auto subDevice = GetSubDevice(subDeviceIndex))
+				{
+					for (auto mode : modes)
+					{
+						Channel2SubDevice[mode][curChannel] = subDevice;
+						subDevice->TagChannel(mode, curChannel);
+					}
+				}
+			}
+		}
+	}
 }
 }
