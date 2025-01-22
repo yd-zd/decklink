@@ -38,7 +38,7 @@ public:
 
 	bool CanOpenChannel(nosMediaIODirection dir, nosDeckLinkChannel channel, SubDevice** outSubDevice = nullptr) const;
 
-	IDeckLinkProfileManager* GetProfileManager() const;
+	Nullable<IDeckLinkProfileManager> GetProfileManager() const;
 
 	std::optional<BMDProfileID> GetActiveProfile() const;
 	
@@ -76,12 +76,12 @@ public:
 	std::optional<BMDProfileID> ActiveProfile;
 protected:
 	void PrepareChannelSubDeviceMap();
-	IDeckLinkStatus* StatusInterface = nullptr;
-	IDeckLinkNotification* NotificationInterface = nullptr;
-	class NotificationCallback* NotifCallback = nullptr;
+	Nullable<IDeckLinkStatus> StatusInterface = nullptr;
+	Nullable<IDeckLinkNotification> NotificationInterface = nullptr;
+	Nullable<NotificationCallback> NotifCallback = nullptr;
 	
 	std::vector<std::unique_ptr<SubDevice>> SubDevices;
-	std::unordered_map<nosMediaIODirection, std::unordered_map<nosDeckLinkChannel, SubDevice*>> Channel2SubDevice;
+	std::unordered_map<nosMediaIODirection, std::unordered_map<nosDeckLinkChannel, std::pair<int64_t, SubDevice*>>> Channel2SubDevice;
 	std::unordered_map<nosDeckLinkChannel, std::pair<SubDevice*, nosMediaIODirection>> OpenChannels;
 
 	struct
@@ -92,6 +92,6 @@ protected:
 	std::unique_ptr<std::shared_mutex> InvalidatedCallbacksMutex;
 	std::unique_ptr<std::shared_mutex> StatusCallbacksMutex;
 
-	std::unordered_set<BMDProfileID> SupportedProfiles;
+	std::unordered_set<std::optional<BMDProfileID>> SupportedProfiles;
 };
 }

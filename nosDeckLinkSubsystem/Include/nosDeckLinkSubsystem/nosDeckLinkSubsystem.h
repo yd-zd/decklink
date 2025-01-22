@@ -38,21 +38,28 @@ typedef enum nosDeckLinkChannel
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_6,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_7,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_8,
-	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_SINGLE_LINK_8
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_A,
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_B,
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_A,
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B,
+	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B
 } nosDeckLinkChannel;
 
-#define NOS_DECKLINK_CHANNEL_COUNT (NOS_DECKLINK_CHANNEL_SINGLE_LINK_8 - NOS_DECKLINK_CHANNEL_INVALID)
+#define NOS_DECKLINK_CHANNEL_COUNT (NOS_DECKLINK_CHANNEL_MAX - NOS_DECKLINK_CHANNEL_INVALID)
 
 inline const char* NOS_DECKLINK_CHANNEL_NAMES[] = {
 	"INVALID",
 	"Single Link 1",
 	"Single Link 2",
-	"Single Link 3",
-	"Single Link 4",
+	"Single Link 3",	"Single Link 4",
 	"Single Link 5",
 	"Single Link 6",
 	"Single Link 7",
 	"Single Link 8",
+	"Single Link In A",
+	"Single Link In B",
+	"Single Link Out A",
+	"Single Link Out B"
 };
 
 typedef struct nosDeckLinkChannelList {
@@ -168,7 +175,7 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 3
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 4
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;

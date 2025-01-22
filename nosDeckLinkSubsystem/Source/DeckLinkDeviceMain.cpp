@@ -99,7 +99,7 @@ nosResult NOSAPI_CALL GetAvailableChannels(uint32_t deviceIndex, nosMediaIODirec
 
 nosDeckLinkChannel NOSAPI_CALL GetChannelFromName(const char* channelName)
 {
-	for (int i = 0; i < NOS_DECKLINK_CHANNEL_COUNT; i++)
+	for (int i = 0; i <= NOS_DECKLINK_CHANNEL_COUNT; i++)
 	{
 		if (strcmp(NOS_DECKLINK_CHANNEL_NAMES[i], channelName) == 0)
 			return nosDeckLinkChannel(i);

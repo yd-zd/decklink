@@ -38,7 +38,7 @@ class NotificationCallback : public Object<IDeckLinkNotificationCallback>
 {
 public:
 	friend class Device;
-	NotificationCallback(Device* device) : DevicePtr(device), StatusInterface(device->StatusInterface)
+	NotificationCallback(Device* device) : DevicePtr(device), StatusInterface(device->StatusInterface.GetPtr())
 	{
 		StatusInterface->AddRef();
 		ReadStatus(bmdDeckLinkStatusPCIExpressLinkWidth);
@@ -135,7 +135,7 @@ public:
 			callback(userData, &Status);
 	}
 
-	void CheckProfileSupportAndNotify(BMDProfileID const& currentProfile, std::unordered_set<BMDProfileID> const& supportedProfiles)
+	void CheckProfileSupportAndNotify(std::optional<BMDProfileID> const& currentProfile, std::unordered_set<std::optional<BMDProfileID>> const& supportedProfiles)
 	{
 		if (!supportedProfiles.contains(currentProfile))
 		{
@@ -268,21 +268,19 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 		subDevice->TagDevice(Index);
 
 	ActiveProfile = GetActiveProfile();
-	if (!ActiveProfile)
-	{
-		nosEngine.LogE("Failed to get active profile for device: %s", ModelName.c_str());
-		return;
-	}
 
 	// Determine which sub-devices are capable of opening the channel
 	PrepareChannelSubDeviceMap();
 
-	auto onProfileChange = new ProfileChangeCallback(Index, GroupId);
-	if (onProfileChange == nullptr)
-		nosEngine.LogE("Could not create profile change callback");
-	else
-		GetProfileManager()->SetCallback(onProfileChange);
-	Release(onProfileChange);
+	if (auto profileManager = GetProfileManager())
+	{
+		auto onProfileChange = new ProfileChangeCallback(Index, GroupId);
+		if (onProfileChange == nullptr)
+			nosEngine.LogE("Could not create profile change callback");
+		else
+			profileManager->SetCallback(onProfileChange);
+		Release(onProfileChange);
+	}
 
 	SetupNotifications();
 }
@@ -302,21 +300,28 @@ void Device::Destroy()
 void Device::SetupNotifications()
 {
 	auto mainSubDevice = GetMainSubDevice();
-	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&StatusInterface);
+	IDeckLinkStatus* statI = nullptr;
+	auto res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatus, (void**)&statI);
+	StatusInterface = statI;
 	if (res != S_OK)
 		nosEngine.LogE("Failed to get status interface for device: %s", ModelName.c_str());
-	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&NotificationInterface);
+	IDeckLinkNotification* notifI = nullptr;
+	res = mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkNotification, (void**)&notifI);
+	NotificationInterface = notifI;
 	if (res != S_OK)
 		nosEngine.LogE("Failed to get notification interface for device: %s", ModelName.c_str());
-	NotifCallback = new NotificationCallback(this);
-	if (NotifCallback == nullptr)
-		nosEngine.LogE("Failed to create notification callback for device: %s", ModelName.c_str());
-	else
+	if (StatusInterface && NotificationInterface)
 	{
-		res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback);
-		if (res != S_OK)
-			nosEngine.LogE("Failed to subscribe to status change for device: %s", ModelName.c_str());
-		NotifCallback->CheckProfileSupportAndNotify(*ActiveProfile, SupportedProfiles);
+		NotifCallback = new NotificationCallback(this);
+		if (!NotifCallback)
+			nosEngine.LogE("Failed to create notification callback for device: %s", ModelName.c_str());
+		else
+		{
+			res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback.GetPtr());
+			if (res != S_OK)
+				nosEngine.LogE("Failed to subscribe to status change for device: %s", ModelName.c_str());
+			NotifCallback->CheckProfileSupportAndNotify(ActiveProfile, SupportedProfiles);
+		}
 	}
 }
 
@@ -324,7 +329,7 @@ void Device::RemoveNotifications()
 {
 	if (NotificationInterface && NotifCallback)
 	{
-		auto res = NotificationInterface->Unsubscribe(bmdStatusChanged, NotifCallback);
+		auto res = NotificationInterface->Unsubscribe(bmdStatusChanged, NotifCallback.GetPtr());
 		if (res != S_OK)
 			nosEngine.LogE("Failed to unsubscribe from status change for device: %s", ModelName.c_str());
 	}
@@ -341,16 +346,12 @@ std::string Device::GetUniqueDisplayName() const
 std::vector<nosDeckLinkChannel> Device::GetAvailableChannels(nosMediaIODirection mode)
 {
 	std::vector<nosDeckLinkChannel> channels;
-	static std::array allChannels {
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_1,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_2,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_3,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_4,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_5,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_6,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_7,
-		NOS_DECKLINK_CHANNEL_SINGLE_LINK_8
-	};
+	static std::vector<nosDeckLinkChannel> allChannels = {};
+	if (allChannels.empty())
+	{
+		for (int i = NOS_DECKLINK_CHANNEL_MIN; i <= NOS_DECKLINK_CHANNEL_MAX; ++i)
+			allChannels.push_back(nosDeckLinkChannel(i));
+	}
 	for (auto& channel : allChannels)
 	{
 		if (CanOpenChannel(mode, channel))
@@ -362,21 +363,43 @@ std::vector<nosDeckLinkChannel> Device::GetAvailableChannels(nosMediaIODirection
 bool Device::CanOpenChannel(nosMediaIODirection dir, nosDeckLinkChannel channel, SubDevice** outSubDevice) const
 {
 	auto dit = Channel2SubDevice.find(dir);
-	if (dit != Channel2SubDevice.end())
-	{
-		auto cit = dit->second.find(channel);
-		if (cit != dit->second.end())
-		{
-			auto* subDevice = cit->second;
-			if (!subDevice->IsBusy())
-			{
-				if (outSubDevice)
-					*outSubDevice = subDevice;
-				return true;
-			}
-		}
-	}
-	return false;
+	if (dit == Channel2SubDevice.end())
+		return false;
+	auto cit = dit->second.find(channel);
+
+	if (cit == dit->second.end())
+		return false;
+		
+	auto& [subDeviceIndex, subDevice] = cit->second;
+	auto& chMap = GetChannelMap();
+	auto mit = chMap.find(ModelName);
+	if (mit == chMap.end())
+		return false;
+	auto pit = mit->second.find(ActiveProfile);
+	if (pit == mit->second.end())
+		return false;
+	auto sit = pit->second.find(subDeviceIndex);
+	if (sit == pit->second.end())
+		return false;
+
+	std::unordered_set<nosMediaIODirection> supportedDirections; // For this channel and subdevice
+	auto channelIt = sit->second.find(channel);
+	if (channelIt == sit->second.end())
+		return false;
+
+	for (auto& dirForCh : channelIt->second)
+		supportedDirections.insert(dirForCh);
+
+	if (supportedDirections.find(dir) == supportedDirections.end())
+		return false;
+
+	// Now, check subdevice is busy with our direction.
+	if (subDevice->IsBusyWith(dir))
+		return false;
+
+	if (outSubDevice)
+		*outSubDevice = subDevice;
+	return true;
 }
 
 SubDevice* Device::GetSubDeviceOfChannel(nosMediaIODirection dir, nosDeckLinkChannel channel) const
@@ -386,7 +409,7 @@ SubDevice* Device::GetSubDeviceOfChannel(nosMediaIODirection dir, nosDeckLinkCha
 	{
 		auto cit = dit->second.find(channel);
 		if (cit != dit->second.end())
-			return cit->second;
+			return cit->second.second;
 	}
 	return nullptr;
 }
@@ -411,7 +434,7 @@ SubDevice* Device::GetMainSubDevice() const
 	return GetSubDevice(0);
 }
 
-IDeckLinkProfileManager* Device::GetProfileManager() const
+Nullable<IDeckLinkProfileManager> Device::GetProfileManager() const
 {
 	if (SubDevices.empty())
 		return nullptr;
@@ -422,9 +445,11 @@ std::optional<BMDProfileID> Device::GetActiveProfile() const
 {
 	if (SubDevices.empty())
 		return std::nullopt;
-	auto& subDevice = SubDevices[0];
+	auto mainSubDevice = GetMainSubDevice();
+	if (!mainSubDevice || !mainSubDevice->ProfileManager)
+		return std::nullopt;
 	IDeckLinkProfileIterator* profileIterator = nullptr;
-	auto res = subDevice->ProfileManager->GetProfiles(&profileIterator);
+	auto res = mainSubDevice->ProfileManager->GetProfiles(&profileIterator);
 	if (res != S_OK)
 	{
 		nosEngine.LogE("Failed to get profile iterator for device: %s", ModelName.c_str());
@@ -665,7 +690,10 @@ int32_t Device::AddDeviceStatusCallback(nosDeckLinkDeviceStatusCallback callback
 		std::unique_lock lock(*StatusCallbacksMutex);
 		id = DeviceCallbacks.Status.Add(callback, user_data);
 	}
-	NotifCallback->NotifyStatusChange();
+	if (NotifCallback)
+		NotifCallback->NotifyStatusChange();
+	else
+		nosEngine.LogE("Notification callback is not available for device: %s", ModelName.c_str());
 	return id;
 }
 
@@ -690,7 +718,7 @@ void Device::PrepareChannelSubDeviceMap()
 	for (auto& [profile, rest2] : mapping)
 	{
 		SupportedProfiles.insert(profile);
-		if (*ActiveProfile != profile)
+		if (ActiveProfile != profile)
 			continue;
 		for (auto& [subDeviceIndex, rest3] : rest2)
 		{
@@ -700,7 +728,7 @@ void Device::PrepareChannelSubDeviceMap()
 				{
 					for (auto mode : modes)
 					{
-						Channel2SubDevice[mode][curChannel] = subDevice;
+						Channel2SubDevice[mode][curChannel] = {subDeviceIndex, subDevice};
 						subDevice->TagChannel(mode, curChannel);
 					}
 				}

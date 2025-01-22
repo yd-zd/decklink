@@ -18,11 +18,12 @@ inline const std::unordered_map<std::string, uint32_t>& GetSDIPortCounts()
 	map["DeckLink 8K Pro"] = 4;
 	map["DeckLink Quad 2"] = 8;
 	map["DeckLink Duo 2"] = 4;
+	map["DeckLink 4K Pro"] = 4;
 	return map;
 }
 
 // Model Name -> Profile -> SubDeviceIndex -> Mode -> Connectors
-typedef std::unordered_map<std::string, std::unordered_map<BMDProfileID, std::unordered_map<int64_t, std::unordered_map<nosDeckLinkChannel, std::unordered_set<nosMediaIODirection>>>>> ConnectorMap;
+typedef std::unordered_map<std::string, std::unordered_map<std::optional<BMDProfileID>, std::unordered_map<int64_t, std::unordered_map<nosDeckLinkChannel, std::unordered_set<nosMediaIODirection>>>>> ConnectorMap;
 inline const ConnectorMap& GetChannelMap()
 {
 	static ConnectorMap map{};
@@ -51,6 +52,12 @@ inline const ConnectorMap& GetChannelMap()
 	deckLinkDuo2[bmdProfileTwoSubDevicesHalfDuplex][1][NOS_DECKLINK_CHANNEL_SINGLE_LINK_3] = {NOS_MEDIAIO_DIRECTION_INPUT, NOS_MEDIAIO_DIRECTION_OUTPUT};
 	deckLinkDuo2[bmdProfileTwoSubDevicesHalfDuplex][2][NOS_DECKLINK_CHANNEL_SINGLE_LINK_2] = {NOS_MEDIAIO_DIRECTION_INPUT, NOS_MEDIAIO_DIRECTION_OUTPUT};
 	deckLinkDuo2[bmdProfileTwoSubDevicesHalfDuplex][3][NOS_DECKLINK_CHANNEL_SINGLE_LINK_4] = {NOS_MEDIAIO_DIRECTION_INPUT, NOS_MEDIAIO_DIRECTION_OUTPUT};
+
+	auto& deckLink4KPro = map["DeckLink 4K Pro"] = {};
+	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_A] = {NOS_MEDIAIO_DIRECTION_INPUT};
+	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_B] = {NOS_MEDIAIO_DIRECTION_INPUT};
+	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_A] = {NOS_MEDIAIO_DIRECTION_OUTPUT};
+	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B] = {NOS_MEDIAIO_DIRECTION_OUTPUT};
 	return map;
 }
 	
