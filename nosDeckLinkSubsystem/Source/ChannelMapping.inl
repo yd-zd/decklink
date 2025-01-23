@@ -19,6 +19,7 @@ inline const std::unordered_map<std::string, uint32_t>& GetSDIPortCounts()
 	map["DeckLink Quad 2"] = 8;
 	map["DeckLink Duo 2"] = 4;
 	map["DeckLink 4K Pro"] = 4;
+	map["DeckLink Studio 4K"] = 2;
 	return map;
 }
 
@@ -58,6 +59,10 @@ inline const ConnectorMap& GetChannelMap()
 	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_B] = {NOS_MEDIAIO_DIRECTION_INPUT};
 	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_A] = {NOS_MEDIAIO_DIRECTION_OUTPUT};
 	deckLink4KPro[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B] = {NOS_MEDIAIO_DIRECTION_OUTPUT};
+
+	auto& deckLinkStudio4K = map["DeckLink Studio 4K"] = {};
+	deckLinkStudio4K[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN] = {NOS_MEDIAIO_DIRECTION_INPUT};
+	deckLinkStudio4K[std::nullopt][0][NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT] = {NOS_MEDIAIO_DIRECTION_OUTPUT};
 	return map;
 }
 	

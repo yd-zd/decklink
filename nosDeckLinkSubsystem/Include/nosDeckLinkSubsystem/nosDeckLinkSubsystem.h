@@ -42,7 +42,9 @@ typedef enum nosDeckLinkChannel
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN_B,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_A,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B,
-	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN,
+	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT,
+	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT
 } nosDeckLinkChannel;
 
 #define NOS_DECKLINK_CHANNEL_COUNT (NOS_DECKLINK_CHANNEL_MAX - NOS_DECKLINK_CHANNEL_INVALID)
@@ -51,7 +53,8 @@ inline const char* NOS_DECKLINK_CHANNEL_NAMES[] = {
 	"INVALID",
 	"Single Link 1",
 	"Single Link 2",
-	"Single Link 3",	"Single Link 4",
+	"Single Link 3",
+	"Single Link 4",
 	"Single Link 5",
 	"Single Link 6",
 	"Single Link 7",
@@ -59,7 +62,9 @@ inline const char* NOS_DECKLINK_CHANNEL_NAMES[] = {
 	"Single Link In A",
 	"Single Link In B",
 	"Single Link Out A",
-	"Single Link Out B"
+	"Single Link Out B",
+	"Single Link In",
+	"Single Link Out"
 };
 
 typedef struct nosDeckLinkChannelList {
