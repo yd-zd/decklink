@@ -20,6 +20,7 @@
 namespace nos::decklink
 {
 std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t> optGroupId = std::nullopt);
+class NotificationCallback;
 class Device
 {
 public:
