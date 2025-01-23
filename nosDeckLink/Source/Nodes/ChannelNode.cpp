@@ -823,7 +823,7 @@ void ChannelHandler::UpdateChannelStatus()
 	if (FrameRate != NOS_MEDIAIO_FRAME_RATE_INVALID)
 		channelString << nosMediaIO->GetFrameRateName(FrameRate);
 	if (VideoScanType != NOS_MEDIAIO_VIDEO_SCAN_TYPE_INVALID)
-		channelString << (VideoScanType == NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN ? " (p)" : " (i)");
+		channelString << (VideoScanType == NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN ? "p" : "i");
 	fb::NodeStatusMessageType type;
 	std::string statusText;
 	if (ShouldOpen && IsOpen)

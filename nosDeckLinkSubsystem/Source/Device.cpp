@@ -528,6 +528,7 @@ bool Device::OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, 
 	if (subDevice->OpenOutput(displayMode, pixelFormat))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_OUTPUT };
+		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 		return true;
 	}
 	return false;
@@ -552,6 +553,7 @@ bool Device::CloseChannel(nosDeckLinkChannel channel)
 		if (!subDevice->CloseOutput())
 			return false;
 	}
+	subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, NOS_DECKLINK_CHANNEL_INVALID);
 	OpenChannels.erase(it);
 	return true;
 }
@@ -604,6 +606,7 @@ bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
 	if (subDevice->OpenInput(pixelFormat))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_INPUT };
+		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);
 		return true;
 	}
 	return false;
@@ -729,7 +732,6 @@ void Device::PrepareChannelSubDeviceMap()
 					for (auto mode : modes)
 					{
 						Channel2SubDevice[mode][curChannel] = {subDeviceIndex, subDevice};
-						subDevice->TagChannel(mode, curChannel);
 					}
 				}
 			}
