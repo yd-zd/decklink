@@ -20,7 +20,7 @@ nos_get_module("nos.sys.decklink" "1.4" NOS_SYS_DECKLINK_TARGET)
 nos_get_module("nos.sys.mediaio" "0.2" NOS_SYS_MEDIAIO_TARGET)
 
 # nos.sys.vulkan
-nos_get_module("nos.sys.vulkan" "5.8" NOS_SYS_VULKAN_TARGET_5_8)
+nos_get_module("nos.sys.vulkan" "5.24" NOS_SYS_VULKAN_TARGET)
 
 # nos.mediaio
 nos_get_module("nos.mediaio" "2.0" NOS_MEDIAIO_TARGET)
@@ -35,7 +35,7 @@ nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Config" "${CMAKE_CURRENT_SOURCE_
 nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLink)
 
 list(APPEND DEPENDENCIES generated_nosDeckLink_dep_nosMediaIO generated_nosDeckLink_dep_nosUtilities generated_nosDeckLink
-    ${NOS_SYS_DECKLINK_TARGET} ${NOS_SYS_MEDIAIO_TARGET} ${NOS_SYS_VULKAN_TARGET_5_8} ${NOS_PLUGIN_SDK_TARGET})
+    ${NOS_SYS_DECKLINK_TARGET} ${NOS_SYS_MEDIAIO_TARGET} ${NOS_SYS_VULKAN_TARGET} ${NOS_PLUGIN_SDK_TARGET})
 list(APPEND INCLUDE_FOLDERS
     ${EXTERNAL_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
