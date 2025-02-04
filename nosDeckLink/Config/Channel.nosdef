@@ -25,14 +25,6 @@
                     "can_show_as": "OUTPUT_PIN_OR_PROPERTY"
                 },
                 {
-                    "name": "DeviceProfile",
-                    "display_name": "Device Profile",
-                    "type_name": "string",
-                    "show_as": "PROPERTY",
-                    "can_show_as": "PROPERTY_ONLY",
-                    "readonly": true
-                },
-                {
                     "name": "IsOpen",
                     "type_name": "bool",
                     "show_as": "PROPERTY",
@@ -54,12 +46,10 @@
                 },
                 {
                     "name": "Device",
-                    "type_name": "string",
+                    "type_name": "nos.sys.device.DeviceInfo",
                     "show_as": "PROPERTY",
                     "can_show_as": "PROPERTY_ONLY",
-                    "visualizer": {
-                        "type": "COMBO_BOX",
-                        "name": "decklink.DeviceStringList"
+                    "data": { 
                     }
                 },
                 {

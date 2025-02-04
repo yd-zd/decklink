@@ -732,7 +732,7 @@ void Device::RegisterDevice()
 			.VendorName = NOS_NAME("BlackMagic Design"),
 			.ModelName = nos::Name(ModelName),
 			.TopologicalId = uint64_t(GetMainSubDevice()->TopologicalId),
-			.SerialNumber = serialNumber.c_str(),
+			.SerialNumber = nos::Name(serialNumber),
 			.Flags = nosDeviceFlags(deviceFlags),
 		},
 		.DisplayName = nos::Name(ModelName),
