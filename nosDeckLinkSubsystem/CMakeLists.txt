@@ -9,6 +9,9 @@ if (NOT WITH_NODOS_WORKSPACE)
     "Place this repo under nodos-workspace/Module folder and run cmake -S ./Toolchain/CMake -B Build from workspace root.")
 endif()
 
+# Dependencies
+# ------------
+
 # Nodos SDK
 nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
@@ -18,7 +21,8 @@ nos_get_module("nos.sys.mediaio" "0.3" NOS_SYS_MEDIAIO_TARGET)
 nos_find_module_path("nos.sys.mediaio" "0.3" NOS_SYS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_SYS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem)
+# nos.sys.device
+nos_get_module("nos.sys.device" "0.1" NOS_SYS_DEVICE_TARGET)
 
 # DeckLink SDK
 # ------------
@@ -72,7 +76,13 @@ elseif(LINUX)
     target_include_directories(DeckLinkSDK INTERFACE ${DECKLINK_SDK_INCLUDE_DIR})
 endif()
 
-list(APPEND DEPENDENCIES ${NOS_SUBSYSTEM_SDK_TARGET} ${NOS_SYS_MEDIAIO_TARGET} generated_nosDeckLinkSubsystem generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
+# DeckLink Subsystem
+# ------------------
+
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem)
+
+list(APPEND DEPENDENCIES ${NOS_SUBSYSTEM_SDK_TARGET} ${NOS_SYS_MEDIAIO_TARGET} ${NOS_SYS_DEVICE_TARGET} 
+                         generated_nosDeckLinkSubsystem generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
 list(APPEND DEPENDENCIES DeckLinkSDK)
 list(APPEND INCLUDE_FOLDERS
      ${EXTERNAL_DIR}

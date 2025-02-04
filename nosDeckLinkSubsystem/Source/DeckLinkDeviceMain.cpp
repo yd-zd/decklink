@@ -7,11 +7,14 @@
 NOS_INIT_WITH_MIN_REQUIRED_MINOR(0); // APITransition: Reminder that this should be reset after next major!
 
 #include <nosMediaIO/nosMediaIO.h>
+#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
 
 NOS_MEDIAIO_SUBSYSTEM_INIT()
+NOS_SYS_DEVICE_SUBSYSTEM_INIT()
 
 NOS_BEGIN_IMPORT_DEPS()
 	NOS_MEDIAIO_SUBSYSTEM_IMPORT()
+	NOS_SYS_DEVICE_SUBSYSTEM_IMPORT()
 NOS_END_IMPORT_DEPS()
 
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"

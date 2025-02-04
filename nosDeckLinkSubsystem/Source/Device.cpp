@@ -3,11 +3,15 @@
 
 // Nodos
 #include <Nodos/Modules.h>
+#include <Nodos/Name.hpp>
 
 #include "ChannelMapping.inl"
 #include "DeviceManager.hpp"
 #include "EnumConversions.hpp"
 #include "SubDevice.hpp"
+
+// External
+#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
 
 namespace nos::decklink
 {
@@ -237,7 +241,8 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 	uint32_t deviceIndex = 0;
 	for (auto& [groupId, subDevices] : subDevicePerDevice)
 	{
-		devices.push_back(std::make_unique<Device>(deviceIndex, std::move(subDevices)));
+		auto device = std::make_unique<Device>(deviceIndex, std::move(subDevices));
+		devices.push_back(std::move(device));
 		++deviceIndex;
 	}
 
@@ -267,7 +272,9 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 	for (auto& subDevice : SubDevices)
 		subDevice->TagDevice(Index);
 
-	ActiveProfile = GetActiveProfile();
+	auto [profile, deviceInterface] = GetActiveProfileAndInterface();
+	ActiveProfile = profile;
+	DeviceInterfaceType = deviceInterface;
 
 	// Determine which sub-devices are capable of opening the channel
 	PrepareChannelSubDeviceMap();
@@ -283,10 +290,14 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 	}
 
 	SetupNotifications();
+
+	RegisterDevice();
 }
 
 void Device::Destroy()
 {
+	nosDevice->UnregisterDevice(Id);
+	Id = 0;
 	IDeckLink* mainDlDevice = nullptr;
 	if (auto mainSubDevice = GetMainSubDevice())
 		mainDlDevice = mainSubDevice->DLDevice;
@@ -441,19 +452,19 @@ Nullable<IDeckLinkProfileManager> Device::GetProfileManager() const
 	return SubDevices[0]->ProfileManager;
 }
 
-std::optional<BMDProfileID> Device::GetActiveProfile() const
+std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> Device::GetActiveProfileAndInterface() const
 {
 	if (SubDevices.empty())
-		return std::nullopt;
+		return {std::nullopt, std::nullopt};
 	auto mainSubDevice = GetMainSubDevice();
 	if (!mainSubDevice || !mainSubDevice->ProfileManager)
-		return std::nullopt;
+		return {std::nullopt, std::nullopt};
 	IDeckLinkProfileIterator* profileIterator = nullptr;
 	auto res = mainSubDevice->ProfileManager->GetProfiles(&profileIterator);
 	if (res != S_OK)
 	{
 		nosEngine.LogE("Failed to get profile iterator for device: %s", ModelName.c_str());
-		return std::nullopt;
+		return {std::nullopt, std::nullopt};
 	}
 	IDeckLinkProfile* profile = nullptr;
 	while (profileIterator->Next(&profile) == S_OK)
@@ -465,18 +476,22 @@ std::optional<BMDProfileID> Device::GetActiveProfile() const
 			if (profile->QueryInterface(IID_IDeckLinkProfileAttributes, (void**)&profileAttributes) == S_OK)
 			{
 				int64_t profileId{};
+				std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> result;
 				if (profileAttributes->GetInt(BMDDeckLinkProfileID, &profileId) == S_OK)
-				{
-					Release(profileAttributes);
-					Release(profileIterator);
-					return BMDProfileID(profileId);
-				}
+					result.first = BMDProfileID(profileId);
+				int64_t deviceInterface{};
+				if (profileAttributes->GetInt(BMDDeckLinkDeviceInterface, &deviceInterface) == S_OK)
+					result.second = BMDDeviceInterface(deviceInterface);
 				Release(profileAttributes);
+				Release(profile);
+				Release(profileIterator);
+				return result;
 			}
 		}
 		Release(profile);
 	}
-	return std::nullopt;
+	Release(profileIterator);
+	return {std::nullopt, std::nullopt};
 }
 
 void Device::UpdateProfile(BMDProfileID newProfileId)
@@ -704,6 +719,28 @@ void Device::RemoveDeviceStatusCallback(int32_t callbackId)
 {
 	std::unique_lock lock(*StatusCallbacksMutex);
 	DeviceCallbacks.Status.Remove(callbackId);
+}
+
+void Device::RegisterDevice()
+{
+	uint32_t deviceFlags = NOS_DEVICE_FLAG_VIDEO_IO;
+	if (*DeviceInterfaceType == bmdDeviceInterfacePCI)
+		deviceFlags |= NOS_DEVICE_FLAG_PCI;
+	std::string serialNumber = std::to_string(GetMainSubDevice()->PersistentId);
+	nosRegisterDeviceParams params = {
+		.Device = {
+			.VendorName = NOS_NAME("BlackMagic Design"),
+			.ModelName = nos::Name(ModelName),
+			.TopologicalId = uint64_t(GetMainSubDevice()->TopologicalId),
+			.SerialNumber = serialNumber.c_str(),
+			.Flags = nosDeviceFlags(deviceFlags),
+		},
+		.DisplayName = nos::Name(ModelName),
+		.Handle = Index
+	};
+	auto res = nosDevice->RegisterDevice(&params, &Id);
+	if (res != NOS_RESULT_SUCCESS)
+		nosEngine.LogE("Failed to register device: %s", ModelName.c_str());
 }
 
 void Device::PrepareChannelSubDeviceMap()
