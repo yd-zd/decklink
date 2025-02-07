@@ -37,6 +37,16 @@ SubDevice::SubDevice(IDeckLink* deviceInterface)
 		return;
 	}
 
+	dlstring_t serialNumber{};
+	res = Configuration->GetString(bmdDeckLinkConfigDeviceInformationSerialNumber, &serialNumber);
+	if (res != S_OK)
+		nosEngine.LogE("DeckLinkDevice: Failed to get serial number for device: %s", ModelName.c_str());
+	if (serialNumber)
+	{
+		SerialNumber = DlToStdString(serialNumber);
+		DeleteString(serialNumber);
+	}
+
 	BOOL supported{};
 	res = ProfileAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supported);
 	if ((res != S_OK) || (supported == false))
@@ -49,7 +59,7 @@ SubDevice::SubDevice(IDeckLink* deviceInterface)
 	if (res != S_OK)
 		nosEngine.LogE("DeckLinkDevice: Failed to get subdevice index for device: %s", ModelName.c_str());
 
-	dlstring_t handle;
+	dlstring_t handle{};
 	res = ProfileAttributes->GetString(BMDDeckLinkDeviceHandle, &handle);
 	if (res != S_OK)
 		nosEngine.LogE("DeckLinkDevice: Failed to get device handle for device: %s", ModelName.c_str());

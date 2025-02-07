@@ -30,6 +30,7 @@ public:
 	int64_t ProfileId = -1;
 	int64_t DeviceGroupId = -1;
 	int64_t TopologicalId = -1;
+	std::string SerialNumber;
 	std::string Handle;
 
 	// Output

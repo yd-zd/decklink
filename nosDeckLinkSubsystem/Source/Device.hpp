@@ -41,7 +41,7 @@ public:
 
 	Nullable<IDeckLinkProfileManager> GetProfileManager() const;
 
-	std::optional<BMDProfileID> GetActiveProfile() const;
+	std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> GetActiveProfileAndInterface() const;
 	
 	/// Once used, this device should be recreated.
 	void UpdateProfile(BMDProfileID profileId);
@@ -71,11 +71,19 @@ public:
 	int32_t AddDeviceStatusCallback(nosDeckLinkDeviceStatusCallback callback, void* user_data);
 	void RemoveDeviceStatusCallback(int32_t callbackId);
 
+	uint64_t GetId() const { return Id; }
+
 	uint32_t Index = -1;
 	int64_t GroupId = -1;
 	std::string ModelName;
 	std::optional<BMDProfileID> ActiveProfile;
+	std::optional<BMDDeviceInterface> DeviceInterfaceType;
+	
 protected:
+	uint64_t Id = 0; // Unique identifier for the device given by device subsystem.
+
+	void RegisterDevice();
+
 	void PrepareChannelSubDeviceMap();
 	Nullable<IDeckLinkStatus> StatusInterface = nullptr;
 	Nullable<IDeckLinkNotification> NotificationInterface = nullptr;

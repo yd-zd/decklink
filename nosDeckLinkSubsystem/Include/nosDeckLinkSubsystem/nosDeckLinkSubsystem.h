@@ -15,6 +15,8 @@ extern "C"
 // nos.sys.mediaio
 #include <nosMediaIO/nosMediaIO.h>
 
+#define NOS_DECKLINK_VENDOR_NAME "BlackMagic Design DeckLink"
+
 typedef struct nosDeckLinkDeviceDesc {
 	uint32_t DeviceIndex;
 	char UniqueDisplayName[256];
@@ -179,8 +181,8 @@ typedef struct nosDeckLinkSubsystem {
 
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 4
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 2
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 0
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;
