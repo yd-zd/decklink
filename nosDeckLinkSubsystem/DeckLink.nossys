@@ -2,10 +2,10 @@
 	"info": {
 		"id": {
 			"name": "nos.sys.decklink",
-			"version": "1.5.1"
+			"version": "2.0.0"
 		},
 		"display_name": "DeckLink Subsystem",
-		"description": "A Nodos subsystem for controlling BlackMagic DeckLink devices.",
+		"description": "A Nodos subsystem for controlling BlackMagic Design DeckLink devices.",
 		"dependencies": [
 			{
 				"name": "nos.sys.mediaio",

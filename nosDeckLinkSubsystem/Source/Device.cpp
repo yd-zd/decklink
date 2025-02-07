@@ -729,7 +729,7 @@ void Device::RegisterDevice()
 	std::string serialNumber = std::to_string(GetMainSubDevice()->PersistentId);
 	nosRegisterDeviceParams params = {
 		.Device = {
-			.VendorName = NOS_NAME("BlackMagic Design"),
+			.VendorName = NOS_NAME(NOS_DECKLINK_VENDOR_NAME),
 			.ModelName = nos::Name(ModelName),
 			.TopologicalId = uint64_t(GetMainSubDevice()->TopologicalId),
 			.SerialNumber = nos::Name(serialNumber),
