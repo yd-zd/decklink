@@ -4,7 +4,7 @@
 
 #include "EnumConversions.hpp"
 
-NOS_INIT_WITH_MIN_REQUIRED_MINOR(0); // APITransition: Reminder that this should be reset after next major!
+NOS_INIT();
 
 #include <nosMediaIO/nosMediaIO.h>
 #include <nosDeviceSubsystem/nosDeviceSubsystem.h>

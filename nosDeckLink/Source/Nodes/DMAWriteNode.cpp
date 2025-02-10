@@ -14,7 +14,7 @@ namespace nos::decklink
 	
 struct DMAWriteNode : NodeContext
 {
-	DMAWriteNode(const nosFbNode* node) : NodeContext(node)
+	DMAWriteNode(nosFbNodePtr node) : NodeContext(node)
 	{
 	}
 
@@ -27,7 +27,7 @@ struct DMAWriteNode : NodeContext
 		};
 	}
 
-	void OnPinValueChanged(nos::Name pinName, nosUUID pinId, nosBuffer value) override
+	void OnPinValueChanged(nos::Name pinName, uuid const& pinId, nosBuffer value) override
 	{ 
 		if (pinName == NOS_NAME_STATIC("ChannelId"))
 		{
