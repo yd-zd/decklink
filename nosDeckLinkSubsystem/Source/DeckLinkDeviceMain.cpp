@@ -21,6 +21,7 @@ NOS_END_IMPORT_DEPS()
 #include "Device.hpp"
 #include "SubDevice.hpp"
 #include "DeviceManager.hpp"
+#include <Nodos/Helpers.hpp>
 
 namespace nos::decklink
 {
@@ -575,20 +576,18 @@ nosResult NOSAPI_CALL Initialize()
 		catch (std::exception& e)
 		{
 		}
-		nosBuffer settingsBuffer{};
-		auto res = nosEngine.GetAssetAsType(nosEngine.Module->Id, relativeSettingsPath.string().c_str(), NOS_NAME("nos.sys.decklink.Settings"), &settingsBuffer);
-		if (res != NOS_RESULT_SUCCESS)
+		if (auto settingsBuffer = nos::GetAssetAsType(settingsFilePath.string().c_str(),
+													  NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
 		{
-			messageString = "Failed to load settings file at " + settingsFilePath.string() + ". Using default settings.";
-		}
-		else
-		{
-			DeviceManager::Instance()->LoadSettings(*flatbuffers::GetRoot<sys::decklink::Settings>(settingsBuffer.Data));
+			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
 			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
 			messageString = "Using SDI port mappings from " + settingsFilePath.string();
 		}
-		nosEngine.FreeBuffer(&settingsBuffer);
+		else
+			messageString =
+				"Failed to load settings file at " + settingsFilePath.string() + ". Using default settings.";
+
 	}
 	msg.Message = messageString.c_str();
 	nosEngine.SendModuleStatusMessageUpdate(&msg);
