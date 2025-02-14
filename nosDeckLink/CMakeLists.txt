@@ -29,8 +29,8 @@ nos_find_module_path("nos.mediaio" "2.5" NOS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
 
 # nos.utilities
-nos_get_module("nos.utilities" "3.5" NOS_UTILITIES_TARGET)
-nos_find_module_path("nos.utilities" "3.5" NOS_UTILITIES_PATH)
+nos_get_module("nos.utilities" "3.7" NOS_UTILITIES_TARGET)
+nos_find_module_path("nos.utilities" "3.7" NOS_UTILITIES_PATH)
 nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosUtilities)
 
 # nos.sys.device
