@@ -3,7 +3,7 @@
     {
       "class_name": "Input",
       "menu_info": {
-        "display_name": "DeckLink In",
+        "display_name": "Input",
         "category": "Device|DeckLink"
       },
       "node": {

@@ -1,8 +1,9 @@
 {
   "nodes": [
     {
+      "class_name": "Output",
       "menu_info": {
-        "display_name": "DeckLink Out",
+        "display_name": "Output",
         "category": "Device|DeckLink"
       },
       "node": {
