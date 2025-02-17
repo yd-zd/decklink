@@ -2,31 +2,36 @@
     "nodes": [
         {
             "class_name": "DMAWrite",
-            "display_name": "DeckLink DMA Write",
-            "contents_type": "Job",
-            "description": "Sends YCbCr frames to the specified channel",
-            "pins": [
-                {
-                    "name": "Run",
-                    "type_name": "nos.exe",
-                    "show_as": "INPUT_PIN",
-                    "can_show_as": "INPUT_PIN_ONLY"
-                },
-                {
-                    "name": "ChannelId",
-                    "type_name": "nos.decklink.ChannelId",
-                    "show_as": "INPUT_PIN",
-                    "can_show_as": "INPUT_PIN_ONLY"
-                },
-                {
-                    "name": "Input",
-                    "type_name": "nos.sys.vulkan.Buffer",
-                    "show_as": "INPUT_PIN",
-                    "can_show_as": "INPUT_PIN_ONLY"
-                }
-            ],
-            "functions": [
-            ]
+            "menu_info": {
+                "display_name": "DMA Write",
+                "category": "Device|DeckLink"
+            },
+            "node": {
+                "display_name": "DeckLink DMA Write",
+                "contents_type": "Job",
+                "description": "Sends YCbCr frames to the specified channel",
+                "pins": [
+                    {
+                        "name": "Run",
+                        "type_name": "nos.exe",
+                        "show_as": "INPUT_PIN",
+                        "can_show_as": "INPUT_PIN_ONLY"
+                    },
+                    {
+                        "name": "ChannelId",
+                        "type_name": "nos.decklink.ChannelId",
+                        "show_as": "INPUT_PIN",
+                        "can_show_as": "INPUT_PIN_ONLY"
+                    },
+                    {
+                        "name": "Input",
+                        "type_name": "nos.sys.vulkan.Buffer",
+                        "show_as": "INPUT_PIN",
+                        "can_show_as": "INPUT_PIN_ONLY"
+                    }
+                ],
+                "functions": []
+            }
         }
     ]
 }

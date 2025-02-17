@@ -14,7 +14,7 @@ namespace nos::decklink
     
 struct DMAReadNode : NodeContext
 {
-	DMAReadNode(const nosFbNode* node) : NodeContext(node)
+	DMAReadNode(nosFbNodePtr node) : NodeContext(node)
 	{
 	}
 

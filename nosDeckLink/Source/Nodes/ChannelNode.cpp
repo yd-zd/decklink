@@ -55,17 +55,17 @@ struct ChannelHandler
 	bool ShouldOpen = true;
 	bool IsOpen = false;
 	bool IsStreamStarted = false;
-	nosUUID IsOpenPinId;
-	nosUUID DevicePinId;
-	nosUUID ChannelNamePinId;
-	nosUUID VideoScanTypePinId;
-	nosUUID OutChannelPinId;
-	nosUUID OutResolutionPinId;
-	nosUUID OutPixelFormatPinId;
-	nosUUID OutChannelIsInterlacedPinId;
-	nosUUID ResolutionPinId;
-	nosUUID FrameRatePinId;
-	nosUUID PixelFormatPinId;
+	uuid IsOpenPinId;
+	uuid DevicePinId;
+	uuid ChannelNamePinId;
+	uuid VideoScanTypePinId;
+	uuid OutChannelPinId;
+	uuid OutResolutionPinId;
+	uuid OutPixelFormatPinId;
+	uuid OutChannelIsInterlacedPinId;
+	uuid ResolutionPinId;
+	uuid FrameRatePinId;
+	uuid PixelFormatPinId;
 	nosMediaIOVideoScanType VideoScanType = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; // Default value
 	int32_t DeviceIndex = -1;
 	std::string ModelName;
@@ -366,7 +366,7 @@ void DeviceStatusCallback(void* userData, const nosDeckLinkDeviceStatus* status)
 class ChannelNode : public nos::NodeContext
 {
 public:
-	ChannelNode(const nosFbNode* node) : NodeContext(node), Channel(*this)
+	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
 	{
 		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetVideoScanTypeStringListName()});
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = GetDeviceNamedValueName(), .hide_value = true});
@@ -642,11 +642,11 @@ public:
 		return Channel.IsOpen ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
 	}
 	
-	std::string GetChannelStringListName() { return "decklink.ChannelList." + UUID2STR(NodeId); }
-	std::string GetResolutionStringListName() { return "decklink.ResolutionList." + UUID2STR(NodeId); }
-	std::string GetFrameRateStringListName() { return "decklink.FrameRateList." + UUID2STR(NodeId); }
-	std::string GetPixelFormatStringListName() { return "decklink.PixelFormatList." + UUID2STR(NodeId); }
-	std::string GetVideoScanTypeStringListName() { return "decklink.VideoScanList." + UUID2STR(NodeId); }
+	std::string GetChannelStringListName() { return "decklink.ChannelList." + std::string(NodeId); }
+	std::string GetResolutionStringListName() { return "decklink.ResolutionList." + std::string(NodeId); }
+	std::string GetFrameRateStringListName() { return "decklink.FrameRateList." + std::string(NodeId); }
+	std::string GetPixelFormatStringListName() { return "decklink.PixelFormatList." + std::string(NodeId); }
+	std::string GetVideoScanTypeStringListName() { return "decklink.VideoScanList." + std::string(NodeId); }
 
 	std::string GetDeviceNamedValueName()
 	{

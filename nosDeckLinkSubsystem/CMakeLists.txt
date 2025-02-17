@@ -12,17 +12,18 @@ endif()
 # Dependencies
 # ------------
 
+add_compile_definitions(NOS_DISABLE_DEPRECATED)
 # Nodos SDK
 nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
 
 # nos.sys.mediaio
-nos_get_module("nos.sys.mediaio" "0.3" NOS_SYS_MEDIAIO_TARGET)
-nos_find_module_path("nos.sys.mediaio" "0.3" NOS_SYS_MEDIAIO_PATH)
+nos_get_module("nos.sys.mediaio" "0.4" NOS_SYS_MEDIAIO_TARGET)
+nos_find_module_path("nos.sys.mediaio" "0.4" NOS_SYS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_SYS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
 
 # nos.sys.device
-nos_get_module("nos.sys.device" "0.1" NOS_SYS_DEVICE_TARGET)
+nos_get_module("nos.sys.device" "0.2" NOS_SYS_DEVICE_TARGET)
 
 # DeckLink SDK
 # ------------

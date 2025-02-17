@@ -6,7 +6,7 @@
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
 #include <nosMediaIO/nosMediaIO.h>
 
-NOS_INIT_WITH_MIN_REQUIRED_MINOR(12)
+NOS_INIT()
 NOS_VULKAN_INIT()
 NOS_DECKLINK_DEVICE_SUBSYSTEM_INIT()
 NOS_MEDIAIO_SUBSYSTEM_INIT()
