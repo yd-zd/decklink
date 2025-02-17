@@ -369,7 +369,7 @@ public:
 	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
 	{
 		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetVideoScanTypeStringListName()});
-		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = GetDeviceNamedValueName(), .hide_value = true});
+		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
 		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetChannelStringListName()});
 		SetPinVisualizer(NSN_Resolution, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetResolutionStringListName()});
 		SetPinVisualizer(NSN_FrameRate, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetFrameRateStringListName()});
@@ -648,28 +648,9 @@ public:
 	std::string GetPixelFormatStringListName() { return "decklink.PixelFormatList." + std::string(NodeId); }
 	std::string GetVideoScanTypeStringListName() { return "decklink.VideoScanList." + std::string(NodeId); }
 
-	std::string GetDeviceNamedValueName()
-	{
-		nosName outName{};
-		auto res = nosDevice->GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME), &outName);
-		assert(res == NOS_RESULT_SUCCESS);
-		return nos::Name(outName).AsString();
-	}
-
 	std::vector<sys::device::TDeviceInfo> GetPossibleDevices()
 	{
-		uint64_t count{};
-		nosDevice->GetDevicesWithVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME), nullptr, &count);
-		std::vector<nosDeviceId> devices(count);
-		nosDevice->GetDevicesWithVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME), devices.data(), &count);
-		std::vector<sys::device::TDeviceInfo> deviceInfos;
-		for (auto& device : devices)
-		{
-			nosDeviceInfo info{};
-			nosDevice->GetDeviceInfo(device, &info);
-			deviceInfos.push_back(sys::device::ConvertDeviceInfo(info));
-		}
-		return deviceInfos;
+		return sys::device::GetDevicesWithVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME));
 	}
 
 	std::vector<std::string> GetPossibleChannelNames() 

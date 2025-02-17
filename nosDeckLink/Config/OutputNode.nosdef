@@ -3,7 +3,7 @@
     {
       "class_name": "Output",
       "menu_info": {
-        "display_name": "Output",
+        "display_name": "DeckLink Out",
         "category": "Device|DeckLink"
       },
       "node": {
