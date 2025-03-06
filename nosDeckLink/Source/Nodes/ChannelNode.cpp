@@ -616,9 +616,9 @@ public:
 		params->MarkAllOutsDirty = NOS_FALSE;
 		{
 			std::unique_lock lock(Channel.DecklinkThreadMutex);
-			if (Channel.DeckLinkThreadStatus.DropDetectionEnabled == params->IsFreeRun)
+			if (Channel.DeckLinkThreadStatus.DropDetectionEnabled == (params->TimingInfo.TimingMode == NOS_EXECUTION_TIMING_MODE_VARIABLE_STEP))
 			{
-				if (params->IsFreeRun)
+				if (params->TimingInfo.TimingMode == NOS_EXECUTION_TIMING_MODE_VARIABLE_STEP)
 					Channel.DeckLinkThreadStatus = {};
 				else
 				{
