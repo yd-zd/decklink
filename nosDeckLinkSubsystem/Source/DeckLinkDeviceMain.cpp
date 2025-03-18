@@ -557,15 +557,18 @@ nosResult NOSAPI_CALL Initialize()
 	std::filesystem::path relativeSettingsPath = "Config/Settings.json";
 	auto settingsFilePath = std::filesystem::path(nosEngine.Module->RootFolderPath) / relativeSettingsPath;
 	bool settingsLoaded = false;
-	std::string messageString;
+	std::string messageString, messageDetailsString;
 	nosModuleStatusMessage msg {
 		.ModuleId = nosEngine.Module->Id,
 		.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
-		.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_WARNING
+		.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_WARNING,
+		.PopupTimeoutSeconds = 10
 	};
+	std::string settingsFileRef = std::string("[Settings file](") + NOS_URI_EXPLORER_PREFIX + nos::PathToUtf8(settingsFilePath) + ")";
 	if (!std::filesystem::exists(settingsFilePath))
 	{
-		messageString = "Settings file at " + settingsFilePath.string() + " not found. Using default settings.";
+		messageString = "Using default settings";
+		messageDetailsString = settingsFileRef + " not found.";
 	}
 	else
 	{
@@ -577,19 +580,22 @@ nosResult NOSAPI_CALL Initialize()
 		{
 		}
 		if (auto settingsBuffer = nos::GetAssetAsType(settingsFilePath.string().c_str(),
-													  NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
+			NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
 		{
 			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
 			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
-			messageString = "Using SDI port mappings from " + settingsFilePath.string();
+			messageString = "Using SDI port mappings";
+			messageDetailsString = "Mappings are from " + messageDetailsString;
 		}
-		else
-			messageString =
-				"Failed to load settings file at " + settingsFilePath.string() + ". Using default settings.";
+		else {
+			messageString = "Using default settings";
+			messageDetailsString = "Failed to load " + settingsFileRef;
+		}
 
 	}
 	msg.Message = messageString.c_str();
+	msg.Details = messageDetailsString.c_str();
 	nosEngine.SendModuleStatusMessageUpdate(&msg);
 	if (!settingsLoaded)
 	{
