@@ -586,7 +586,7 @@ nosResult NOSAPI_CALL Initialize()
 			settingsLoaded = true;
 			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
 			messageString = "Using SDI port mappings";
-			messageDetailsString = "Mappings are from " + messageDetailsString;
+			messageDetailsString = "Mappings are from " + settingsFileRef;
 		}
 		else {
 			messageString = "Using default settings";
