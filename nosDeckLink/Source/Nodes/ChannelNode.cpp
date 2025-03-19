@@ -145,7 +145,7 @@ struct ChannelHandler
 			DeckLinkThreadStatus.FramesSinceLastDrop = 0;
 			DeckLinkThreadStatus.DropDetected = true;
 			nosEngine.LogI("DeckLink %s dropped a frame", DeckLinkThreadStatus.ChannelName.c_str());
-			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount));
+			SetStatus( StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount), "", 4, true);
 			UpdateStatus();
 			break;
 		}
@@ -207,7 +207,9 @@ struct ChannelHandler
 			auto& message = status->Messages.List[i];
 			fb::TNodeStatusMessage msg {
 				.text = message.Message,
-				.type = (fb::NodeStatusMessageType)message.Type
+				.type = (fb::NodeStatusMessageType)message.Type,
+				.details = "",
+				.timeout_seconds = 5
 			};
 			MiscMessages.emplace_back(std::move(msg));
 		}
@@ -306,7 +308,7 @@ struct ChannelHandler
 		if (refString.empty())
 			ClearStatus(StatusType::Reference);
 		else
-			SetStatus(StatusType::Reference, type, refString);
+			SetStatus(StatusType::Reference, type, refString, "", 5, false);
 	}
 
 	void UpdateStatusAndOutPins()
@@ -335,7 +337,7 @@ struct ChannelHandler
 		Profile
 	};
 
-	void SetStatus(StatusType statusType, fb::NodeStatusMessageType msgType, std::string text);
+	void SetStatus(StatusType statusType, fb::NodeStatusMessageType msgType, std::string text, std::string details, uint64_t messageTimeout, bool popup);
 	void ClearStatus(StatusType statusType);
 	
 	std::map<StatusType, fb::TNodeStatusMessage> StatusMessages;
@@ -870,7 +872,7 @@ void ChannelHandler::UpdateChannelStatus()
 		}
 		Node.SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ORPHAN, statusText.c_str());
 	}
-	SetStatus(StatusType::Channel, type, statusText);
+	SetStatus(StatusType::Channel, type, statusText, "", 5, false);
 	UpdateStatus();
 }
 
@@ -878,10 +880,10 @@ void ChannelHandler::UpdateStatus()
 {
 	std::vector<fb::TNodeStatusMessage> messages;
 	if (DeviceIndex == -1)
-		messages.push_back(fb::TNodeStatusMessage{{}, "No device selected", fb::NodeStatusMessageType::WARNING});
+		messages.push_back(fb::TNodeStatusMessage{{}, "No device selected", fb::NodeStatusMessageType::WARNING, "", 5});
 	else
 	{
-		messages.push_back(fb::TNodeStatusMessage{ {}, ModelName, fb::NodeStatusMessageType::INFO });
+		messages.push_back(fb::TNodeStatusMessage{ {}, ModelName, fb::NodeStatusMessageType::INFO, "", 5});
 	}
 	{
 		std::unique_lock lock(StatusMutex);
@@ -893,10 +895,10 @@ void ChannelHandler::UpdateStatus()
 	Node.SetNodeStatusMessages(messages);
 }
 
-void ChannelHandler::SetStatus(StatusType statusType, fb::NodeStatusMessageType msgType, std::string text)
+void ChannelHandler::SetStatus(StatusType statusType, fb::NodeStatusMessageType msgType, std::string text, std::string details, uint64_t messageTimeout, bool popup)
 {
 	std::unique_lock lock(StatusMutex);
-	StatusMessages[statusType] = fb::TNodeStatusMessage{{}, std::move(text), msgType};
+	StatusMessages[statusType] = fb::TNodeStatusMessage{{}, std::move(text), msgType, std::move(details), messageTimeout, true, popup};
 	UpdateStatus();
 }
 
