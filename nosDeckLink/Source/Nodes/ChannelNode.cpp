@@ -209,7 +209,8 @@ struct ChannelHandler
 				.text = message.Message,
 				.type = (fb::NodeStatusMessageType)message.Type,
 				.details = "",
-				.timeout_seconds = 5
+				.popup_timeout_seconds = 5,
+				.popup = true,
 			};
 			MiscMessages.emplace_back(std::move(msg));
 		}
