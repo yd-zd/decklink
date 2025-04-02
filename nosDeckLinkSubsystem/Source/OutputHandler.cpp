@@ -162,7 +162,7 @@ bool OutputHandler::Close()
 		if (!Closed)
 		{
 			nosEngine.LogE("SubDevice: Timeout waiting for playback to stop");
-			NOS_SOFT_CHECK(false)
+			NOS_SOFT_CHECK(false, "Failed to close output");
 		}
 	}
 	Interface->SetScheduledFrameCompletionCallback(nullptr);
