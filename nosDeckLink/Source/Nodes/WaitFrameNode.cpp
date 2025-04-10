@@ -15,10 +15,6 @@ namespace nos::decklink
 	
 struct WaitFrameNode : NodeContext
 {
-	WaitFrameNode(nosFbNodePtr node) : NodeContext(node)
-	{
-	}
-
 	void OnPinValueChanged(nos::Name pinName, uuid const& pinId, nosBuffer value) override
 	{ 
 		if (pinName == NOS_NAME("ChannelId"))

@@ -107,6 +107,10 @@ struct ChannelHandler
 
 	ChannelHandler(ChannelNode& node) : Node(node)
 	{
+	}
+
+	void Init()
+	{
 		UpdateChannelStatus();
 	}
 
@@ -369,8 +373,10 @@ void DeviceStatusCallback(void* userData, const nosDeckLinkDeviceStatus* status)
 class ChannelNode : public nos::NodeContext
 {
 public:
-	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
+	ChannelNode() : Channel(*this){}
+	nosResult OnCreate(nosFbNodePtr node) override
 	{
+		Channel.Init();
 		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetVideoScanTypeStringListName()});
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
 		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetChannelStringListName()});
@@ -518,6 +524,7 @@ public:
 			}
 			UpdateAfter(ChangedPinType::PixelFormat, !oldValue);
 		});
+		return NOS_RESULT_SUCCESS;
 	}
 
 	template <typename T>
