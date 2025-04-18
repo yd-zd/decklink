@@ -84,15 +84,15 @@ bool DeviceManager::ValidatePortMappings()
 		nosEngine.LogE("DeviceManager: %s", errorMsg);
 		char completeMsg[256];
 		std::snprintf(completeMsg, sizeof(completeMsg), "%s." , errorMsg);;
-		nosModuleStatusMessage msg {
-			.ModuleId = nosEngine.Module->Id,
-			.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
-			.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_ERROR,
+		nosPluginStatusMessage msg {
+			.PluginId = nosEngine.Plugin->Id,
+			.UpdateType = NOS_PLUGIN_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+			.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_ERROR,
 			.Message = "Using default settings",
 			.Details = completeMsg,
 			.PopupTimeoutSeconds = 10
 		};
-		nosEngine.SendModuleStatusMessageUpdate(&msg);
+		nosEngine.SendPluginStatusMessageUpdate(&msg);
 	}
 	return success;
 }

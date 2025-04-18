@@ -1,5 +1,5 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <Nodos/Name.hpp>
 
 #include "EnumConversions.hpp"
@@ -555,13 +555,13 @@ nosResult NOSAPI_CALL Initialize()
 {
 	// Get the settings
 	std::filesystem::path relativeSettingsPath = "Config/Settings.json";
-	auto settingsFilePath = std::filesystem::path(nosEngine.Module->RootFolderPath) / relativeSettingsPath;
+	auto settingsFilePath = std::filesystem::path(nosEngine.Plugin->RootFolderPath) / relativeSettingsPath;
 	bool settingsLoaded = false;
 	std::string messageString, messageDetailsString;
-	nosModuleStatusMessage msg {
-		.ModuleId = nosEngine.Module->Id,
-		.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
-		.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_WARNING,
+	nosPluginStatusMessage msg {
+		.PluginId = nosEngine.Plugin->Id,
+		.UpdateType = NOS_PLUGIN_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+		.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_WARNING,
 		.PopupTimeoutSeconds = 10
 	};
 	std::string settingsFileRef = std::string("[Settings file](") + NOS_URI_EXPLORER_PREFIX + nos::PathToUtf8(settingsFilePath) + ")";
@@ -584,7 +584,7 @@ nosResult NOSAPI_CALL Initialize()
 		{
 			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
-			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
+			msg.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_INFO;
 			messageString = "Using SDI port mappings";
 			messageDetailsString = "Mappings are from " + settingsFileRef;
 		}
@@ -596,7 +596,7 @@ nosResult NOSAPI_CALL Initialize()
 	}
 	msg.Message = messageString.c_str();
 	msg.Details = messageDetailsString.c_str();
-	nosEngine.SendModuleStatusMessageUpdate(&msg);
+	nosEngine.SendPluginStatusMessageUpdate(&msg);
 	if (!settingsLoaded)
 	{
 		DeviceManager::Instance()->LoadDefaultSettings();
@@ -607,11 +607,11 @@ nosResult NOSAPI_CALL Initialize()
 
 extern "C"
 {
-NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subsystemFunctions)
+NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* subsystemFunctions)
 {
 	subsystemFunctions->OnRequest = Export;
 	subsystemFunctions->Initialize = Initialize;
-	subsystemFunctions->OnPreUnloadSubsystem = UnloadSubsystem;
+	subsystemFunctions->OnPreUnloadPlugin = UnloadSubsystem;
 	return NOS_RESULT_SUCCESS;
 }
 }
