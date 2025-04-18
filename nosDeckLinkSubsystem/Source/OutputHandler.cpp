@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include "OutputHandler.hpp"
 
-#include <Nodos/Modules.h>
+#include <Nodos/PluginAPI.h>
 #include <nosUtil/Stopwatch.hpp>
 
 #include "EnumConversions.hpp"
