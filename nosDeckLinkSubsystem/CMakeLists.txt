@@ -18,8 +18,8 @@ nos_find_plugin_sdk("38.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
 
 # nos.sys.mediaio
-nos_get_module("nos.sys.mediaio" "0.10" NOS_SYS_MEDIAIO_TARGET)
-nos_find_module_path("nos.sys.mediaio" "0.10" NOS_SYS_MEDIAIO_PATH)
+nos_get_module("nos.sys.mediaio" "0.11" NOS_SYS_MEDIAIO_TARGET)
+nos_find_module_path("nos.sys.mediaio" "0.11" NOS_SYS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_SYS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
 
 # nos.sys.device
