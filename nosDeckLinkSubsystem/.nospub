@@ -10,6 +10,7 @@
     ],
     "trigger_publish_globs": [
         "Source/**",
-        "CMakeLists.txt"
+        "CMakeLists.txt",
+		"*.nossys"
     ]
 }
