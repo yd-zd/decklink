@@ -25,7 +25,7 @@ NOS_END_IMPORT_DEPS()
 
 namespace nos::decklink
 {
-std::unordered_map<uint32_t, nosDeckLinkSubsystem*> GExportedSubsystemVersions;
+std::unordered_map<uint32_t, nosDeckLinkSubsystem*> GExportedAPIVersions;
 
 nosResult NOSAPI_CALL UnloadSubsystem()
 {
@@ -511,8 +511,8 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
-	auto it = GExportedSubsystemVersions.find(minorVersion);
-	if (it != GExportedSubsystemVersions.end())
+	auto it = GExportedAPIVersions.find(minorVersion);
+	if (it != GExportedAPIVersions.end())
 	{
 		*outSubsystemContext = it->second;
 		return NOS_RESULT_SUCCESS;
@@ -547,7 +547,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
 	*outSubsystemContext = subsystem;
-	GExportedSubsystemVersions[minorVersion] = subsystem;
+	GExportedAPIVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -609,7 +609,7 @@ extern "C"
 {
 NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* subsystemFunctions)
 {
-	subsystemFunctions->OnRequest = Export;
+	subsystemFunctions->OnRequestAPI = Export;
 	subsystemFunctions->Initialize = Initialize;
 	subsystemFunctions->OnPreUnloadPlugin = UnloadSubsystem;
 	return NOS_RESULT_SUCCESS;
