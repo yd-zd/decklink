@@ -4,16 +4,16 @@
 
 #include "EnumConversions.hpp"
 
-NOS_INIT();
+NOS_INIT()
 
 #include <nosMediaIO/nosMediaIO.h>
 #include <nosDeviceSubsystem/nosDeviceSubsystem.h>
 
-NOS_MEDIAIO_SUBSYSTEM_INIT()
+NOS_MEDIAIO_PLUGIN_INIT()
 NOS_DEVICE_SUBSYSTEM_INIT()
 
 NOS_BEGIN_IMPORT_DEPS()
-	NOS_MEDIAIO_SUBSYSTEM_IMPORT()
+	NOS_MEDIAIO_PLUGIN_IMPORT()
 	NOS_DEVICE_SUBSYSTEM_IMPORT()
 NOS_END_IMPORT_DEPS()
 

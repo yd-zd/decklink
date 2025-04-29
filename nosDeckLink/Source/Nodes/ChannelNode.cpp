@@ -148,8 +148,8 @@ struct ChannelHandler
 			++DropCount;
 			DeckLinkThreadStatus.FramesSinceLastDrop = 0;
 			DeckLinkThreadStatus.DropDetected = true;
-			nosEngine.LogI("DeckLink %s dropped a frame", DeckLinkThreadStatus.ChannelName.c_str());
-			SetStatus( StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount), "", 4, true);
+			nosEngine.LogW("DeckLink %s dropped a frame", DeckLinkThreadStatus.ChannelName.c_str());
+			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount), "", 4, true);
 			UpdateStatus();
 			break;
 		}
