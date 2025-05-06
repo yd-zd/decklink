@@ -44,7 +44,8 @@
 		"Config/WaitFrame.nosdef",
 		"Config/Channel.nosdef",
 		"Config/OutputNode.nosdef",
-		"Config/InputNode.nosdef"
+		"Config/InputNode.nosdef",
+		"Config/FillKey.nosdef"
 	],
 	"custom_types": [
 		"Config/DeckLink.fbs"
