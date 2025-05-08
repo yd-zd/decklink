@@ -2,7 +2,7 @@
 	"info": {
 		"id": {
 			"name": "nos.decklink",
-			"version": "1.12.0"
+			"version": "1.12.1"
 		},
 		"display_name": "DeckLink",
 		"description": "Video I/O plugin for BlackMagic Design DeckLink cards.",
