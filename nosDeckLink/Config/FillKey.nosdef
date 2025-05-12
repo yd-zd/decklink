@@ -242,10 +242,10 @@
             "can_show_as": "INPUT_PIN_OR_PROPERTY",
             "visualizer": {
             },
-            "data": 2,
+            "data": 4,
             "min": 1,
             "max": 120,
-            "def": 2,
+            "def": 4,
             "step": 1.19,
             "meta_data_map": [
               { "key": "AdvancedProperty", "value": "false" },
@@ -467,10 +467,10 @@
             "can_show_as": "INPUT_PIN_OR_PROPERTY",
             "visualizer": {
             },
-            "data": 2,
+            "data": 4,
             "min": 1,
             "max": 120,
-            "def": 2,
+            "def": 4,
             "step": 1.19,
             "meta_data_map": [
               { "key": "AdvancedProperty", "value": "false" },
@@ -685,10 +685,10 @@
                   "can_show_as": "INPUT_PIN_OR_PROPERTY",
                   "visualizer": {
                   },
-                  "data": 2,
+                  "data": 4,
                   "min": 1,
                   "max": 120,
-                  "def": 2,
+                  "def": 4,
                   "step": 1.19,
                   "meta_data_map": [
                     { "key": "AdvancedProperty", "value": "false" }
@@ -839,10 +839,10 @@
                         "can_show_as": "INPUT_PIN_OR_PROPERTY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" }
@@ -3340,10 +3340,10 @@
                         "can_show_as": "OUTPUT_PIN_ONLY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" }
@@ -3359,14 +3359,14 @@
                         "can_show_as": "INPUT_PIN_OR_PROPERTY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "referred_by": [
                           "06d05c63-b793-4c6f-b18f-d127a0e0b224",
                           "f7eae89c-79fa-4bd4-ad4c-7ad304fbd5ae"
                         ],
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" },
@@ -5205,10 +5205,10 @@
                   "can_show_as": "INPUT_PIN_OR_PROPERTY",
                   "visualizer": {
                   },
-                  "data": 2,
+                  "data": 4,
                   "min": 1,
                   "max": 120,
-                  "def": 2,
+                  "def": 4,
                   "step": 1.19,
                   "meta_data_map": [
                     { "key": "AdvancedProperty", "value": "false" }
@@ -5365,10 +5365,10 @@
                         "can_show_as": "INPUT_PIN_OR_PROPERTY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" }
@@ -7811,10 +7811,10 @@
                         "can_show_as": "OUTPUT_PIN_ONLY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" }
@@ -7830,14 +7830,14 @@
                         "can_show_as": "INPUT_PIN_OR_PROPERTY",
                         "visualizer": {
                         },
-                        "data": 2,
+                        "data": 4,
                         "referred_by": [
                           "5bb5bbd6-14e8-4c00-a4e2-d530417d367f",
                           "64126113-1e5d-4701-a5fb-97d3e65b50bd"
                         ],
                         "min": 1,
                         "max": 120,
-                        "def": 2,
+                        "def": 4,
                         "step": 1.19,
                         "meta_data_map": [
                           { "key": "AdvancedProperty", "value": "false" },
