@@ -102,6 +102,7 @@ InputHandler::~InputHandler()
 
 void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame)
 {
+	LastWaitedFrameTimingInfo.FramesArrived++;
 	BMDTimeValue frameTime, frameDuration;
 	auto res = frame->GetStreamTime(&frameTime, &frameDuration, TimeScale);
 	if (res != S_OK)

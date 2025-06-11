@@ -509,6 +509,25 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult NOSAPI_CALL GetLastWaitedFrameTimingInfo(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkFrameTimingInfo* outTimingInfo)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto timingInfo = device->GetLastWaitedFrameTimingInfo(channel);
+	if (!timingInfo)
+	{
+		nosEngine.LogE("No timing info available for channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	*outTimingInfo = *timingInfo;
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -546,6 +565,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetOutputReferenceStatus = GetOutputReferenceStatus;
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
+	subsystem->GetLastWaitedFrameTimingInfo = GetLastWaitedFrameTimingInfo;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

@@ -56,6 +56,8 @@ public:
 
 	constexpr IOHandlerBaseI& GetIO(nosMediaIODirection dir);
 
+	nosDeckLinkFrameTimingInfo GetLastWaitedFrameTimingInfo(nosMediaIODirection dir);
+
 	IDeckLinkProfileManager* ProfileManager = nullptr;
 	IDeckLink* DLDevice = nullptr;
 protected:

@@ -315,6 +315,11 @@ constexpr IOHandlerBaseI& SubDevice::GetIO(nosMediaIODirection dir)
 	return Output;
 }
 
+nosDeckLinkFrameTimingInfo SubDevice::GetLastWaitedFrameTimingInfo(nosMediaIODirection dir)
+{
+	return GetIO(dir).LastWaitedFrameTimingInfo;
+}
+
 bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout)
 {
 	return GetIO(dir).WaitFrame(timeout);

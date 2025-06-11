@@ -166,8 +166,9 @@ struct IOHandlerBaseI
 
 	BMDTimeValue FrameDuration = 0;
 	BMDTimeScale TimeScale = 0;
-	
-	uint32_t FramesProcessed = 0;
+
+	uint64_t FramesProcessed = 0;
+	nosDeckLinkFrameTimingInfo LastWaitedFrameTimingInfo{};
 
 	bool IsInterlaced = false;
 
@@ -250,6 +251,7 @@ inline bool IOHandlerBaseI::StartStream()
 	if (IsStreamRunning)
 		return true;
 	FramesProcessed = 0;
+	LastWaitedFrameTimingInfo = {};
 	if (Start())
 	{
 		IsStreamRunning = true;
