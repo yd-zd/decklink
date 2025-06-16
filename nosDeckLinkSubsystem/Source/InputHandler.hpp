@@ -12,9 +12,10 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 {
 	~InputHandler() override;
 
-	std::condition_variable FrameAvailableCond;
+	std::condition_variable FrameArrivedCond;
 	std::deque<std::unique_ptr<VideoFrame>> ReadFrames;
 	std::mutex ReadFramesMutex;
+	uint64_t LastWaitedFrame = 0;
 
 	bool ResetReadFrames();
 	bool Flush();

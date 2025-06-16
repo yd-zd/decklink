@@ -102,7 +102,6 @@ InputHandler::~InputHandler()
 
 void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame)
 {
-	LastWaitedFrameTimingInfo.FramesArrived++;
 	BMDTimeValue frameTime, frameDuration;
 	auto res = frame->GetStreamTime(&frameTime, &frameDuration, TimeScale);
 	if (res != S_OK)
@@ -110,6 +109,8 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 	// TODO: Additionally check for frameTime and frameDuration for drops
 	{
 		std::unique_lock lock(ReadFramesMutex);
+		LastFrameInfo.FrameNumber++;
+		LastFrameInfo.TimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 		if (ReadFrames.size() > 1)
 		{
 			OnFrameEnd(NOS_DECKLINK_FRAME_DROPPED);
@@ -126,7 +127,7 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 		snprintf(buffer, sizeof(buffer), "DeckLink %d:%s Input Queue Size", DeviceIndex, GetChannelName(Channel));
 		nosEngine.WatchLog(buffer, std::to_string(ReadFrames.size()).c_str());
 	}
-	FrameAvailableCond.notify_one();
+	FrameArrivedCond.notify_one();
 }
 
 bool InputHandler::ResetReadFrames()
@@ -193,6 +194,8 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 
 bool InputHandler::Start()
 {
+	LastWaitedFrame = 0;
+	LastFrameInfo = {};
 	if (S_OK != Interface->StartStreams())
 		return false;
 	return true;
@@ -216,14 +219,15 @@ bool InputHandler::Close()
 bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(ReadFramesMutex);
-	bool res = FrameAvailableCond.wait_for(lock, timeout, [this]{
-		return !ReadFrames.empty();
+	bool res = FrameArrivedCond.wait_for(lock, timeout, [this]{
+		return LastWaitedFrame != LastFrameInfo.FrameNumber;
 	});
 	if (!res)
 	{
 		nosEngine.LogE("(Device %d) %s Input: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
 		return false;
 	}
+	LastWaitedFrame = LastFrameInfo.FrameNumber;
 	return res;
 }
 

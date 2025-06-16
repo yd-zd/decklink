@@ -62,7 +62,6 @@ public:
 
 	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout);
 	bool DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size);
-	std::optional<nosDeckLinkFrameTimingInfo> GetLastWaitedFrameTimingInfo(nosDeckLinkChannel channel) const;
 
 	void ClearSubDevices();
 

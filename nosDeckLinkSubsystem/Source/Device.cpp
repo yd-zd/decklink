@@ -610,18 +610,6 @@ bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 	return true;
 }
 
-std::optional<nosDeckLinkFrameTimingInfo> Device::GetLastWaitedFrameTimingInfo(nosDeckLinkChannel channel) const
-{
-	auto it = OpenChannels.find(channel);
-	if (it == OpenChannels.end())
-	{
-		nosEngine.LogE("No open channel found for channel %s", GetChannelName(channel));
-		return std::nullopt;
-	}
-	auto [subDevice, mode] = it->second;
-	return subDevice->GetLastWaitedFrameTimingInfo(mode);
-}
-
 bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
 {
 	auto subDevice = GetSubDeviceOfChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);

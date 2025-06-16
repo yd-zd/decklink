@@ -792,6 +792,8 @@ bool ChannelHandler::Open()
 		auto res = nosDeckLink->OpenChannel(DeviceIndex, &params);
 		if (res == NOS_RESULT_SUCCESS)
 		{
+			if (Direction == NOS_MEDIAIO_DIRECTION_OUTPUT)
+				nosDeckLink->SetAutoSchedulingEnabled(DeviceIndex, Channel, NOS_TRUE);
 			IsOpen = true;
 			Node.SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ACTIVE, nullptr);
 			ChannelId id(DeviceIndex, Channel, Direction);

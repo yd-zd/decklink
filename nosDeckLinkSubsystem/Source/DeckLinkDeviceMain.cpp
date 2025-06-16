@@ -509,7 +509,7 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL GetLastWaitedFrameTimingInfo(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkFrameTimingInfo* outTimingInfo)
+nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState)
 {
 	DeviceLock lock(deviceIndex);
 	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
@@ -518,13 +518,42 @@ nosResult NOSAPI_CALL GetLastWaitedFrameTimingInfo(uint32_t deviceIndex, nosDeck
 		nosEngine.LogE("No such device with index %d", deviceIndex);
 		return NOS_RESULT_NOT_FOUND;
 	}
-	auto timingInfo = device->GetLastWaitedFrameTimingInfo(channel);
-	if (!timingInfo)
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
 	{
-		nosEngine.LogE("No timing info available for channel %s", GetChannelName(channel));
+		outState->IsOpen = false;
+		outState->IsStreaming = false;
+		outState->LastFrameInfo = {};
+		return NOS_RESULT_SUCCESS;
+	}
+	auto& ioHandler = subDevice->GetIO(dir);
+	outState->IsOpen = ioHandler.IsCurrentlyOpen();
+	outState->IsStreaming = ioHandler.IsCurrentlyRunning();
+	outState->LastFrameInfo = ioHandler.LastFrameInfo;
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL SetAutoSchedulingEnabled(uint32_t deviceIndex, nosDeckLinkChannel channel, nosBool isEnabled)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
 		return NOS_RESULT_NOT_FOUND;
 	}
-	*outTimingInfo = *timingInfo;
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	if (dir != NOS_MEDIAIO_DIRECTION_OUTPUT)
+	{
+		nosEngine.LogE("Auto-schedule only meant for output channels");
+		return NOS_RESULT_INVALID_ARGUMENT;
+	}
+	static_cast<OutputHandler*>(&subDevice->GetIO(dir))->AutoSchedulingEnabled = true;
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -565,7 +594,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetOutputReferenceStatus = GetOutputReferenceStatus;
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
-	subsystem->GetLastWaitedFrameTimingInfo = GetLastWaitedFrameTimingInfo;
+	subsystem->GetChannelState = GetChannelState;
+	subsystem->SetAutoSchedulingEnabled = SetAutoSchedulingEnabled;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

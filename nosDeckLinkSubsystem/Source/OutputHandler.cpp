@@ -160,10 +160,7 @@ bool OutputHandler::Close()
 		std::unique_lock lock(PlaybackStoppedMutex);
 		PlaybackStoppedCond.wait_for(lock, std::chrono::milliseconds(100), [this]{ return Closed; });
 		if (!Closed)
-		{
 			nosEngine.LogE("SubDevice: Timeout waiting for playback to stop");
-			NOS_SOFT_CHECK(false)
-		}
 	}
 	Interface->SetScheduledFrameCompletionCallback(nullptr);
 	return true;
@@ -234,7 +231,10 @@ void OutputHandler::ScheduleNextFrame()
 	if (result != S_OK)
 		nosEngine.LogE("(Device %d) %s DMA Write: Failed to schedule next frame", DeviceIndex, GetChannelName(Channel));
 	else
-		++TotalFramesScheduled;
+	{
+		LastFrameInfo.TimestampNs = TotalFramesScheduled * FrameDuration;
+		LastFrameInfo.FrameNumber = TotalFramesScheduled++;
+	}
 }
 
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
@@ -265,6 +265,11 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 		break;
 	}
 	OnFrameEnd(frameResult);
+	if (AutoSchedulingEnabled)
+	{
+		nosEngine.LogD("DeckLink %d:%s Output: Auto scheduling next frame", DeviceIndex, GetChannelName(Channel));
+		ScheduleNextFrame();
+	}
 }
 
 void OutputHandler::ScheduledPlaybackHasStopped_DeckLinkThread()

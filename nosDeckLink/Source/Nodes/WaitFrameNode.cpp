@@ -14,30 +14,76 @@
 namespace nos::decklink
 {
 
+uint64_t NowNs()
+{
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 struct WaitFrameNode : NodeContext
 {
 	WaitFrameNode(nosFbNodePtr node) : NodeContext(node)
 	{
 	}
 
-	static nosResult SyncPathStarts(void* ctx, uint64_t* outVblTimestampNs, uint64_t* outVblCount)
+	static nosResult SyncPathStarts(void* ctx, nosWaitResult* outRes)
 	{
-		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outVblTimestampNs, outVblCount);
+		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outRes);
 	}
 
-	nosResult SyncPathStarts(uint64_t* outVblTimestampNs, uint64_t* outVblCount)
+	std::optional<uint64_t> SteadyClockVBLOffset;
+
+	int32_t GetDeviceIndex() const
 	{
-		auto deviceIndex = CurChannelId.device_index();
-		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
-		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(deviceIndex, channel, 100))
+		return CurChannelId.device_index();
+	}
+
+	nosDeckLinkChannel GetChannel() const
+	{
+		return static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
+	}
+
+	bool IsInput() const { return CurChannelId.is_input(); }
+
+	bool IsChannelOpen()
+	{
+		nosDeckLinkChannelState state{};
+		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &state))
+			return false;
+		if (!state.IsOpen || !state.IsStreaming)
+			return false;
+		return true;
+	}
+
+	nosResult SyncPathStarts(nosWaitResult* out)
+	{
+		if (!IsChannelOpen())
 			return NOS_RESULT_FAILED;
-		nosDeckLinkFrameTimingInfo timingInfo{};
-		if (NOS_RESULT_SUCCESS != nosDeckLink->GetLastWaitedFrameTimingInfo(deviceIndex, channel, &timingInfo))
+		nosDeckLinkChannelState ch{};
+		if (!SteadyClockVBLOffset)
+		{
+			for (int i = 0; i < 2; ++i)
+				if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
+					return NOS_RESULT_FAILED;
+			if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
+				return NOS_RESULT_FAILED;
+			auto steadyClockNowNs = NowNs();
+			SteadyClockVBLOffset = steadyClockNowNs - ch.LastFrame.TimestampNs;
+			nosEngine.LogD("(Device %d) %s: VBL Clock Offset: %llu",
+				GetDeviceIndex(),
+				nosDeckLink->GetChannelName(GetChannel()),
+				*SteadyClockVBLOffset);
+		}
+		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
 			return NOS_RESULT_FAILED;
-		if (outVblTimestampNs)
-			*outVblTimestampNs = timingInfo.TimestampNs;
-		if (outVblCount)
-			*outVblCount = timingInfo.FramesArrived;
+		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
+			return NOS_RESULT_FAILED;
+		auto steadyClockNowNs = NowNs();
+		auto lastVblTimestampNs = ch.LastFrame.TimestampNs;
+		if (out)
+		{
+			out->TimeSinceLastEventNs = steadyClockNowNs - lastVblTimestampNs + *SteadyClockVBLOffset;
+			out->EventCount = ch.LastFrame.FrameNumber;
+		}
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -54,25 +100,21 @@ struct WaitFrameNode : NodeContext
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
-		auto deviceIndex = CurChannelId.device_index();
-		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
-		nosDeckLink->WaitFrame(deviceIndex, channel, 100);
+		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100);
 		return NOS_RESULT_SUCCESS;
 	}
 
 	void OnPathStartInitiated() override
 	{
-		auto deviceIndex = CurChannelId.device_index();
-		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
 		// This possibly takes a long time(more than a frame)
-		if (CurChannelId.is_input())
-			nosDeckLink->WaitFrame(deviceIndex, channel, 100);
+		if (IsInput())
+			nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100);
 		nosVec2u deltaSecs{};
-		if (NOS_RESULT_SUCCESS != nosDeckLink->GetCurrentDeltaSecondsOfChannel(deviceIndex, channel, &deltaSecs))
+		if (NOS_RESULT_SUCCESS != nosDeckLink->GetCurrentDeltaSecondsOfChannel(GetDeviceIndex(), GetChannel(), &deltaSecs))
 		{
 			nosDeckLinkDeviceInfo info{};
-			nosDeckLink->GetDeviceInfoByIndex(deviceIndex, &info);
-			nosEngine.LogE("Failed to get current delta seconds of channel %s on device %s", nosDeckLink->GetChannelName(channel), info.Desc.UniqueDisplayName);
+			nosDeckLink->GetDeviceInfoByIndex(GetDeviceIndex(), &info);
+			nosEngine.LogE("Failed to get current delta seconds of channel %s on device %s", nosDeckLink->GetChannelName(GetChannel()), info.Desc.UniqueDisplayName);
 			return;
 		}
 		nosRegisterEventParams params{
@@ -88,11 +130,13 @@ struct WaitFrameNode : NodeContext
 	// This is to ensure that the first frame aligns with decklink frame
 	void OnPathStart() override
 	{
-		auto deviceIndex = CurChannelId.device_index();
-		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
-		uint64_t timestampNs = 0, vblCount = 0;
 		if (WaitId)
+		{
+			uint64_t timestampNs = 0, vblCount = 0;
 			nosSync->WaitForConsensus(WaitId, &timestampNs, &vblCount);
+		}
+		if (!IsInput())
+			nosDeckLink->SetAutoSchedulingEnabled(GetDeviceIndex(), GetChannel(), NOS_FALSE);
 	}
 
 	void OnPathStop() override
@@ -102,6 +146,8 @@ struct WaitFrameNode : NodeContext
 			nosSync->UnregisterEvent(WaitId);
 			WaitId = 0;
 		}
+		if (!IsInput())
+			nosDeckLink->SetAutoSchedulingEnabled(GetDeviceIndex(), GetChannel(), NOS_TRUE);
 	}
 
 	ChannelId CurChannelId;

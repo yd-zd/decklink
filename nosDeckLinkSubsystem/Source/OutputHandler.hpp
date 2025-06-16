@@ -14,6 +14,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	std::mutex VideoFramesMutex;
 	std::condition_variable WriteCond;
 	std::deque<IDeckLinkVideoFrame*> WriteQueue;
+	std::atomic_bool AutoSchedulingEnabled = false;
 
 	~OutputHandler() override;
 

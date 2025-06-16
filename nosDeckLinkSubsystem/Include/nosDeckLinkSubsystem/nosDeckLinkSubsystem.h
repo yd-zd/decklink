@@ -132,8 +132,14 @@ typedef struct nosDeckLinkDeviceStatus
 typedef struct nosDeckLinkFrameTimingInfo
 {
 	uint64_t TimestampNs;
-	uint64_t FramesArrived;
+	uint64_t FrameNumber;
 } nosDeckLinkFrameTimingInfo;
+
+typedef struct nosDeckLinkChannelState {
+	nosBool IsOpen;
+	nosBool IsStreaming;
+	nosDeckLinkFrameTimingInfo LastFrameInfo;
+} nosDeckLinkChannelState;
 
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
@@ -182,7 +188,8 @@ typedef struct nosDeckLinkSubsystem {
 	int32_t   (NOSAPI_CALL* RegisterDeviceStatusCallback)(uint32_t deviceIndex, nosDeckLinkDeviceStatusCallback callback, void* userData);
 	nosResult (NOSAPI_CALL* UnregisterDeviceStatusCallback)(uint32_t deviceIndex, int32_t callbackId);
 
-	nosResult (NOSAPI_CALL* GetLastWaitedFrameTimingInfo)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkFrameTimingInfo* outInfo);
+	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
+	nosResult (NOSAPI_CALL* SetAutoSchedulingEnabled)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosBool isEnabled);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
