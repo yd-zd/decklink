@@ -526,10 +526,10 @@ nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel c
 		outState->LastFrameInfo = {};
 		return NOS_RESULT_SUCCESS;
 	}
-	auto& ioHandler = subDevice->GetIO(dir);
-	outState->IsOpen = ioHandler.IsCurrentlyOpen();
-	outState->IsStreaming = ioHandler.IsCurrentlyRunning();
-	outState->LastFrameInfo = ioHandler.LastFrameInfo;
+	auto& io = subDevice->GetIO(dir);
+	outState->IsOpen = io.IsCurrentlyOpen();
+	outState->IsStreaming = io.IsCurrentlyRunning();
+	outState->LastFrameInfo = io.GetLastFrameInfo();
 	return NOS_RESULT_SUCCESS;
 }
 

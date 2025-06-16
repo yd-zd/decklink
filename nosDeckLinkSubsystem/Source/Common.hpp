@@ -168,7 +168,7 @@ struct IOHandlerBaseI
 	BMDTimeScale TimeScale = 0;
 
 	uint64_t FramesProcessed = 0;
-	nosDeckLinkFrameTimingInfo LastFrameInfo{};
+	uint64_t LastWaitedFrame = 0;
 
 	bool IsInterlaced = false;
 
@@ -186,6 +186,8 @@ struct IOHandlerBaseI
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
 
+	virtual nosDeckLinkFrameTimingInfo GetLastFrameInfo() = 0;
+
 protected:
 	virtual bool Start() = 0;
 	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
@@ -201,6 +203,7 @@ protected:
 		}
 	}
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
+	nosDeckLinkFrameTimingInfo LastFrameInfo_DeckLinkThread{};
 private:
 	std::atomic_bool IsOpen = false;
 	std::atomic_bool IsStreamRunning = false;
@@ -251,7 +254,7 @@ inline bool IOHandlerBaseI::StartStream()
 	if (IsStreamRunning)
 		return true;
 	FramesProcessed = 0;
-	LastFrameInfo = {};
+	LastWaitedFrame = 0;
 	if (Start())
 	{
 		IsStreamRunning = true;

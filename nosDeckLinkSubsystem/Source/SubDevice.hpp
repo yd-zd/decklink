@@ -54,7 +54,12 @@ public:
 	void TagChannel(nosMediaIODirection dir, nosDeckLinkChannel channel);
 	void TagDevice(uint32_t deviceIndex);
 
-	constexpr IOHandlerBaseI& GetIO(nosMediaIODirection dir);
+	IOHandlerBaseI& GetIO(nosMediaIODirection dir)
+	{
+		if (dir == NOS_MEDIAIO_DIRECTION_INPUT)
+			return Input;
+		return Output;
+	}
 
 	IDeckLinkProfileManager* ProfileManager = nullptr;
 	IDeckLink* DLDevice = nullptr;

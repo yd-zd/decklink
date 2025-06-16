@@ -170,13 +170,11 @@ bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(VideoFramesMutex);
 	bool res = WriteCond.wait_for(lock, timeout, [this] {
-		return !WriteQueue.empty();
+		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
 	});
+	LastWaitedFrame = LastFrameInfo_DeckLinkThread.FrameNumber;
 	if (!res)
-	{
 		nosEngine.LogE("(Device %d) %s Output: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
-		return false;
-	}
 	return res;
 }
 
@@ -211,6 +209,12 @@ void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 	ScheduleNextFrame();
 }
 
+nosDeckLinkFrameTimingInfo OutputHandler::GetLastFrameInfo()
+{
+	std::unique_lock lock(VideoFramesMutex);
+	return LastFrameInfo_DeckLinkThread;
+}
+
 void OutputHandler::ScheduleNextFrame()
 {
 	if (!IsCurrentlyRunning())
@@ -232,8 +236,7 @@ void OutputHandler::ScheduleNextFrame()
 		nosEngine.LogE("(Device %d) %s DMA Write: Failed to schedule next frame", DeviceIndex, GetChannelName(Channel));
 	else
 	{
-		LastFrameInfo.TimestampNs = TotalFramesScheduled * FrameDuration;
-		LastFrameInfo.FrameNumber = TotalFramesScheduled++;
+		++TotalFramesScheduled;
 	}
 }
 
@@ -241,6 +244,9 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 {
 	{
 		std::unique_lock lock(VideoFramesMutex);
+		auto timestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		LastFrameInfo_DeckLinkThread.TimestampNs = timestampNs; 
+		++LastFrameInfo_DeckLinkThread.FrameNumber;
 		WriteQueue.push_back(completedFrame);
 		char buffer[128];
 		snprintf(buffer, sizeof(buffer), "DeckLink %d:%s Output Queue Size", DeviceIndex, GetChannelName(Channel));

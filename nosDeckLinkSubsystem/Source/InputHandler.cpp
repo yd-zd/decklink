@@ -109,8 +109,8 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 	// TODO: Additionally check for frameTime and frameDuration for drops
 	{
 		std::unique_lock lock(ReadFramesMutex);
-		LastFrameInfo.FrameNumber++;
-		LastFrameInfo.TimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		LastFrameInfo_DeckLinkThread.FrameNumber++;
+		LastFrameInfo_DeckLinkThread.TimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 		if (ReadFrames.size() > 1)
 		{
 			OnFrameEnd(NOS_DECKLINK_FRAME_DROPPED);
@@ -194,8 +194,7 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 
 bool InputHandler::Start()
 {
-	LastWaitedFrame = 0;
-	LastFrameInfo = {};
+	//LastFrameInfo_DeckLinkThread = {};
 	if (S_OK != Interface->StartStreams())
 		return false;
 	return true;
@@ -220,14 +219,14 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(ReadFramesMutex);
 	bool res = FrameArrivedCond.wait_for(lock, timeout, [this]{
-		return LastWaitedFrame != LastFrameInfo.FrameNumber;
+		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
 	});
 	if (!res)
 	{
 		nosEngine.LogE("(Device %d) %s Input: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
 		return false;
 	}
-	LastWaitedFrame = LastFrameInfo.FrameNumber;
+	LastWaitedFrame = LastFrameInfo_DeckLinkThread.FrameNumber;
 	return res;
 }
 
@@ -251,6 +250,12 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 	auto copySize = std::min(actualSize, size);
 	std::memcpy(buffer, readFrame->GetBytes(), copySize);
 	readFrame->EndAccess();
+}
+
+nosDeckLinkFrameTimingInfo InputHandler::GetLastFrameInfo()
+{
+	std::unique_lock lock(ReadFramesMutex);
+	return LastFrameInfo_DeckLinkThread;
 }
 
 void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat)

@@ -15,12 +15,12 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 	std::condition_variable FrameArrivedCond;
 	std::deque<std::unique_ptr<VideoFrame>> ReadFrames;
 	std::mutex ReadFramesMutex;
-	uint64_t LastWaitedFrame = 0;
 
 	bool ResetReadFrames();
 	bool Flush();
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
 	void DmaTransferImpl(void* buffer, size_t size) override;
+	nosDeckLinkFrameTimingInfo GetLastFrameInfo() override;
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);
 	void OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat);

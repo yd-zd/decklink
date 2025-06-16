@@ -308,13 +308,6 @@ bool SubDevice::ResetInputFrames()
 	return Input.ResetReadFrames();
 }
 
-constexpr IOHandlerBaseI& SubDevice::GetIO(nosMediaIODirection dir)
-{
-	if (dir == NOS_MEDIAIO_DIRECTION_INPUT)
-		return Input;
-	return Output;
-}
-
 bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout)
 {
 	return GetIO(dir).WaitFrame(timeout);

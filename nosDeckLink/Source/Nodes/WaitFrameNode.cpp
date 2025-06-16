@@ -30,8 +30,6 @@ struct WaitFrameNode : NodeContext
 		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outRes);
 	}
 
-	std::optional<uint64_t> SteadyClockVBLOffset;
-
 	int32_t GetDeviceIndex() const
 	{
 		return CurChannelId.device_index();
@@ -58,31 +56,20 @@ struct WaitFrameNode : NodeContext
 	{
 		if (!IsChannelOpen())
 			return NOS_RESULT_FAILED;
+		auto steadyClockNowNs = NowNs();
 		nosDeckLinkChannelState ch{};
-		if (!SteadyClockVBLOffset)
-		{
-			for (int i = 0; i < 2; ++i)
-				if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
-					return NOS_RESULT_FAILED;
-			if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
-				return NOS_RESULT_FAILED;
-			auto steadyClockNowNs = NowNs();
-			SteadyClockVBLOffset = steadyClockNowNs - ch.LastFrame.TimestampNs;
-			nosEngine.LogD("(Device %d) %s: VBL Clock Offset: %llu",
-				GetDeviceIndex(),
-				nosDeckLink->GetChannelName(GetChannel()),
-				*SteadyClockVBLOffset);
-		}
 		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
 			return NOS_RESULT_FAILED;
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
 			return NOS_RESULT_FAILED;
-		auto steadyClockNowNs = NowNs();
-		auto lastVblTimestampNs = ch.LastFrame.TimestampNs;
+		steadyClockNowNs = NowNs();
+		auto lastVblTimestampNs = ch.LastFrameInfo.TimestampNs;
 		if (out)
 		{
-			out->TimeSinceLastEventNs = steadyClockNowNs - lastVblTimestampNs + *SteadyClockVBLOffset;
-			out->EventCount = ch.LastFrame.FrameNumber;
+			out->TimeSinceLastEventNs = steadyClockNowNs - lastVblTimestampNs;
+			double timeSecs = (double)out->TimeSinceLastEventNs / 1'000'000'000;
+			nosEngine.LogD("Time Since Last Event: %.6f Secs", timeSecs);
+			out->EventCount = ch.LastFrameInfo.FrameNumber;
 		}
 		return NOS_RESULT_SUCCESS;
 	}
@@ -150,7 +137,7 @@ struct WaitFrameNode : NodeContext
 			nosDeckLink->SetAutoSchedulingEnabled(GetDeviceIndex(), GetChannel(), NOS_TRUE);
 	}
 
-	ChannelId CurChannelId;
+	ChannelId CurChannelId{};
 	uint64_t WaitId = 0; // Event ID for the wait event
 };
 
