@@ -255,9 +255,9 @@ inline bool IOHandlerBaseI::StartStream()
 		return true;
 	FramesProcessed = 0;
 	LastWaitedFrame = 0;
+	IsStreamRunning = true;
 	if (Start())
 	{
-		IsStreamRunning = true;
 		return true;
 	}
 	return false;

@@ -56,19 +56,18 @@ struct WaitFrameNode : NodeContext
 	{
 		if (!IsChannelOpen())
 			return NOS_RESULT_FAILED;
-		auto steadyClockNowNs = NowNs();
 		nosDeckLinkChannelState ch{};
 		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
 			return NOS_RESULT_FAILED;
+		auto steadyClockNowNs = NowNs();
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
 			return NOS_RESULT_FAILED;
-		steadyClockNowNs = NowNs();
 		auto lastVblTimestampNs = ch.LastFrameInfo.TimestampNs;
 		if (out)
 		{
 			out->TimeSinceLastEventNs = steadyClockNowNs - lastVblTimestampNs;
-			double timeSecs = (double)out->TimeSinceLastEventNs / 1'000'000'000;
-			nosEngine.LogD("Time Since Last Event: %.6f Secs", timeSecs);
+			double timeSecs = (double)out->TimeSinceLastEventNs / 1'000'000;
+			nosEngine.LogD("Time Since Last Event: %.6f ms", timeSecs);
 			out->EventCount = ch.LastFrameInfo.FrameNumber;
 		}
 		return NOS_RESULT_SUCCESS;

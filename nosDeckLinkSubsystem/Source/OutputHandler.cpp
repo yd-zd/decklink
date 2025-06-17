@@ -120,8 +120,12 @@ bool OutputHandler::Start()
 		TotalFramesScheduled = 0;
 		FramePointFirstDisplayedLate = -1;
 		WriteQueue.clear();
+		AutoSchedulingEnabled = true;
 		for (auto& frame : VideoFrames)
 			WriteQueue.push_back(frame);
+		LastFrameInfo_DeckLinkThread.FrameNumber = 0;
+		LastFrameInfo_DeckLinkThread.TimestampNs = 0;
+		LastWaitedFrame = 0;
 	}
 	auto res = Interface->StartScheduledPlayback(0, TimeScale, 1.0);
 	if (res != S_OK)
@@ -129,6 +133,8 @@ bool OutputHandler::Start()
 		nosEngine.LogE("SubDevice: Failed to start scheduled playback");
 		return false;
 	}
+	for (auto i = 0; i < VideoFrames.size(); i++)
+		ScheduleNextFrame();
 	return true;
 }
 
@@ -230,22 +236,31 @@ void OutputHandler::ScheduleNextFrame()
 		frame = WriteQueue.front();
 		WriteQueue.pop_front();
 	}
-
 	HRESULT result = Interface->ScheduleVideoFrame(frame, TotalFramesScheduled * FrameDuration, FrameDuration, TimeScale);
 	if (result != S_OK)
 		nosEngine.LogE("(Device %d) %s DMA Write: Failed to schedule next frame", DeviceIndex, GetChannelName(Channel));
 	else
 	{
+		nosEngine.LogI("DeckLink %d:%s Output: Scheduled frame, FrameNumber: %d",
+					   DeviceIndex,
+					   GetChannelName(Channel),
+					   TotalFramesScheduled.load());
 		++TotalFramesScheduled;
 	}
 }
 
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
+	uint64_t frameNum = 0;
 	{
 		std::unique_lock lock(VideoFramesMutex);
 		auto timestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 		LastFrameInfo_DeckLinkThread.TimestampNs = timestampNs; 
+		nosEngine.LogI("DeckLink %d:%s Output: Frame completed, FrameNumber: %d",
+					   DeviceIndex,
+					   GetChannelName(Channel),
+					   LastFrameInfo_DeckLinkThread.FrameNumber);
+		frameNum = LastFrameInfo_DeckLinkThread.FrameNumber;
 		++LastFrameInfo_DeckLinkThread.FrameNumber;
 		WriteQueue.push_back(completedFrame);
 		char buffer[128];
@@ -257,9 +272,10 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 	switch (result)
 	{
 	case bmdOutputFrameCompleted:
-	case bmdOutputFrameFlushed:
-		return;
+	case bmdOutputFrameFlushed: 
+		break;
 	case bmdOutputFrameDisplayedLate:
+		nosEngine.LogI("Displayed late %llu", frameNum);
 		if (FramePointFirstDisplayedLate == -1)
 		{
 			FramePointFirstDisplayedLate = TotalFramesScheduled;

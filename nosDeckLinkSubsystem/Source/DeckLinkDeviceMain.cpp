@@ -553,7 +553,7 @@ nosResult NOSAPI_CALL SetAutoSchedulingEnabled(uint32_t deviceIndex, nosDeckLink
 		nosEngine.LogE("Auto-schedule only meant for output channels");
 		return NOS_RESULT_INVALID_ARGUMENT;
 	}
-	static_cast<OutputHandler*>(&subDevice->GetIO(dir))->AutoSchedulingEnabled = true;
+	static_cast<OutputHandler*>(&subDevice->GetIO(dir))->AutoSchedulingEnabled = isEnabled;
 	return NOS_RESULT_SUCCESS;
 }
 
