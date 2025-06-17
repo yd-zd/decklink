@@ -533,30 +533,6 @@ nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel c
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL SetAutoSchedulingEnabled(uint32_t deviceIndex, nosDeckLinkChannel channel, nosBool isEnabled)
-{
-	DeviceLock lock(deviceIndex);
-	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
-	if (!device)
-	{
-		nosEngine.LogE("No such device with index %d", deviceIndex);
-		return NOS_RESULT_NOT_FOUND;
-	}
-	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
-	if (!subDevice)
-	{
-		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
-		return NOS_RESULT_NOT_FOUND;
-	}
-	if (dir != NOS_MEDIAIO_DIRECTION_OUTPUT)
-	{
-		nosEngine.LogE("Auto-schedule only meant for output channels");
-		return NOS_RESULT_INVALID_ARGUMENT;
-	}
-	static_cast<OutputHandler*>(&subDevice->GetIO(dir))->AutoSchedulingEnabled = true;
-	return NOS_RESULT_SUCCESS;
-}
-
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -595,7 +571,6 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
 	subsystem->GetChannelState = GetChannelState;
-	subsystem->SetAutoSchedulingEnabled = SetAutoSchedulingEnabled;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

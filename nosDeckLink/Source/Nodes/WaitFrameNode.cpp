@@ -21,6 +21,7 @@ uint64_t NowNs()
 
 struct WaitFrameNode : NodeContext
 {
+	static constexpr uint64_t TIMEOUT_MS = 1000;
 	WaitFrameNode(nosFbNodePtr node) : NodeContext(node)
 	{
 	}
@@ -56,19 +57,22 @@ struct WaitFrameNode : NodeContext
 	{
 		if (!IsChannelOpen())
 			return NOS_RESULT_FAILED;
-		auto steadyClockNowNs = NowNs();
 		nosDeckLinkChannelState ch{};
-		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100))
+		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS))
 			return NOS_RESULT_FAILED;
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
 			return NOS_RESULT_FAILED;
-		steadyClockNowNs = NowNs();
-		auto lastVblTimestampNs = ch.LastFrameInfo.TimestampNs;
 		if (out)
 		{
-			out->TimeSinceLastEventNs = steadyClockNowNs - lastVblTimestampNs;
-			double timeSecs = (double)out->TimeSinceLastEventNs / 1'000'000'000;
-			nosEngine.LogD("Time Since Last Event: %.6f Secs", timeSecs);
+			auto steadyClockNowNs = NowNs();
+			out->TimeSinceLastEventNs = steadyClockNowNs - ch.LastFrameInfo.TimestampNs;
+			uint64_t deltaNanoseconds = 1'000'000'000ULL * (double(ch.LastFrameInfo.DeltaSeconds.x) / double(ch.LastFrameInfo.DeltaSeconds.y));
+			if (out->TimeSinceLastEventNs > deltaNanoseconds)
+				nosEngine.LogE("(Device %d) %s: Time since last event is larger than delta seconds: %llu > %llu", 
+					GetDeviceIndex(), 
+					nosDeckLink->GetChannelName(GetChannel()), 
+					out->TimeSinceLastEventNs, 
+					deltaNanoseconds);
 			out->EventCount = ch.LastFrameInfo.FrameNumber;
 		}
 		return NOS_RESULT_SUCCESS;
@@ -87,7 +91,7 @@ struct WaitFrameNode : NodeContext
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
-		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100);
+		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -95,7 +99,7 @@ struct WaitFrameNode : NodeContext
 	{
 		// This possibly takes a long time(more than a frame)
 		if (IsInput())
-			nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), 100);
+			nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
 		nosVec2u deltaSecs{};
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetCurrentDeltaSecondsOfChannel(GetDeviceIndex(), GetChannel(), &deltaSecs))
 		{
@@ -122,8 +126,6 @@ struct WaitFrameNode : NodeContext
 			uint64_t timestampNs = 0, vblCount = 0;
 			nosSync->WaitForConsensus(WaitId, &timestampNs, &vblCount);
 		}
-		if (!IsInput())
-			nosDeckLink->SetAutoSchedulingEnabled(GetDeviceIndex(), GetChannel(), NOS_FALSE);
 	}
 
 	void OnPathStop() override
@@ -133,8 +135,6 @@ struct WaitFrameNode : NodeContext
 			nosSync->UnregisterEvent(WaitId);
 			WaitId = 0;
 		}
-		if (!IsInput())
-			nosDeckLink->SetAutoSchedulingEnabled(GetDeviceIndex(), GetChannel(), NOS_TRUE);
 	}
 
 	ChannelId CurChannelId{};
@@ -146,4 +146,5 @@ nosResult RegisterWaitFrameNode(nosNodeFunctions* functions)
 	NOS_BIND_NODE_CLASS(NOS_NAME_STATIC("WaitFrame"), WaitFrameNode, functions)
 	return NOS_RESULT_SUCCESS;
 }
+
 }

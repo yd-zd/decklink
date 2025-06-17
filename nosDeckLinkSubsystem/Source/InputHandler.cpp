@@ -194,7 +194,6 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 
 bool InputHandler::Start()
 {
-	//LastFrameInfo_DeckLinkThread = {};
 	if (S_OK != Interface->StartStreams())
 		return false;
 	return true;

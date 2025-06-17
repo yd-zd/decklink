@@ -12,9 +12,12 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	std::atomic_uint32_t TotalFramesScheduled = 0;
 
 	std::mutex VideoFramesMutex;
-	std::condition_variable WriteCond;
-	std::deque<IDeckLinkVideoFrame*> WriteQueue;
-	std::atomic_bool AutoSchedulingEnabled = false;
+	std::condition_variable ReadyToWrite;
+	std::condition_variable ReadyToRead;
+
+	std::mutex BufferMutex;
+	std::condition_variable CopyCompleted;
+	nosBuffer BufferToWrite{};
 
 	~OutputHandler() override;
 
@@ -22,7 +25,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	void DmaTransferImpl(void* buffer, size_t size) override;
 	nosDeckLinkFrameTimingInfo GetLastFrameInfo() override;
 	
-	void ScheduleNextFrame();
+	void ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule);
 	void ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);
 	void ScheduledPlaybackHasStopped_DeckLinkThread();
 protected:
@@ -35,6 +38,7 @@ protected:
 
 	std::mutex PlaybackStoppedMutex;
 	std::condition_variable PlaybackStoppedCond;
-	bool Closed = true;
+	bool PlaybackStopped = true;
+	std::atomic_bool PlaybackStopRequested = false;
 };
 }

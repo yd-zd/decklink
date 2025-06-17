@@ -133,6 +133,7 @@ typedef struct nosDeckLinkFrameTimingInfo
 {
 	uint64_t TimestampNs;
 	uint64_t FrameNumber;
+	nosVec2u DeltaSeconds;
 } nosDeckLinkFrameTimingInfo;
 
 typedef struct nosDeckLinkChannelState {
@@ -189,7 +190,6 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult (NOSAPI_CALL* UnregisterDeviceStatusCallback)(uint32_t deviceIndex, int32_t callbackId);
 
 	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
-	nosResult (NOSAPI_CALL* SetAutoSchedulingEnabled)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosBool isEnabled);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
