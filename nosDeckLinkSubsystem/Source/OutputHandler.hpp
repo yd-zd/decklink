@@ -24,6 +24,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
 	void DmaTransferImpl(void* buffer, size_t size) override;
 	nosDeckLinkFrameTimingInfo GetLastFrameInfo() override;
+	std::optional<uint64_t> GetNanosecondsSinceStreamStarted();
 	
 	void ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule);
 	void ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);

@@ -126,10 +126,7 @@ bool OutputHandler::Start()
 		BufferToWrite = {};
 	}
 	for (auto i = 0; i < VideoFrames.size(); ++i)
-	{
-		nosEngine.LogI("AAAAAAAAAAAA");
 		ScheduleNextFrame(VideoFrames[i]);
-	}
 	auto res = Interface->StartScheduledPlayback(0, TimeScale, 1.0);
 	if (res != S_OK)
 	{
@@ -206,6 +203,22 @@ nosDeckLinkFrameTimingInfo OutputHandler::GetLastFrameInfo()
 	return LastFrameInfo_DeckLinkThread;
 }
 
+std::optional<uint64_t> OutputHandler::GetNanosecondsSinceStreamStarted()
+{
+	if (!IsCurrentlyRunning())
+		return std::nullopt;
+	BMDTimeValue StreamTime = 0;
+	double Speed = 0.0;
+	auto res = Interface->GetScheduledStreamTime(TimeScale, &StreamTime, &Speed);
+	if (res != S_OK)
+	{
+		nosEngine.LogE("(Device %d) %s Output: Failed to get stream time", DeviceIndex, GetChannelName(Channel));
+		return std::nullopt;
+	}
+	auto nsSince = StreamTime * 1'000'000'000ULL / TimeScale;
+	return nsSince;
+}
+
 void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 {
 	HRESULT result = Interface->ScheduleVideoFrame(frameToSchedule, TotalFramesScheduled * FrameDuration, FrameDuration, TimeScale);
@@ -225,8 +238,6 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 		nosEngine.LogW("(Device %d) %s Output: Frame complete callback invoked after stop requested, last frame: %llu", DeviceIndex, GetChannelName(Channel), LastFrameInfo_DeckLinkThread.FrameNumber);
 		return;
 	}
-	nosEngine.LogI("BBBBBBBBBBBBBB");
-
 	{
 		std::unique_lock lock(VideoFramesMutex);
 		uint64_t frameTimestamp = 1'000'000'000ULL * TotalFramesScheduled * (double(FrameDuration) / double(TimeScale));

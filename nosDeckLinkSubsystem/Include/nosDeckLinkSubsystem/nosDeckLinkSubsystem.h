@@ -140,6 +140,14 @@ typedef struct nosDeckLinkChannelState {
 	nosBool IsOpen;
 	nosBool IsStreaming;
 	nosDeckLinkFrameTimingInfo LastFrameInfo;
+	nosMediaIODirection Direction;
+	union
+	{
+		struct
+		{
+			uint64_t TimeSinceStreamStartedNs;
+		} Output;
+	};
 } nosDeckLinkChannelState;
 
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);

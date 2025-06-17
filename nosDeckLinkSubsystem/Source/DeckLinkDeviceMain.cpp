@@ -509,7 +509,7 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState)
+nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* out)
 {
 	DeviceLock lock(deviceIndex);
 	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
@@ -521,15 +521,20 @@ nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel c
 	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
 	if (!subDevice)
 	{
-		outState->IsOpen = false;
-		outState->IsStreaming = false;
-		outState->LastFrameInfo = {};
+		*out = {};
 		return NOS_RESULT_SUCCESS;
 	}
 	auto& io = subDevice->GetIO(dir);
-	outState->IsOpen = io.IsCurrentlyOpen();
-	outState->IsStreaming = io.IsCurrentlyRunning();
-	outState->LastFrameInfo = io.GetLastFrameInfo();
+	out->IsOpen = io.IsCurrentlyOpen();
+	out->IsStreaming = io.IsCurrentlyRunning();
+	out->LastFrameInfo = io.GetLastFrameInfo();
+	out->Direction = dir;
+	if (dir == NOS_MEDIAIO_DIRECTION_OUTPUT)
+	{
+		auto timeNs = static_cast<OutputHandler*>(&io)->GetNanosecondsSinceStreamStarted();
+		out->Output.TimeSinceStreamStartedNs = timeNs.has_value() ? *timeNs : 0;
+	}
+
 	return NOS_RESULT_SUCCESS;
 }
 
