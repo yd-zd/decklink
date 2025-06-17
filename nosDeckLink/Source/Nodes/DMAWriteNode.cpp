@@ -68,7 +68,22 @@ struct DMAWriteNode : NodeContext
 			return NOS_RESULT_FAILED;
 
 		auto buffer = nosVulkan->Map(&inputBuffer);
+		nosDeckLinkChannelState chBefore{};
+		nosDeckLink->GetChannelState(deviceIndex, channel, &chBefore);
 		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBuffer.Info.Buffer.Size);
+		nosDeckLinkChannelState chAfter{};
+		nosDeckLink->GetChannelState(deviceIndex, channel, &chAfter);
+		
+		if (chAfter.LastFrameInfo.FrameNumber != chBefore.LastFrameInfo.FrameNumber+1)
+		{
+			nosEngine.LogI("Dropped: %llu frames on device %d, channel %s (Before: %llu, After: %llu)",
+						   chAfter.LastFrameInfo.FrameNumber - (chBefore.LastFrameInfo.FrameNumber + 1),
+						   deviceIndex,
+						   nosDeckLink->GetChannelName(channel),
+						   chBefore.LastFrameInfo.FrameNumber,
+						   chAfter.LastFrameInfo.FrameNumber);
+			nosEngine.SendPathRestart(NodeId);
+		}
 
 		nosScheduleNodeParams schedule {
 			.NodeId = NodeId,
@@ -83,8 +98,10 @@ struct DMAWriteNode : NodeContext
 	{
 		nosScheduleNodeParams schedule{.NodeId = NodeId, .AddScheduleCount = 1};
 		nosEngine.ScheduleNode(&schedule);
+		FrameCount = 0;
 	}
 
+	uint64_t FrameCount = 0;
 	ChannelId CurChannelId;
 	nosVec2u DeltaSeconds{0, 0};
 };

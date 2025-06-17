@@ -7,7 +7,7 @@ namespace nos::decklink
 {
 struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 {
-	std::array<IDeckLinkMutableVideoFrame*, 2> VideoFrames{};
+	std::array<IDeckLinkMutableVideoFrame*, 1> VideoFrames{};
 	
 	std::atomic_uint32_t TotalFramesScheduled = 0;
 

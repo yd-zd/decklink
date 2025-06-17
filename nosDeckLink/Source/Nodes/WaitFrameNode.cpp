@@ -64,15 +64,16 @@ struct WaitFrameNode : NodeContext
 			return NOS_RESULT_FAILED;
 		if (out)
 		{
+			std::chrono::system_clock::duration frameTimestamp =
+				std::chrono::duration_cast<std::chrono::system_clock::duration>(
+					std::chrono::nanoseconds(ch.LastFrameInfo.TimestampNs));
+			nosEngine.LogI("%s: %s Frame timestamp at %s",
+						   nosDeckLink->GetChannelName(GetChannel()),
+						   IsInput() ? "In" : "Out",
+						   std::format("{:%H:%M:%S}", frameTimestamp)
+							   .c_str());
 			auto steadyClockNowNs = NowNs();
 			out->TimeSinceLastEventNs = steadyClockNowNs - ch.LastFrameInfo.TimestampNs;
-			uint64_t deltaNanoseconds = 1'000'000'000ULL * (double(ch.LastFrameInfo.DeltaSeconds.x) / double(ch.LastFrameInfo.DeltaSeconds.y));
-			if (out->TimeSinceLastEventNs > deltaNanoseconds)
-				nosEngine.LogE("(Device %d) %s: Time since last event is larger than delta seconds: %llu > %llu", 
-					GetDeviceIndex(), 
-					nosDeckLink->GetChannelName(GetChannel()), 
-					out->TimeSinceLastEventNs, 
-					deltaNanoseconds);
 			out->EventCount = ch.LastFrameInfo.FrameNumber;
 		}
 		return NOS_RESULT_SUCCESS;
@@ -92,6 +93,22 @@ struct WaitFrameNode : NodeContext
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
 		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
+		
+		nosDeckLinkChannelState ch{};
+		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
+			return NOS_RESULT_FAILED;
+
+		if (LastVBL + 1 != ch.LastFrameInfo.FrameNumber)
+		{
+			nosEngine.LogI("Dropped: %llu frames on device %d, channel %s(LastVBL: %llu, CurVBL: %llu)",
+						   ch.LastFrameInfo.FrameNumber - (LastVBL + 1),
+						   GetDeviceIndex(),
+						   nosDeckLink->GetChannelName(GetChannel()),
+						   LastVBL,
+						   ch.LastFrameInfo.FrameNumber);
+			nosEngine.SendPathRestart(NodeId);
+		}
+		LastVBL = ch.LastFrameInfo.FrameNumber;
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -125,6 +142,7 @@ struct WaitFrameNode : NodeContext
 		{
 			uint64_t timestampNs = 0, vblCount = 0;
 			nosSync->WaitForConsensus(WaitId, &timestampNs, &vblCount);
+			LastVBL = vblCount;
 		}
 	}
 
@@ -136,6 +154,8 @@ struct WaitFrameNode : NodeContext
 			WaitId = 0;
 		}
 	}
+
+	uint64_t LastVBL = 0;
 
 	ChannelId CurChannelId{};
 	uint64_t WaitId = 0; // Event ID for the wait event
