@@ -58,6 +58,7 @@ struct WaitFrameNode : NodeContext
 		if (!IsChannelOpen())
 			return NOS_RESULT_FAILED;
 		nosDeckLinkChannelState ch{};
+
 		if (NOS_RESULT_SUCCESS != nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS))
 			return NOS_RESULT_FAILED;
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
@@ -110,9 +111,10 @@ struct WaitFrameNode : NodeContext
 			return;
 		}
 		nosRegisterEventParams params{
-			.EventGroupId = 1,
+			.EventGroupId = NOS_SYNC_DEFAULT_EVENT_GROUP_ID,
 			.DeltaSeconds = deltaSecs,
 			.UserData = this,
+			.ResetFn = nullptr,
 			.WaitFn = WaitFrameNode::SyncPathStarts,
 			.OutEventId = &WaitId,
 		};
