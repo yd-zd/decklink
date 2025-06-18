@@ -4,7 +4,7 @@
 
 #include "EnumConversions.hpp"
 
-NOS_INIT();
+NOS_INIT()
 
 #include <nosMediaIO/nosMediaIO.h>
 #include <nosDeviceSubsystem/nosDeviceSubsystem.h>
@@ -538,6 +538,25 @@ nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel c
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult NOSAPI_CALL ResetDropDetection(uint32_t deviceIndex, nosDeckLinkChannel channel)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	subDevice->GetIO(dir).LastProcessedFrame = std::nullopt;
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
 	auto it = GExportedSubsystemVersions.find(minorVersion);
@@ -576,6 +595,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
 	subsystem->GetChannelState = GetChannelState;
+	subsystem->ResetDropDetection = ResetDropDetection;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

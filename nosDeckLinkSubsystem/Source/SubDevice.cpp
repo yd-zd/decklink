@@ -306,7 +306,7 @@ bool SubDevice::ResetInputFrames()
 		return false;
 	}
 	std::unique_lock lock(Input.ReadFrameMutex);
-	Input.FreeReadFrame(lock);
+	Input.ReadFrameBuffer = {};
 	return true;
 }
 

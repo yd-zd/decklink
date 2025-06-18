@@ -198,6 +198,7 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult (NOSAPI_CALL* UnregisterDeviceStatusCallback)(uint32_t deviceIndex, int32_t callbackId);
 
 	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
+	nosResult (NOSAPI_CALL* ResetDropDetection)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros

@@ -13,18 +13,13 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 	~InputHandler() override;
 
 	std::mutex ReadFrameMutex;
-	//std::unique_ptr<VideoFrame> ReadFrame = nullptr;
-	//std::condition_variable ReadFrameReadyCond;
 	nosBuffer ReadFrameBuffer;
 
-	std::mutex LastFrameInfoMutex;
-	std::condition_variable FrameArrivedCond;
+	std::condition_variable FrameArrivedCV;
 
-	void FreeReadFrame(std::unique_lock<std::mutex>& readFrameLock);
 	bool Flush();
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
 	void DmaTransferImpl(void* buffer, size_t size) override;
-	nosDeckLinkFrameTimingInfo GetLastFrameInfo() override;
 	bool UpdateFrameRate(BMDDisplayMode displayMode);
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);

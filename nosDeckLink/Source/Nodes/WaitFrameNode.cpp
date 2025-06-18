@@ -93,22 +93,6 @@ struct WaitFrameNode : NodeContext
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
 		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
-		
-		nosDeckLinkChannelState ch{};
-		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &ch))
-			return NOS_RESULT_FAILED;
-
-		if (LastVBL + 1 != ch.LastFrameInfo.FrameNumber)
-		{
-			nosEngine.LogI("Dropped: %llu frames on device %d, channel %s(LastVBL: %llu, CurVBL: %llu)",
-						   ch.LastFrameInfo.FrameNumber - (LastVBL + 1),
-						   GetDeviceIndex(),
-						   nosDeckLink->GetChannelName(GetChannel()),
-						   LastVBL,
-						   ch.LastFrameInfo.FrameNumber);
-			nosEngine.SendPathRestart(NodeId);
-		}
-		LastVBL = ch.LastFrameInfo.FrameNumber;
 		return NOS_RESULT_SUCCESS;
 	}
 
@@ -142,7 +126,8 @@ struct WaitFrameNode : NodeContext
 		{
 			uint64_t timestampNs = 0, vblCount = 0;
 			nosSync->WaitForConsensus(WaitId, &timestampNs, &vblCount);
-			LastVBL = vblCount;
+			if (IsChannelOpen())
+				nosDeckLink->ResetDropDetection(GetDeviceIndex(), GetChannel());
 		}
 	}
 
@@ -154,8 +139,6 @@ struct WaitFrameNode : NodeContext
 			WaitId = 0;
 		}
 	}
-
-	uint64_t LastVBL = 0;
 
 	ChannelId CurChannelId{};
 	uint64_t WaitId = 0; // Event ID for the wait event

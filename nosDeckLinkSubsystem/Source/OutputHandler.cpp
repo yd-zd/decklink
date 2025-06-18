@@ -109,12 +109,11 @@ bool OutputHandler::Start()
 {
 	PlaybackStopRequested = false;
 	TotalFramesScheduled = 0;
-	FramePointFirstDisplayedLate = -1;
-	LastFrameInfo_DeckLinkThread = {};
+	LastHardwareFrameInfo = {};
 	{
-		std::unique_lock lock(BufferMutex);
-		BufferToWrite = {};
-		NextBufferToWrite = {};
+		std::unique_lock lock(DMATargetMutex);
+		DMATarget = {};
+		NextDMATarget = {};
 	}
 	{
 		std::unique_lock lock(PlaybackStoppedMutex);
@@ -144,9 +143,16 @@ bool OutputHandler::Stop()
 		PlaybackStoppedCond.wait_for(lock, std::chrono::milliseconds(100), [this] { return PlaybackStopped; });
 		if (!PlaybackStopped)
 			nosEngine.LogE("SubDevice: Timeout waiting for playback to stop");
-		nosEngine.LogI("(Device %d) %s Output: Playback stop waited", DeviceIndex, GetChannelName(Channel));
 	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	// DeckLink does not ACTUALLY stop calling frame completion callbacks even after it informs that playback has stopped.
+	{
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		FrameCompletedCV.wait_for(lock, std::chrono::milliseconds(100), [this] {
+			return LastHardwareFrameInfo.FrameNumber >= TotalFramesScheduled;
+		});
+		if (LastHardwareFrameInfo.FrameNumber < TotalFramesScheduled)
+			nosEngine.LogE("(%s) Output: Timeout waiting for all frames to be completed", GetDeviceChannelString().c_str());
+	}
 	return true;
 }
 
@@ -166,47 +172,69 @@ bool OutputHandler::Close()
 
 bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
-	std::unique_lock lock(LastFrameInfoMutex);
-	bool res = FrameArrivedCV.wait_for(lock, timeout, [this] {
-		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
+	std::unique_lock lock(LastHardwareFrameInfoMutex);
+	bool res = FrameCompletedCV.wait_for(lock, timeout, [this] {
+		return LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
 	});
-	LastWaitedFrame = LastFrameInfo_DeckLinkThread.FrameNumber;
+	LastWaitedFrame = LastHardwareFrameInfo.FrameNumber;
 	if (!res)
-		nosEngine.LogE("(Device %d) %s Output: Timeout waiting for frame",	 DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogE("(%s) Output: Timeout waiting for frame", GetDeviceChannelString().c_str());
 	return res;
 }
 
 void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
-	std::unique_lock lock(BufferMutex);
-	if (!BufferToWrite.Data)
+	std::unique_lock lock(DMATargetMutex);
+	if (!DMATarget.Data)
 	{
-		nosEngine.LogE("(Device %d) %s Output: Buffer already in use, cannot write new data", DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogE("(%s) Output: Buffer already in use, cannot write new data", GetDeviceChannelString().c_str());
 		return;
 	}
-	memcpy(BufferToWrite.Data, buffer, std::min(size, BufferToWrite.Size));
-}
+	memcpy(DMATarget.Data, buffer, std::min(size, DMATarget.Size));
 
-nosDeckLinkFrameTimingInfo OutputHandler::GetLastFrameInfo()
-{
-	std::unique_lock lock(LastFrameInfoMutex);
-	return LastFrameInfo_DeckLinkThread;
+	uint64_t nextFrame;
+	{
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		nextFrame = LastHardwareFrameInfo.FrameNumber + VideoFrames.size();
+	}
+	if (LastProcessedFrame)
+	{
+		int64_t dropCount = nextFrame - *LastProcessedFrame - 1;
+		if (dropCount > 0)
+		{
+			for (int i = 0; i < dropCount; i++)
+				OnFrameEnd(NOS_DECKLINK_FRAME_DROPPED);
+		}
+		else
+		{
+			OnFrameEnd(NOS_DECKLINK_FRAME_COMPLETED);
+		}
+	}
+	LastProcessedFrame = nextFrame;
 }
 
 std::optional<uint64_t> OutputHandler::GetNanosecondsSinceStreamStarted()
 {
 	if (!IsCurrentlyRunning())
 		return std::nullopt;
-	BMDTimeValue StreamTime = 0;
-	double Speed = 0.0;
-	auto res = Interface->GetScheduledStreamTime(TimeScale, &StreamTime, &Speed);
+	auto streamTime = GetCurrentStreamTime();
+	if (!streamTime)
+		return std::nullopt;
+	auto nsSince = TimeToNanoseconds(*streamTime, TimeScale);
+	return nsSince;
+}
+
+std::optional<BMDTimeValue> OutputHandler::GetCurrentStreamTime()
+{
+	BMDTimeValue streamTime = 0;
+	double speed = 0.0;
+	auto res = Interface->GetScheduledStreamTime(TimeScale, &streamTime, &speed);
 	if (res != S_OK)
 	{
-		nosEngine.LogE("(Device %d) %s Output: Failed to get stream time", DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogE("(%s) Failed to get stream time", GetDeviceChannelString().c_str());
 		return std::nullopt;
 	}
-	auto nsSince = StreamTime * 1'000'000'000ULL / TimeScale;
-	return nsSince;
+	return streamTime;
 }
 
 void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
@@ -214,7 +242,7 @@ void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 	HRESULT result =
 		Interface->ScheduleVideoFrame(frameToSchedule, TotalFramesScheduled * FrameDuration, FrameDuration, TimeScale);
 	if (result != S_OK)
-		nosEngine.LogE("(Device %d) %s DMA Write: Failed to schedule next frame", DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogE("(%s) DMA Write: Failed to schedule next frame", GetDeviceChannelString().c_str());
 	else
 	{
 		++TotalFramesScheduled;
@@ -223,44 +251,44 @@ void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
-	auto timestampNs =
-		std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
-			.count();
+	{
+		std::unique_lock lock(DMATargetMutex);
+		DMATarget = NextDMATarget;
+	}
+	VideoFrame output(completedFrame);
+	output.StartAccess(bmdBufferAccessWrite);
+	size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
+	auto videoBufferBytes = output.GetBytes();
+	NextDMATarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
+	output.EndAccess();
+	{
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		auto streamTimeNs = GetNanosecondsSinceStreamStarted();
+		if (streamTimeNs)
+		{
+			auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
+			LastHardwareFrameInfo.TimestampNs = *streamTimeNs;
+			LastHardwareFrameInfo.FrameNumber = *streamTimeNs / frameTimeNs;
+		}
+		else
+		{
+			auto timestampNs =
+				std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
+				.count();
+			LastHardwareFrameInfo.TimestampNs = timestampNs;
+			LastHardwareFrameInfo.FrameNumber++;
+		}
+#if NOS_DECKLINK_DIAGNOSTICS
+		nosEngine.LogD("(%s) Frame %llu arrived at %llu", GetDeviceChannelString().c_str(), LastHardwareFrameInfo.FrameNumber, LastHardwareFrameInfo.TimestampNs);
+#endif
+		LastHardwareFrameInfo.DeltaSeconds = { .x = uint32_t(FrameDuration), .y = uint32_t(TimeScale) };
+	}
+	FrameCompletedCV.notify_all();;
 	if (PlaybackStopRequested)
 	{
-		nosEngine.LogW("(Device %d) %s Output: Frame complete callback invoked after stop requested, last frame: %llu", DeviceIndex, GetChannelName(Channel), LastFrameInfo_DeckLinkThread.FrameNumber);
+		nosEngine.LogW("(%s) Output: Frame complete callback invoked after stop requested, last frame: %llu", GetDeviceChannelString().c_str(), LastHardwareFrameInfo.FrameNumber);
 		return;
 	}
-	{
-		std::unique_lock lock(BufferMutex);
-		VideoFrame output(completedFrame);
-		output.StartAccess(bmdBufferAccessWrite);
-		size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
-		auto videoBufferBytes = output.GetBytes();
-		BufferToWrite = NextBufferToWrite;
-		NextBufferToWrite = {.Data = videoBufferBytes, .Size = actualBufferSize};
-		output.EndAccess();
-	}
-	{
-		std::unique_lock lock(LastFrameInfoMutex);
-		LastFrameInfo_DeckLinkThread.TimestampNs = timestampNs;
-		LastFrameInfo_DeckLinkThread.FrameNumber++;
-		LastFrameInfo_DeckLinkThread.DeltaSeconds = { .x = uint32_t(FrameDuration), .y = uint32_t(TimeScale) };
-	}
-	FrameArrivedCV.notify_all();
-	nosDeckLinkFrameResult frameResult = NOS_DECKLINK_FRAME_COMPLETED;
-	switch (result)
-	{
-	case bmdOutputFrameDisplayedLate:
-		frameResult = NOS_DECKLINK_FRAME_DROPPED;
-		break;
-	case bmdOutputFrameDropped:
-		frameResult = NOS_DECKLINK_FRAME_DROPPED;
-		break;
-	default:
-		break;
-	}
-	OnFrameEnd(frameResult);
 	ScheduleNextFrame(completedFrame);
 }
 
@@ -270,7 +298,7 @@ void OutputHandler::ScheduledPlaybackHasStopped_DeckLinkThread()
 		std::unique_lock lock(PlaybackStoppedMutex);
 		PlaybackStopped = true;
 	}
-	nosEngine.LogI("(Device %d) %s Output: Playback has stopped", DeviceIndex, GetChannelName(Channel));
+	nosEngine.LogI("(%s) Output: Playback has stopped", GetDeviceChannelString().c_str());
 	PlaybackStoppedCond.notify_all();
 }
 }

@@ -107,11 +107,14 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 	if (res != S_OK)
 		return;
 	{
-		std::unique_lock lock(LastFrameInfoMutex);
-		LastFrameInfo_DeckLinkThread.FrameNumber++;
-		LastFrameInfo_DeckLinkThread.TimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		std::unique_lock lock(ReadFrameMutex);
+		auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
+		auto streamTimeNs = TimeToNanoseconds(frameTime, TimeScale);
+		LastHardwareFrameInfo.TimestampNs = streamTimeNs;
+		LastHardwareFrameInfo.FrameNumber = streamTimeNs / frameTimeNs;
+		LastHardwareFrameInfo.DeltaSeconds = {.x = uint32_t(FrameDuration), .y = uint32_t(TimeScale)};
 	}
-	FrameArrivedCond.notify_one();
+	FrameArrivedCV.notify_one();
 	auto inputFrame = std::make_unique<VideoFrame>(frame);
 	inputFrame->StartAccess(bmdBufferAccessRead);
 	{
@@ -119,15 +122,6 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 		ReadFrameBuffer = {.Data = inputFrame->GetBytes(), .Size = inputFrame->Size};
 	}
 	inputFrame->EndAccess();
-	OnFrameEnd(NOS_DECKLINK_FRAME_COMPLETED);
-}
-
-void InputHandler::FreeReadFrame(std::unique_lock<std::mutex>& readFrameLock)
-{
-	//if (!ReadFrame)
-	//	return;
-	//ReadFrame->EndAccess();
-	ReadFrameBuffer = {};
 }
 
 bool InputHandler::Flush()
@@ -142,7 +136,7 @@ bool InputHandler::Flush()
 
 	{
 		std::unique_lock lock(ReadFrameMutex);
-		FreeReadFrame(lock);
+		ReadFrameBuffer = {};
 	}
 
 	return true;
@@ -182,8 +176,8 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 bool InputHandler::Start()
 {
 	{
-		std::unique_lock lock(LastFrameInfoMutex);
-		LastFrameInfo_DeckLinkThread = {};
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		LastHardwareFrameInfo = {};
 		LastWaitedFrame = 0;
 	}
 	if (S_OK != Interface->StartStreams())
@@ -208,16 +202,13 @@ bool InputHandler::Close()
 
 bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
-	std::unique_lock lock(LastFrameInfoMutex);
-	bool res = FrameArrivedCond.wait_for(lock, timeout, [this]{
-		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
+	std::unique_lock lock(LastHardwareFrameInfoMutex);
+	bool res = FrameArrivedCV.wait_for(lock, timeout, [this]{
+		return LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
 	});
+	LastWaitedFrame = LastHardwareFrameInfo.FrameNumber;
 	if (!res)
-	{
 		nosEngine.LogE("(Device %d) %s Input: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
-		return false;
-	}
-	LastWaitedFrame = LastFrameInfo_DeckLinkThread.FrameNumber;
 	return res;
 }
 
@@ -228,7 +219,7 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 		std::unique_lock lock(ReadFrameMutex);
 		if (!ReadFrameBuffer.Size)
 		{
-			nosEngine.LogE("(Device %d) %s DMA Read: No frame available", DeviceIndex, GetChannelName(Channel));
+			nosEngine.LogE("(%s) DMA Read: No frame available to read", GetDeviceChannelString().c_str());
 			return;
 		}
 		readBuffer = ReadFrameBuffer;
@@ -238,17 +229,29 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 		return;
 	if (size != actualSize)
 	{
-		nosEngine.LogW(
-			"(Device %d) %s DMA Read: Buffer size does not match frame size", DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogW("(%s) DMA Read: Buffer size does not match frame size", GetDeviceChannelString().c_str());
 	}
 	auto copySize = std::min(actualSize, size);
 	std::memcpy(buffer, readBuffer.Data, copySize);
-}
-
-nosDeckLinkFrameTimingInfo InputHandler::GetLastFrameInfo()
-{
-	std::unique_lock lock(LastFrameInfoMutex);
-	return LastFrameInfo_DeckLinkThread;
+	uint64_t lastFrame;
+	{
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		lastFrame = LastHardwareFrameInfo.FrameNumber;
+	}
+	if (LastProcessedFrame)
+	{
+		int64_t dropCount = lastFrame - *LastProcessedFrame - 1;
+		if (dropCount > 0)
+		{
+			for (int i = 0; i < dropCount; i++)
+				OnFrameEnd(NOS_DECKLINK_FRAME_DROPPED);
+		}
+		else
+		{
+			OnFrameEnd(NOS_DECKLINK_FRAME_COMPLETED);
+		}
+	}
+	LastProcessedFrame = lastFrame;
 }
 
 bool InputHandler::UpdateFrameRate(BMDDisplayMode displayMode)

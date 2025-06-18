@@ -27,6 +27,8 @@
 namespace nos::decklink
 {
 
+#define NOS_DECKLINK_DIAGNOSTICS 0
+
 template <typename T>
 auto Release(T& obj)
 {
@@ -170,6 +172,7 @@ struct IOHandlerBaseI
 
 	uint64_t FramesProcessed = 0;
 	uint64_t LastWaitedFrame = 0;
+	std::optional<uint64_t> LastProcessedFrame = std::nullopt;
 
 	bool IsInterlaced = false;
 
@@ -187,24 +190,21 @@ struct IOHandlerBaseI
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
 
-	virtual nosDeckLinkFrameTimingInfo GetLastFrameInfo() = 0;
+	nosDeckLinkFrameTimingInfo GetLastFrameInfo();
+
+	std::string GetDeviceChannelString() const;
+
+	static uint64_t TimeToNanoseconds(BMDTimeValue time, BMDTimeScale scale);
 
 protected:
 	virtual bool Start() = 0;
 	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
 	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
 	virtual bool Stop() = 0;
-	void OnFrameEnd(nosDeckLinkFrameResult result)
-	{
-		++FramesProcessed;
-		for (auto& [callbackId, pair] : FrameResultCallbacks)
-		{
-			auto& [callback, userData] = pair;
-			callback(userData, result, FramesProcessed);
-		}
-	}
+	void OnFrameEnd(nosDeckLinkFrameResult result);
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
-	nosDeckLinkFrameTimingInfo LastFrameInfo_DeckLinkThread{};
+	std::mutex LastHardwareFrameInfoMutex;
+	nosDeckLinkFrameTimingInfo LastHardwareFrameInfo{};
 private:
 	std::atomic_bool IsOpen = false;
 	std::atomic_bool IsStreamRunning = false;
