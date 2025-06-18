@@ -68,13 +68,12 @@ struct WaitFrameNode : NodeContext
 			std::chrono::system_clock::duration frameTimestamp =
 				std::chrono::duration_cast<std::chrono::system_clock::duration>(
 					std::chrono::nanoseconds(ch.LastFrameInfo.TimestampNs));
-			nosEngine.LogI("%s: %s Frame timestamp at %s",
+			nosEngine.LogI("(Device %d, %s) Frame timestamp at %s",
+						   GetDeviceIndex(),
 						   nosDeckLink->GetChannelName(GetChannel()),
-						   IsInput() ? "In" : "Out",
 						   std::format("{:%H:%M:%S}", frameTimestamp)
 							   .c_str());
-			auto steadyClockNowNs = NowNs();
-			out->TimeSinceLastEventNs = steadyClockNowNs - ch.LastFrameInfo.TimestampNs;
+			out->TimeSinceLastEventNs = ch.TimeInFrameNs;
 			out->EventCount = ch.LastFrameInfo.FrameNumber;
 		}
 		return NOS_RESULT_SUCCESS;

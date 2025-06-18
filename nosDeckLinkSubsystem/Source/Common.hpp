@@ -191,6 +191,7 @@ struct IOHandlerBaseI
 	void RemoveFrameResultCallback(int32_t callbackId);
 
 	nosDeckLinkFrameTimingInfo GetLastFrameInfo();
+	virtual std::optional<uint64_t> GetTimeInFrameNs() = 0;
 
 	std::string GetDeviceChannelString() const;
 
@@ -231,6 +232,25 @@ struct IOHandlerBase : IOHandlerBaseI
 	T* operator->() const
 	{
 		return Interface;
+	}
+
+	std::optional<uint64_t> GetTimeInFrameNs() override
+	{
+		if (!IsCurrentlyOpen())
+			return std::nullopt;
+
+		BMDTimeValue hardwareTime;
+		BMDTimeValue timeInFrame;
+		BMDTimeValue ticksPerFrame;
+
+		auto res = Interface->GetHardwareReferenceClock(TimeScale, &hardwareTime, &timeInFrame, &ticksPerFrame);
+		if (res != S_OK)
+		{
+			nosEngine.LogE("(%s) Output: Failed to get hardware reference clock", GetDeviceChannelString().c_str());
+			return std::nullopt;
+		}
+		auto nsTimeInFrame = TimeToNanoseconds(timeInFrame, TimeScale);
+		return nsTimeInFrame;
 	}
 };
 

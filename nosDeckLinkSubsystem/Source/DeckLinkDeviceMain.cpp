@@ -529,11 +529,8 @@ nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel c
 	out->IsStreaming = io.IsCurrentlyRunning();
 	out->LastFrameInfo = io.GetLastFrameInfo();
 	out->Direction = dir;
-	if (dir == NOS_MEDIAIO_DIRECTION_OUTPUT)
-	{
-		auto timeNs = static_cast<OutputHandler*>(&io)->GetNanosecondsSinceStreamStarted();
-		out->Output.TimeSinceStreamStartedNs = timeNs.has_value() ? *timeNs : 0;
-	}
+	if (auto timeInFrame = io.GetTimeInFrameNs())
+		out->TimeInFrameNs = *timeInFrame;
 
 	return NOS_RESULT_SUCCESS;
 }
