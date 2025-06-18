@@ -35,8 +35,9 @@ struct DMAReadNode : NodeContext
 
 		uint8_t* buffer = nosVulkan->Map(&bufferToWrite);
 		auto inputBufferSize = bufferToWrite.Memory.Size;
+
 		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBufferSize);
-		
+
 		bufferToWrite.Info.Buffer.FieldType = NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE;
 		nosEngine.SetPinValue(execParams[NOS_NAME_STATIC("Output")].Id, Buffer::From(vkss::ConvertBufferInfo(bufferToWrite)));
 

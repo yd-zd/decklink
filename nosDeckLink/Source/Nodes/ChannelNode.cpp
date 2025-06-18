@@ -84,6 +84,7 @@ struct ChannelHandler
 	std::mutex DecklinkThreadMutex;
 	struct
 	{
+		uint32_t DeviceIndex = 0;
 		std::string ChannelName = "Unknown Channel";
 		bool DropDetectionEnabled = false;
 		uint32_t FramesSinceLastDrop = 0;
@@ -102,6 +103,7 @@ struct ChannelHandler
 		UpdateStatusAndOutPins();
 		if (reopen && !Open())
 			return ChannelUpdateResult::UnsupportedSettings;
+		StartIfOpen();
 		return ChannelUpdateResult::Opened;
 	}
 
@@ -132,7 +134,7 @@ struct ChannelHandler
 		UpdateChannelStatus();
 	}
 
-	void OnFrameEnd_DeckLinkThread(nosDeckLinkFrameResult result, uint32_t processedFrameNumber)
+	void OnFrameEnd(nosDeckLinkFrameResult result, uint32_t processedFrameNumber)
 	{
 		std::unique_lock lock(DecklinkThreadMutex);
 		if (!DeckLinkThreadStatus.DropDetectionEnabled)
@@ -144,7 +146,7 @@ struct ChannelHandler
 			++DropCount;
 			DeckLinkThreadStatus.FramesSinceLastDrop = 0;
 			DeckLinkThreadStatus.DropDetected = true;
-			nosEngine.LogI("DeckLink %s dropped a frame", DeckLinkThreadStatus.ChannelName.c_str());
+			nosEngine.LogD("(Device %d, %s) dropped a frame", DeckLinkThreadStatus.DeviceIndex, DeckLinkThreadStatus.ChannelName.c_str());
 			SetStatus(StatusType::DropCount, fb::NodeStatusMessageType::WARNING, "Drop Count: " + std::to_string(DropCount));
 			UpdateStatus();
 			break;
@@ -235,7 +237,10 @@ struct ChannelHandler
 	void StartIfOpen()
 	{
 		if (IsOpen)
+		{
 			nosDeckLink->StartStream(DeviceIndex, Channel);
+			ResetDropState();
+		}
 	}
 
 	void StopIfOpen()
@@ -243,9 +248,14 @@ struct ChannelHandler
 		if (IsOpen)
 		{
 			nosDeckLink->StopStream(DeviceIndex, Channel);
-			std::unique_lock lock(DecklinkThreadMutex);
-			DeckLinkThreadStatus = {};
+			ResetDropState();
 		}
+	}
+
+	void ResetDropState()
+	{
+		std::unique_lock lock(DecklinkThreadMutex);
+		DeckLinkThreadStatus = {};
 	}
 
 	void Close();
@@ -350,7 +360,7 @@ void InputVideoFormatChanged(void* userData, nosMediaIOVideoScanType scanType, n
 
 void FrameResultCallback(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber)
 {
-	static_cast<ChannelHandler*>(userData)->OnFrameEnd_DeckLinkThread(result, processedFrameNumber);
+	static_cast<ChannelHandler*>(userData)->OnFrameEnd(result, processedFrameNumber);
 }
 
 void DeviceInvalidated(void* userData)
@@ -623,6 +633,7 @@ public:
 				else
 				{
 					Channel.DeckLinkThreadStatus.DropDetectionEnabled = true;
+					Channel.DeckLinkThreadStatus.DeviceIndex = Channel.DeviceIndex;
 					Channel.DeckLinkThreadStatus.ChannelName = Channel.GetChannelName();
 				}
 			}
@@ -737,27 +748,13 @@ public:
 
 	ChannelHandler Channel;
 
-	void OnPathStartInitiated() override
-	{
-		if(Channel.IsInput())
-			Channel.StartIfOpen();
-	}
-
 	void OnPathStart() override
 	{
 		if (!Channel.IsOpen)
 			return;
 		if (Channel.IsInput())
 			nosDeckLink->ResetInputFrames(Channel.DeviceIndex, Channel.Channel);
-		// Output is started here since decklink api counts drops
-		// and we need to start the stream when we are sure that frames will arrive
-		else
-			Channel.StartIfOpen();
-	}
-
-	void OnPathStop() override
-	{
-		Channel.StopIfOpen();
+		Channel.ResetDropState();
 	}
 };
 

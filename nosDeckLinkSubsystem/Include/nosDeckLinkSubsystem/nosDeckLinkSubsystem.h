@@ -129,6 +129,21 @@ typedef struct nosDeckLinkDeviceStatus
 	} Messages;
 } nosDeckLinkDeviceStatus;
 
+typedef struct nosDeckLinkFrameTimingInfo
+{
+	uint64_t TimestampNs;
+	uint64_t FrameNumber;
+	nosVec2u DeltaSeconds;
+} nosDeckLinkFrameTimingInfo;
+
+typedef struct nosDeckLinkChannelState {
+	nosBool IsOpen;
+	nosBool IsStreaming;
+	nosDeckLinkFrameTimingInfo LastFrameInfo;
+	nosMediaIODirection Direction;
+	uint64_t TimeInFrameNs;
+} nosDeckLinkChannelState;
+
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 typedef void (NOSAPI_CALL* nosDeckLinkDeviceInvalidatedCallback)(void* userData);
@@ -175,6 +190,9 @@ typedef struct nosDeckLinkSubsystem {
 
 	int32_t   (NOSAPI_CALL* RegisterDeviceStatusCallback)(uint32_t deviceIndex, nosDeckLinkDeviceStatusCallback callback, void* userData);
 	nosResult (NOSAPI_CALL* UnregisterDeviceStatusCallback)(uint32_t deviceIndex, int32_t callbackId);
+
+	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
+	nosResult (NOSAPI_CALL* ResetDropDetection)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -182,7 +200,7 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 2
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 1
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 2
 
 extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;

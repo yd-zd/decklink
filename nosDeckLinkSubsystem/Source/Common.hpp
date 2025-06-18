@@ -26,6 +26,9 @@
 
 namespace nos::decklink
 {
+
+#define NOS_DECKLINK_DIAGNOSTICS 0
+
 template <typename T>
 auto Release(T& obj)
 {
@@ -166,8 +169,10 @@ struct IOHandlerBaseI
 
 	BMDTimeValue FrameDuration = 0;
 	BMDTimeScale TimeScale = 0;
-	
-	uint32_t FramesProcessed = 0;
+
+	uint64_t FramesProcessed = 0;
+	uint64_t LastWaitedFrame = 0;
+	std::optional<uint64_t> LastProcessedFrame = std::nullopt;
 
 	bool IsInterlaced = false;
 
@@ -185,21 +190,22 @@ struct IOHandlerBaseI
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
 
+	nosDeckLinkFrameTimingInfo GetLastFrameInfo();
+	virtual std::optional<uint64_t> GetTimeInFrameNs() = 0;
+
+	std::string GetDeviceChannelString() const;
+
+	static uint64_t TimeToNanoseconds(BMDTimeValue time, BMDTimeScale scale);
+
 protected:
 	virtual bool Start() = 0;
 	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
 	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
 	virtual bool Stop() = 0;
-	void OnFrameEnd(nosDeckLinkFrameResult result)
-	{
-		++FramesProcessed;
-		for (auto& [callbackId, pair] : FrameResultCallbacks)
-		{
-			auto& [callback, userData] = pair;
-			callback(userData, result, FramesProcessed);
-		}
-	}
+	void OnFrameEnd(nosDeckLinkFrameResult result);
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
+	std::mutex LastHardwareFrameInfoMutex;
+	nosDeckLinkFrameTimingInfo LastHardwareFrameInfo{};
 private:
 	std::atomic_bool IsOpen = false;
 	std::atomic_bool IsStreamRunning = false;
@@ -227,99 +233,25 @@ struct IOHandlerBase : IOHandlerBaseI
 	{
 		return Interface;
 	}
+
+	std::optional<uint64_t> GetTimeInFrameNs() override
+	{
+		if (!IsCurrentlyOpen())
+			return std::nullopt;
+
+		BMDTimeValue hardwareTime;
+		BMDTimeValue timeInFrame;
+		BMDTimeValue ticksPerFrame;
+
+		auto res = Interface->GetHardwareReferenceClock(TimeScale, &hardwareTime, &timeInFrame, &ticksPerFrame);
+		if (res != S_OK)
+		{
+			nosEngine.LogE("(%s) Output: Failed to get hardware reference clock", GetDeviceChannelString().c_str());
+			return std::nullopt;
+		}
+		auto nsTimeInFrame = TimeToNanoseconds(timeInFrame, TimeScale);
+		return nsTimeInFrame;
+	}
 };
 
-inline bool IOHandlerBaseI::OpenStream(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
-{
-	if (IsOpen)
-		return false;
-	if (IsStreamRunning)
-		StopStream();
-	if (Open(displayMode, pixelFormat))
-	{
-		IsOpen = true;
-		return true;
-	}
-	return false;
-}
-
-inline bool IOHandlerBaseI::StartStream()
-{
-	if (!IsOpen)
-		return false;
-	if (IsStreamRunning)
-		return true;
-	FramesProcessed = 0;
-	if (Start())
-	{
-		IsStreamRunning = true;
-		return true;
-	}
-	return false;
-}
-
-inline bool IOHandlerBaseI::StopStream()
-{
-	if (!IsOpen)
-		return false;
-	if (!IsStreamRunning)
-		return true;
-	if (Stop())
-	{
-		IsStreamRunning = false;
-		return true;
-	}
-	return false;
-}
-
-inline bool IOHandlerBaseI::CloseStream()
-{
-	if (!IsOpen)
-		return false;
-	if (IsStreamRunning)
-		StopStream();
-	if (Close())
-	{
-		IsOpen = false;
-		return true;
-	}
-	return false;
-}
-
-inline bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout)
-{
-	util::Stopwatch sw;
-	bool res = WaitFrameImpl(timeout);
-	auto seconds = sw.Elapsed();
-	char watchLogBuf[128];
-	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s WaitFrame", DeviceIndex, GetChannelName(Channel));
-	nosEngine.WatchLog(watchLogBuf, util::Stopwatch::ElapsedString(seconds).c_str());
-	return res;
-}
-
-inline void IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
-{
-	util::Stopwatch sw;
-	DmaTransferImpl(buffer, size);
-	char watchLogBuf[128];
-	snprintf(watchLogBuf, sizeof(watchLogBuf), "DeckLink %d:%s DMAWrite", DeviceIndex, GetChannelName(Channel));
-	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
-}
-
-inline std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
-{
-	if (!IsOpen)
-		return std::nullopt;
-	return nosVec2u{ (uint32_t)FrameDuration, (uint32_t)TimeScale };
-}
-
-inline int32_t IOHandlerBaseI::AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData)
-{
-	return FrameResultCallbacks.Add(callback, userData);
-}
-
-inline void IOHandlerBaseI::RemoveFrameResultCallback(int32_t callbackId)
-{
-	FrameResultCallbacks.Remove(callbackId);
-}
 }
