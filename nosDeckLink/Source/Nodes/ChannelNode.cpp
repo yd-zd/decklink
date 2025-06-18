@@ -102,6 +102,7 @@ struct ChannelHandler
 		UpdateStatusAndOutPins();
 		if (reopen && !Open())
 			return ChannelUpdateResult::UnsupportedSettings;
+		StartIfOpen();
 		return ChannelUpdateResult::Opened;
 	}
 
@@ -737,27 +738,12 @@ public:
 
 	ChannelHandler Channel;
 
-	void OnPathStartInitiated() override
-	{
-		if(Channel.IsInput())
-			Channel.StartIfOpen();
-	}
-
 	void OnPathStart() override
 	{
 		if (!Channel.IsOpen)
 			return;
 		if (Channel.IsInput())
 			nosDeckLink->ResetInputFrames(Channel.DeviceIndex, Channel.Channel);
-		// Output is started here since decklink api counts drops
-		// and we need to start the stream when we are sure that frames will arrive
-		else
-			Channel.StartIfOpen();
-	}
-
-	void OnPathStop() override
-	{
-		Channel.StopIfOpen();
 	}
 };
 

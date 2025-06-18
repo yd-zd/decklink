@@ -106,35 +106,28 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 	auto res = frame->GetStreamTime(&frameTime, &frameDuration, TimeScale);
 	if (res != S_OK)
 		return;
-	// TODO: Additionally check for frameTime and frameDuration for drops
 	{
-		std::unique_lock lock(ReadFramesMutex);
+		std::unique_lock lock(LastFrameInfoMutex);
 		LastFrameInfo_DeckLinkThread.FrameNumber++;
 		LastFrameInfo_DeckLinkThread.TimestampNs = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-		if (ReadFrames.size() > 1)
-		{
-			OnFrameEnd(NOS_DECKLINK_FRAME_DROPPED);
-			return;
-		}
 	}
-	OnFrameEnd(NOS_DECKLINK_FRAME_COMPLETED);
+	FrameArrivedCond.notify_one();
 	auto inputFrame = std::make_unique<VideoFrame>(frame);
 	inputFrame->StartAccess(bmdBufferAccessRead);
 	{
-		std::unique_lock lock(ReadFramesMutex);
-		ReadFrames.push_back(std::move(inputFrame));
-		char buffer[256];
-		snprintf(buffer, sizeof(buffer), "DeckLink %d:%s Input Queue Size", DeviceIndex, GetChannelName(Channel));
-		nosEngine.WatchLog(buffer, std::to_string(ReadFrames.size()).c_str());
+		std::unique_lock lock(ReadFrameMutex);
+		ReadFrameBuffer = {.Data = inputFrame->GetBytes(), .Size = inputFrame->Size};
 	}
-	FrameArrivedCond.notify_one();
+	inputFrame->EndAccess();
+	OnFrameEnd(NOS_DECKLINK_FRAME_COMPLETED);
 }
 
-bool InputHandler::ResetReadFrames()
+void InputHandler::FreeReadFrame(std::unique_lock<std::mutex>& readFrameLock)
 {
-	std::unique_lock lock(ReadFramesMutex);
-	ReadFrames.clear();
-	return true;
+	//if (!ReadFrame)
+	//	return;
+	//ReadFrame->EndAccess();
+	ReadFrameBuffer = {};
 }
 
 bool InputHandler::Flush()
@@ -147,8 +140,10 @@ bool InputHandler::Flush()
 	if (S_OK != res)
 		return false;
 
-	std::unique_lock lock(ReadFramesMutex);
-	ReadFrames.clear();
+	{
+		std::unique_lock lock(ReadFrameMutex);
+		FreeReadFrame(lock);
+	}
 
 	return true;
 }
@@ -179,21 +174,18 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 		nosEngine.LogE("Could not enable video input - result = %08x", res);
 		return false;
 	}
-	{
-		IDeckLinkDisplayMode* displayModeInterface = nullptr;
-		res = Interface->GetDisplayMode(displayMode, &displayModeInterface);
-		if (res != S_OK)
-			return false;
-		res = displayModeInterface->GetFrameRate(&FrameDuration, &TimeScale);
-		if (res != S_OK)
-			return false;
-		Release(displayModeInterface);
-	}
+	if (!UpdateFrameRate(displayMode))
+		return false;
 	return true;
 }
 
 bool InputHandler::Start()
 {
+	{
+		std::unique_lock lock(LastFrameInfoMutex);
+		LastFrameInfo_DeckLinkThread = {};
+		LastWaitedFrame = 0;
+	}
 	if (S_OK != Interface->StartStreams())
 		return false;
 	return true;
@@ -216,7 +208,7 @@ bool InputHandler::Close()
 
 bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
-	std::unique_lock lock(ReadFramesMutex);
+	std::unique_lock lock(LastFrameInfoMutex);
 	bool res = FrameArrivedCond.wait_for(lock, timeout, [this]{
 		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
 	});
@@ -231,30 +223,45 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 
 void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
-	std::unique_lock lock(ReadFramesMutex);
-	if (ReadFrames.empty())
+	nosBuffer readBuffer{};
 	{
-		nosEngine.LogE("(Device %d) %s DMA Read: No frame available to read", DeviceIndex, GetChannelName(Channel));
-		return;
+		std::unique_lock lock(ReadFrameMutex);
+		if (!ReadFrameBuffer.Size)
+		{
+			nosEngine.LogE("(Device %d) %s DMA Read: No frame available", DeviceIndex, GetChannelName(Channel));
+			return;
+		}
+		readBuffer = ReadFrameBuffer;
 	}
-	auto readFrame = std::move(ReadFrames.front());
-	ReadFrames.pop_front();
-	size_t actualSize = readFrame->Size;
+	size_t actualSize = readBuffer.Size;
 	if (!actualSize)
 		return;
 	if (size != actualSize)
 	{
-		nosEngine.LogW("(Device %d) %s DMA Read: Buffer size does not match frame size", DeviceIndex, GetChannelName(Channel));
+		nosEngine.LogW(
+			"(Device %d) %s DMA Read: Buffer size does not match frame size", DeviceIndex, GetChannelName(Channel));
 	}
 	auto copySize = std::min(actualSize, size);
-	std::memcpy(buffer, readFrame->GetBytes(), copySize);
-	readFrame->EndAccess();
+	std::memcpy(buffer, readBuffer.Data, copySize);
 }
 
 nosDeckLinkFrameTimingInfo InputHandler::GetLastFrameInfo()
 {
-	std::unique_lock lock(ReadFramesMutex);
+	std::unique_lock lock(LastFrameInfoMutex);
 	return LastFrameInfo_DeckLinkThread;
+}
+
+bool InputHandler::UpdateFrameRate(BMDDisplayMode displayMode)
+{
+	IDeckLinkDisplayMode* displayModeInterface = nullptr;
+	auto res = Interface->GetDisplayMode(displayMode, &displayModeInterface);
+	if (res != S_OK)
+		return false;
+	res = displayModeInterface->GetFrameRate(&FrameDuration, &TimeScale);
+	if (res != S_OK)
+		return false;
+	Release(displayModeInterface);
+	return true;
 }
 
 void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat)
@@ -263,9 +270,11 @@ void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDi
 
 	// Pause video capture
 	Interface->PauseStreams();
-			
+	
 	// Enable video input with the properties of the new video stream
 	Interface->EnableVideoInput(newDisplayMode, pixelFormat, bmdVideoInputEnableFormatDetection);
+
+	UpdateFrameRate(newDisplayMode);
 
 	// Flush any queued video frames
 	Interface->FlushStreams();

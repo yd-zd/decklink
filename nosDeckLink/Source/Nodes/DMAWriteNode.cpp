@@ -74,10 +74,10 @@ struct DMAWriteNode : NodeContext
 		nosDeckLinkChannelState chAfter{};
 		nosDeckLink->GetChannelState(deviceIndex, channel, &chAfter);
 		
-		if (chAfter.LastFrameInfo.FrameNumber != chBefore.LastFrameInfo.FrameNumber+1)
+		if (chAfter.LastFrameInfo.FrameNumber != chBefore.LastFrameInfo.FrameNumber)
 		{
 			nosEngine.LogI("Dropped: %llu frames on device %d, channel %s (Before: %llu, After: %llu)",
-						   chAfter.LastFrameInfo.FrameNumber - (chBefore.LastFrameInfo.FrameNumber + 1),
+						   chAfter.LastFrameInfo.FrameNumber - chBefore.LastFrameInfo.FrameNumber,
 						   deviceIndex,
 						   nosDeckLink->GetChannelName(channel),
 						   chBefore.LastFrameInfo.FrameNumber,

@@ -35,8 +35,24 @@ struct DMAReadNode : NodeContext
 
 		uint8_t* buffer = nosVulkan->Map(&bufferToWrite);
 		auto inputBufferSize = bufferToWrite.Memory.Size;
+
+		nosDeckLinkChannelState chBefore{};
+		nosDeckLink->GetChannelState(deviceIndex, channel, &chBefore);
 		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBufferSize);
+		nosDeckLinkChannelState chAfter{};
+		nosDeckLink->GetChannelState(deviceIndex, channel, &chAfter);
 		
+		if (chAfter.LastFrameInfo.FrameNumber != chBefore.LastFrameInfo.FrameNumber)
+		{
+			nosEngine.LogI("Dropped: %llu frames on device %d, channel %s (Before: %llu, After: %llu)",
+						   chAfter.LastFrameInfo.FrameNumber - chBefore.LastFrameInfo.FrameNumber,
+						   deviceIndex,
+						   nosDeckLink->GetChannelName(channel),
+						   chBefore.LastFrameInfo.FrameNumber,
+						   chAfter.LastFrameInfo.FrameNumber);
+			nosEngine.SendPathRestart(NodeId);
+		}
+
 		bufferToWrite.Info.Buffer.FieldType = NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE;
 		nosEngine.SetPinValue(execParams[NOS_NAME_STATIC("Output")].Id, Buffer::From(vkss::ConvertBufferInfo(bufferToWrite)));
 

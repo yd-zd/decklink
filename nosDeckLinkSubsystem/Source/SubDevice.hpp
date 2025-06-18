@@ -67,7 +67,7 @@ protected:
 	IDeckLinkProfileAttributes* ProfileAttributes = nullptr;
 	IDeckLinkConfiguration* Configuration = nullptr;
 
-	OutputHandler Output;
-	InputHandler Input;
+	OutputHandler Output{};
+	InputHandler Input{};
 };
 }

@@ -54,35 +54,32 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 	if (pixelFormat == bmdFormatUnspecified)
 		return false;
 	HRESULT res;
+	for (auto& frame : VideoFrames)
+		Release(frame);
+	for (auto& frame : VideoFrames)
 	{
-		std::unique_lock lock(VideoFramesMutex);
-		for (auto& frame : VideoFrames)
-			Release(frame);
-		for (auto& frame : VideoFrames)
+		// Get width and height from display mode
+		long width, height;
+		int rowBytes;
 		{
-			// Get width and height from display mode
-			long width, height;
-			int rowBytes;
-			{
-				IDeckLinkDisplayMode* displayModeInterface = nullptr;
-				res = Interface->GetDisplayMode(displayMode, &displayModeInterface);
-				if (res != S_OK)
-					return false;
-				width = displayModeInterface->GetWidth();
-				height = displayModeInterface->GetHeight();
-				res = displayModeInterface->GetFrameRate(&FrameDuration, &TimeScale);
-				if (res != S_OK)
-					return false;
-				rowBytes = 0;
-				res = Interface->RowBytesForPixelFormat(pixelFormat, width, &rowBytes);
-				if (res != S_OK)
-					return false;
-				Release(displayModeInterface);
-			}
-			Interface->CreateVideoFrame(width, height, rowBytes, pixelFormat, bmdFrameFlagDefault, &frame);
-			if (!frame)
+			IDeckLinkDisplayMode* displayModeInterface = nullptr;
+			res = Interface->GetDisplayMode(displayMode, &displayModeInterface);
+			if (res != S_OK)
 				return false;
+			width = displayModeInterface->GetWidth();
+			height = displayModeInterface->GetHeight();
+			res = displayModeInterface->GetFrameRate(&FrameDuration, &TimeScale);
+			if (res != S_OK)
+				return false;
+			rowBytes = 0;
+			res = Interface->RowBytesForPixelFormat(pixelFormat, width, &rowBytes);
+			if (res != S_OK)
+				return false;
+			Release(displayModeInterface);
 		}
+		Interface->CreateVideoFrame(width, height, rowBytes, pixelFormat, bmdFrameFlagDefault, &frame);
+		if (!frame)
+			return false;
 	}
 
 	res = Interface->EnableVideoOutput(displayMode, bmdVideoOutputFlagDefault);
@@ -111,15 +108,13 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 bool OutputHandler::Start()
 {
 	PlaybackStopRequested = false;
-	{
-		std::unique_lock lock(VideoFramesMutex);
-		TotalFramesScheduled = 0;
-		FramePointFirstDisplayedLate = -1;
-		LastFrameInfo_DeckLinkThread = {};
-	}
+	TotalFramesScheduled = 0;
+	FramePointFirstDisplayedLate = -1;
+	LastFrameInfo_DeckLinkThread = {};
 	{
 		std::unique_lock lock(BufferMutex);
 		BufferToWrite = {};
+		NextBufferToWrite = {};
 	}
 	{
 		std::unique_lock lock(PlaybackStoppedMutex);
@@ -163,19 +158,16 @@ bool OutputHandler::Close()
 		nosEngine.LogE("SubDevice: Failed to disable video output");
 		return false;
 	}
-	{
-		std::unique_lock lock(VideoFramesMutex);
-		for (auto& frame : VideoFrames)
-			Release(frame);
-	}
+	for (auto& frame : VideoFrames)
+		Release(frame);
 	Interface->SetScheduledFrameCompletionCallback(nullptr);
 	return true;
 }
 
 bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
-	std::unique_lock lock(VideoFramesMutex);
-	bool res = ReadyToWrite.wait_for(lock, timeout, [this] {
+	std::unique_lock lock(LastFrameInfoMutex);
+	bool res = FrameArrivedCV.wait_for(lock, timeout, [this] {
 		return LastWaitedFrame != LastFrameInfo_DeckLinkThread.FrameNumber;
 	});
 	LastWaitedFrame = LastFrameInfo_DeckLinkThread.FrameNumber;
@@ -187,21 +179,17 @@ bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
 	std::unique_lock lock(BufferMutex);
-	if (BufferToWrite.Data)
+	if (!BufferToWrite.Data)
 	{
 		nosEngine.LogE("(Device %d) %s Output: Buffer already in use, cannot write new data", DeviceIndex, GetChannelName(Channel));
 		return;
 	}
-	BufferToWrite.Data = buffer;
-	BufferToWrite.Size = size;
-	CopyCompleted.wait_for(lock, std::chrono::milliseconds(100), [this] { 
-		return !BufferToWrite.Data;
-	});
+	memcpy(BufferToWrite.Data, buffer, std::min(size, BufferToWrite.Size));
 }
 
 nosDeckLinkFrameTimingInfo OutputHandler::GetLastFrameInfo()
 {
-	std::unique_lock lock(VideoFramesMutex);
+	std::unique_lock lock(LastFrameInfoMutex);
 	return LastFrameInfo_DeckLinkThread;
 }
 
@@ -244,14 +232,22 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 		return;
 	}
 	{
-		std::unique_lock lock(VideoFramesMutex);
-		std::chrono::system_clock::duration startTime = std::chrono::duration_cast<std::chrono::system_clock::duration>(
-			std::chrono::nanoseconds(timestampNs));
+		std::unique_lock lock(BufferMutex);
+		VideoFrame output(completedFrame);
+		output.StartAccess(bmdBufferAccessWrite);
+		size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
+		auto videoBufferBytes = output.GetBytes();
+		BufferToWrite = NextBufferToWrite;
+		NextBufferToWrite = {.Data = videoBufferBytes, .Size = actualBufferSize};
+		output.EndAccess();
+	}
+	{
+		std::unique_lock lock(LastFrameInfoMutex);
 		LastFrameInfo_DeckLinkThread.TimestampNs = timestampNs;
 		LastFrameInfo_DeckLinkThread.FrameNumber++;
 		LastFrameInfo_DeckLinkThread.DeltaSeconds = { .x = uint32_t(FrameDuration), .y = uint32_t(TimeScale) };
 	}
-	ReadyToWrite.notify_one();
+	FrameArrivedCV.notify_all();
 	nosDeckLinkFrameResult frameResult = NOS_DECKLINK_FRAME_COMPLETED;
 	switch (result)
 	{
@@ -265,28 +261,6 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 		break;
 	}
 	OnFrameEnd(frameResult);
-
-	{
-		std::unique_lock lock(BufferMutex);
-		if (BufferToWrite.Data)
-		{
-			VideoFrame output(completedFrame);
-			output.StartAccess(bmdBufferAccessWrite);
-			size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
-			auto videoBufferBytes = output.GetBytes();
-			if (videoBufferBytes)
-			{
-				if (BufferToWrite.Size != actualBufferSize)
-					nosEngine.LogW("(Device %d) %s DMA Write: Buffer size does not match frame size", DeviceIndex, GetChannelName(Channel));
-				size_t copySize = std::min(BufferToWrite.Size, actualBufferSize);
-				std::memcpy(videoBufferBytes, BufferToWrite.Data, copySize);
-			}
-			output.EndAccess();
-			BufferToWrite = {};
-			CopyCompleted.notify_all();
-		}
-	}
-
 	ScheduleNextFrame(completedFrame);
 }
 
