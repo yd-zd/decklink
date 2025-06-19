@@ -399,7 +399,7 @@ public:
 		Channel.FrameRatePinId = *GetPinId(NSN_FrameRate);
 		Channel.PixelFormatPinId = *GetPinId(NSN_PixelFormat);
 
-		GetAllPossibleConfigurations();
+		BuildPossibleOutputConfigs();
 
 		UpdateStringList(GetVideoScanTypeStringListName(), GetPossibleVideoScanTypes());
 
@@ -673,9 +673,9 @@ public:
 	std::string GetPixelFormatStringListName() { return "decklink.PixelFormatList." + std::string(NodeId); }
 	std::string GetVideoScanTypeStringListName() { return "decklink.VideoScanList." + std::string(NodeId); }
 	
-	Trie<std::string, bool> PossibleOutputConfigurations;
+	Trie<std::string> PossibleOutputConfigs;
 
-	void GetAllPossibleConfigurations()
+	void BuildPossibleOutputConfigs()
 	{
 		// [(Device, Channel, Video Scan Type, Resolution, Frame Rate, Pixel Format)]
 		auto devices = GetPossibleDevices();
@@ -708,7 +708,7 @@ public:
 								std::vector<std::string> key = {
 									deviceKey, channelName, videoScanTypeName, resolutionName, frameRateName, pixelFormatName
 								};
-								PossibleOutputConfigurations.Insert(key, true);
+								PossibleOutputConfigs.Insert(key);
 							}
 						}
 					}

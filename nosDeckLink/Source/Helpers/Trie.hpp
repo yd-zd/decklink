@@ -6,65 +6,76 @@
 namespace nos::decklink
 {
 
-template <typename K, typename V>
+template <typename K>
 struct TrieNode {
-	V Data{};
-	std::unordered_map<K, TrieNode<K, V>*> Children{};
+	std::unordered_map<K, TrieNode<K>*> Children{};
 };
 
-template <typename K, typename V>
+template <typename K>
 class Trie {
 public:
-	Trie() : Root(new TrieNode<K, V>()) {}
+	Trie() : Root(new TrieNode<K>()) {}
 	~Trie() { DeleteNode(Root); }
 
-	void Insert(const std::vector<K>& key, const V& value) {
-		TrieNode<K, V>* currentNode = Root;
+	void Insert(const std::vector<K>& key)
+	{
+		TrieNode<K>* currentNode = Root;
 		for (const K& part : key) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
-				currentNode->Children[part] = new TrieNode<K, V>();
+				currentNode->Children[part] = new TrieNode<K>();
 			}
 			currentNode = currentNode->Children[part];
 		}
-		currentNode->Data = value;
 	}
 
-	V* Find(const std::vector<K>& key) {
-		TrieNode<K, V>* currentNode = Root;
+	bool Contains(const std::vector<K>& key)
+	{
+		TrieNode<K>* currentNode = Root;
 		for (const K& part : key) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
-				return nullptr;
+				return false;
 			}
 			currentNode = currentNode->Children[part];
 		}
-		return &currentNode->Data;
+		return true;
 	}
 
-	void Search(const std::vector<K>& prefix, std::vector<V*>& results) {
-		TrieNode<K, V>* currentNode = Root;
+	void Search(const std::vector<K>& prefix, std::vector<std::vector<K>>& results)
+	{
+		TrieNode<K>* currentNode = Root;
 		for (const K& part : prefix) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
-				return;
+				return; // Prefix not found
 			}
 			currentNode = currentNode->Children[part];
 		}
-		results.push_back(&currentNode->Data);
-		for (const auto& child : currentNode->Children) {
-			std::vector<K> newPrefix = prefix;
-			newPrefix.push_back(child.first);
-			Search(newPrefix, results);
-		}
+		std::vector<K> currentKey = prefix;
+		CollectAllKeys(currentNode, currentKey, results);
 	}
 
 private:
-	void DeleteNode(TrieNode<K, V>* node) {
+	void DeleteNode(TrieNode<K>* node)
+	{
 		for (auto& child : node->Children) {
 			DeleteNode(child.second);
 		}
 		delete node;
 	}
 
-	TrieNode<K, V>* Root;
+	void CollectAllKeys(TrieNode<K>* node, std::vector<K>& currentKey, std::vector<std::vector<K>>& results)
+	{
+		if (node->Children.empty()) {
+			results.push_back(currentKey);
+			return;
+		}
+		for (const auto& child : node->Children) {
+			currentKey.push_back(child.first);
+			CollectAllKeys(child.second, currentKey, results);
+			currentKey.pop_back();
+		}
+	}
+
+	TrieNode<K>* Root;
 };
 
 }
