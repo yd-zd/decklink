@@ -208,9 +208,6 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 		return LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
 	});
 	LastWaitedFrame = LastHardwareFrameInfo.FrameNumber;
-	auto frameTimeNs = LastHardwareFrameInfo.TimestampNs;
-	std::chrono::system_clock::duration frameTimestamp =
-		std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::nanoseconds(frameTimeNs));
 	if (!res)
 		nosEngine.LogE("(Device %d) %s Input: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
 	return res;
