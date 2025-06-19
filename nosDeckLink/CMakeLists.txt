@@ -39,7 +39,7 @@ nos_find_module_path("nos.sys.device" "0.3" NOS_SYS_DEVICE_PATH)
 nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosSysDevice)
 
 # nos.sync
-nos_get_module("nos.sync" "3.0" NOS_SYNC_TARGET)
+nos_get_module("nos.sync" "3.1" NOS_SYNC_TARGET)
 
 nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLink)
 

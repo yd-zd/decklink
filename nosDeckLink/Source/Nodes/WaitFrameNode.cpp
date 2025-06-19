@@ -24,6 +24,10 @@ struct WaitFrameNode : NodeContext
 	static constexpr uint64_t TIMEOUT_MS = 1000;
 	WaitFrameNode(nosFbNodePtr node) : NodeContext(node)
 	{
+		AddPinValueWatcher(NOS_NAME("EnableSync"), [this](nos::Buffer const& newVal, std::optional<nos::Buffer> oldValue) {
+			if (!oldValue || *oldValue != newVal)
+				nosEngine.SendPathRestart(NodeId);
+		});
 	}
 
 	static nosResult SyncPathStarts(void* ctx, nosWaitResult* outRes)
@@ -51,6 +55,14 @@ struct WaitFrameNode : NodeContext
 		if (!state.IsOpen || !state.IsStreaming)
 			return false;
 		return true;
+	}
+
+	bool IsSyncEnabled()
+	{
+		auto buf = GetWatchedPinValue(NOS_NAME("EnableSync"));
+		if (!buf.has_value() || buf->Size != sizeof(bool))
+			return false;
+		return *reinterpret_cast<const bool*>(buf->Data) == true;
 	}
 
 	nosResult SyncPathStarts(nosWaitResult* out)
@@ -110,7 +122,7 @@ struct WaitFrameNode : NodeContext
 			return;
 		}
 		nosRegisterEventParams params{
-			.EventGroupId = NOS_SYNC_DEFAULT_EVENT_GROUP_ID,
+			.EventGroupId = IsSyncEnabled() ? NOS_SYNC_DEFAULT_EVENT_GROUP_ID : NOS_SYNC_NO_SYNC_EVENT_GROUP_ID,
 			.DeltaSeconds = deltaSecs,
 			.UserData = this,
 			.ResetFn = nullptr,
