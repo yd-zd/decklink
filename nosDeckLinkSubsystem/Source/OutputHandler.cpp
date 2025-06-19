@@ -251,6 +251,7 @@ void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
+	auto time = std::chrono::steady_clock::now().time_since_epoch().count();
 	{
 		std::unique_lock lock(DMATargetMutex);
 		DMATarget = NextDMATarget;
@@ -260,22 +261,18 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 	size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
 	auto videoBufferBytes = output.GetBytes();
 	NextDMATarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
+	auto streamTimeNs = GetNanosecondsSinceStreamStarted();
+	auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
 	output.EndAccess();
 	{
 		std::unique_lock lock(LastHardwareFrameInfoMutex);
-		auto streamTimeNs = GetNanosecondsSinceStreamStarted();
+		LastHardwareFrameInfo.TimestampNs = time;
 		if (streamTimeNs)
 		{
-			auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
-			LastHardwareFrameInfo.TimestampNs = *streamTimeNs;
 			LastHardwareFrameInfo.FrameNumber = *streamTimeNs / frameTimeNs;
 		}
 		else
 		{
-			auto timestampNs =
-				std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
-				.count();
-			LastHardwareFrameInfo.TimestampNs = timestampNs;
 			LastHardwareFrameInfo.FrameNumber++;
 		}
 #if NOS_DECKLINK_DIAGNOSTICS
