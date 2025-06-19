@@ -238,19 +238,8 @@ struct IOHandlerBase : IOHandlerBaseI
 	{
 		if (!IsCurrentlyOpen())
 			return std::nullopt;
-
-		BMDTimeValue hardwareTime;
-		BMDTimeValue timeInFrame;
-		BMDTimeValue ticksPerFrame;
-
-		auto res = Interface->GetHardwareReferenceClock(TimeScale, &hardwareTime, &timeInFrame, &ticksPerFrame);
-		if (res != S_OK)
-		{
-			nosEngine.LogE("(%s) Output: Failed to get hardware reference clock", GetDeviceChannelString().c_str());
-			return std::nullopt;
-		}
-		auto nsTimeInFrame = TimeToNanoseconds(timeInFrame, TimeScale);
-		return nsTimeInFrame;
+		std::unique_lock lock(LastHardwareFrameInfoMutex);
+		return std::chrono::steady_clock::now().time_since_epoch().count() - LastHardwareFrameInfo.TimestampNs;
 	}
 };
 

@@ -104,17 +104,9 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 {
 	BMDTimeValue frameTime, frameDuration;
 	auto res = frame->GetStreamTime(&frameTime, &frameDuration, TimeScale);
+	auto time = std::chrono::steady_clock::now().time_since_epoch().count();
 	if (res != S_OK)
 		return;
-	{
-		std::unique_lock lock(ReadFrameMutex);
-		auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
-		auto streamTimeNs = TimeToNanoseconds(frameTime, TimeScale);
-		LastHardwareFrameInfo.TimestampNs = streamTimeNs;
-		LastHardwareFrameInfo.FrameNumber = streamTimeNs / frameTimeNs;
-		LastHardwareFrameInfo.DeltaSeconds = {.x = uint32_t(FrameDuration), .y = uint32_t(TimeScale)};
-	}
-	FrameArrivedCV.notify_one();
 	auto inputFrame = std::make_unique<VideoFrame>(frame);
 	inputFrame->StartAccess(bmdBufferAccessRead);
 	{
@@ -122,6 +114,15 @@ void InputHandler::OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* 
 		ReadFrameBuffer = {.Data = inputFrame->GetBytes(), .Size = inputFrame->Size};
 	}
 	inputFrame->EndAccess();
+	{
+		std::unique_lock lock(ReadFrameMutex);
+		auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
+		auto streamTimeNs = TimeToNanoseconds(frameTime, TimeScale);
+		LastHardwareFrameInfo.TimestampNs = time;
+		LastHardwareFrameInfo.FrameNumber = streamTimeNs / frameTimeNs;
+		LastHardwareFrameInfo.DeltaSeconds = {.x = uint32_t(FrameDuration), .y = uint32_t(TimeScale)};
+	}
+	FrameArrivedCV.notify_one();
 }
 
 bool InputHandler::Flush()
@@ -207,6 +208,9 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 		return LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
 	});
 	LastWaitedFrame = LastHardwareFrameInfo.FrameNumber;
+	auto frameTimeNs = LastHardwareFrameInfo.TimestampNs;
+	std::chrono::system_clock::duration frameTimestamp =
+		std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::nanoseconds(frameTimeNs));
 	if (!res)
 		nosEngine.LogE("(Device %d) %s Input: Timeout waiting for frame", DeviceIndex, GetChannelName(Channel));
 	return res;

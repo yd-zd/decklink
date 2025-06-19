@@ -305,8 +305,6 @@ bool SubDevice::ResetInputFrames()
 		nosEngine.LogE("SubDevice: Input interface is not available for device: %s", ModelName.c_str());
 		return false;
 	}
-	std::unique_lock lock(Input.ReadFrameMutex);
-	Input.ReadFrameBuffer = {};
 	return true;
 }
 
