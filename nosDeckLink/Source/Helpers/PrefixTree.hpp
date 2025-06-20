@@ -7,22 +7,22 @@ namespace nos::decklink
 {
 
 template <typename K>
-struct TrieNode {
-	std::unordered_map<K, TrieNode<K>*> Children{};
+struct PrefixTreeNode {
+	std::unordered_map<K, PrefixTreeNode<K>*> Children{};
 };
 
 template <typename K>
-class Trie {
+class PrefixTree {
 public:
-	Trie() : Root(new TrieNode<K>()) {}
-	~Trie() { DeleteNode(Root); }
+	PrefixTree() : Root(new PrefixTreeNode<K>()) {}
+	~PrefixTree() { DeleteNode(Root); }
 
 	void Insert(const std::vector<K>& key)
 	{
-		TrieNode<K>* currentNode = Root;
+		PrefixTreeNode<K>* currentNode = Root;
 		for (const K& part : key) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
-				currentNode->Children[part] = new TrieNode<K>();
+				currentNode->Children[part] = new PrefixTreeNode<K>();
 			}
 			currentNode = currentNode->Children[part];
 		}
@@ -30,7 +30,7 @@ public:
 
 	bool Contains(const std::vector<K>& key)
 	{
-		TrieNode<K>* currentNode = Root;
+		PrefixTreeNode<K>* currentNode = Root;
 		for (const K& part : key) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
 				return false;
@@ -42,7 +42,7 @@ public:
 
 	void Search(const std::vector<K>& prefix, std::vector<std::vector<K>>& results)
 	{
-		TrieNode<K>* currentNode = Root;
+		PrefixTreeNode<K>* currentNode = Root;
 		for (const K& part : prefix) {
 			if (currentNode->Children.find(part) == currentNode->Children.end()) {
 				return; // Prefix not found
@@ -55,7 +55,7 @@ public:
 	}
 
 private:
-	void DeleteNode(TrieNode<K>* node)
+	void DeleteNode(PrefixTreeNode<K>* node)
 	{
 		for (auto& child : node->Children) {
 			DeleteNode(child.second);
@@ -63,7 +63,7 @@ private:
 		delete node;
 	}
 
-	void DFS(TrieNode<K>* node, std::vector<K>& path, std::vector<std::vector<K>>& results)
+	void DFS(PrefixTreeNode<K>* node, std::vector<K>& path, std::vector<std::vector<K>>& results)
 	{
 		if (node->Children.empty()) {
 			results.push_back(path);
@@ -76,7 +76,7 @@ private:
 		}
 	}
 
-	TrieNode<K>* Root;
+	PrefixTreeNode<K>* Root;
 };
 
 }

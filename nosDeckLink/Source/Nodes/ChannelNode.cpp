@@ -8,7 +8,7 @@
 #include "Generated/DeckLink_generated.h"
 #include "Generated/Device_generated.h"
 
-#include "Helpers/Trie.hpp"
+#include "Helpers/PrefixTree.hpp"
 
 namespace nos::decklink
 {
@@ -694,7 +694,7 @@ public:
 		return prefix.str();
 	}
 	
-	Trie<std::string> PossibleOutputConfigs;
+	PrefixTree<std::string> PossibleOutputConfigs;
 
 	void BuildPossibleOutputConfigs()
 	{
