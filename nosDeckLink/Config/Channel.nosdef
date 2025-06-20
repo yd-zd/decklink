@@ -43,13 +43,6 @@
                         "can_show_as": "PROPERTY_ONLY"
                     },
                     {
-                        "name": "VideoScanType",
-                        "display_name": "Video Scan Type",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
                         "name": "Device",
                         "type_name": "nos.sys.device.DeviceInfo",
                         "show_as": "PROPERTY",
@@ -71,6 +64,13 @@
                     {
                         "name": "FrameRate",
                         "display_name": "Frame Rate",
+                        "type_name": "string",
+                        "show_as": "PROPERTY",
+                        "can_show_as": "PROPERTY_ONLY"
+                    },
+                    {
+                        "name": "VideoScanType",
+                        "display_name": "Video Scan Type",
                         "type_name": "string",
                         "show_as": "PROPERTY",
                         "can_show_as": "PROPERTY_ONLY"

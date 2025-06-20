@@ -49,8 +49,9 @@ public:
 			}
 			currentNode = currentNode->Children[part];
 		}
-		std::vector<K> currentKey = prefix;
-		CollectAllKeys(currentNode, currentKey, results);
+
+		std::vector<K> currentPath = prefix;
+		DFS(currentNode, currentPath, results);
 	}
 
 private:
@@ -62,16 +63,16 @@ private:
 		delete node;
 	}
 
-	void CollectAllKeys(TrieNode<K>* node, std::vector<K>& currentKey, std::vector<std::vector<K>>& results)
+	void DFS(TrieNode<K>* node, std::vector<K>& path, std::vector<std::vector<K>>& results)
 	{
 		if (node->Children.empty()) {
-			results.push_back(currentKey);
-			return;
+			results.push_back(path);
 		}
-		for (const auto& child : node->Children) {
-			currentKey.push_back(child.first);
-			CollectAllKeys(child.second, currentKey, results);
-			currentKey.pop_back();
+
+		for (auto& child : node->Children) {
+			path.push_back(child.first);
+			DFS(child.second, path, results);
+			path.pop_back();
 		}
 	}
 

@@ -52,31 +52,6 @@
             "display_name": "Is Open"
           },
           {
-            "id": "cc2677ad-59b6-4152-8347-5ec369364502",
-            "name": "VideoScanType",
-            "type_name": "string",
-            "show_as": "PROPERTY",
-            "can_show_as": "PROPERTY_ONLY",
-            "visualizer": {
-              "type": "COMBO_BOX",
-              "name": "decklink.VideoScanList.bedd2290-a31d-4aa0-8181-c36062d016d9"
-            },
-            "data": "Progressive",
-            "def": "",
-            "readonly": true,
-            "meta_data_map": [
-              {
-                "key": "Category",
-                "value": ""
-              }
-            ],
-            "contents_type": "PortalPin",
-            "contents": {
-              "source_id": "51e8a36f-ab4b-4a29-aa34-ee33921733e4"
-            },
-            "display_name": "Video Scan Type"
-          },
-          {
             "id": "e45ef863-65da-41b0-9202-dd2953810b8b",
             "name": "Device",
             "type_name": "nos.sys.device.DeviceInfo",
@@ -176,6 +151,31 @@
               "source_id": "1336701d-58c7-4838-8a5c-6d3853f5fa95"
             },
             "display_name": "Frame Rate"
+          },
+          {
+            "id": "cc2677ad-59b6-4152-8347-5ec369364502",
+            "name": "VideoScanType",
+            "type_name": "string",
+            "show_as": "PROPERTY",
+            "can_show_as": "PROPERTY_ONLY",
+            "visualizer": {
+              "type": "COMBO_BOX",
+              "name": "decklink.VideoScanList.bedd2290-a31d-4aa0-8181-c36062d016d9"
+            },
+            "data": "Progressive",
+            "def": "",
+            "readonly": true,
+            "meta_data_map": [
+              {
+                "key": "Category",
+                "value": ""
+              }
+            ],
+            "contents_type": "PortalPin",
+            "contents": {
+              "source_id": "51e8a36f-ab4b-4a29-aa34-ee33921733e4"
+            },
+            "display_name": "Video Scan Type"
           },
           {
             "id": "b4215247-64ac-4a77-a965-224b49494eab",
