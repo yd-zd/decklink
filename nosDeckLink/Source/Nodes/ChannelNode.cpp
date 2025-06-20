@@ -775,8 +775,7 @@ public:
 		nosDeckLink->GetSupportedOutputFrameGeometries(deviceIndex, channel, videoScanType, &frameGeometryList);
 		for (size_t i = 0; i < frameGeometryList.Count; i++)
 		{
-			auto& fg = frameGeometryList.Geometries[i];
-			resolutions.push_back(fg);
+			resolutions.push_back(frameGeometryList.Geometries[i]);
 		}
 		return resolutions;
 	}
@@ -805,22 +804,13 @@ public:
 
 	std::vector<std::string> GetSearchKeyFor(Config type)
 	{
-		auto deviceIndex = std::to_string(Channel.DeviceIndex);
-		switch (type)
-		{
-		case Config::ChannelName:
-			return { deviceIndex };
-		case Config::Resolution:
-			return { deviceIndex, ChannelPinValue };
-		case Config::FrameRate:
-			return { deviceIndex, ChannelPinValue, ResolutionPinValue };
-		case Config::VideoScanType:
-			return { deviceIndex, ChannelPinValue, ResolutionPinValue, FrameRatePinValue };
-		case Config::PixelFormat:
-			return { deviceIndex, ChannelPinValue, ResolutionPinValue, FrameRatePinValue, VideoScanTypePinValue };
-		default:
+		auto all = GetCurrentConfigSearchKey();
+		if (type == Config::IsInput || type == Config::Device)
 			return {};
-		}
+		std::vector<std::string> subkey;
+		for (int i = 0; i < int(type) - 1; ++i)
+			subkey.push_back(std::move(all[i]));
+		return subkey;
 	}
 
 	std::vector<std::string> GetCurrentConfigSearchKey()
@@ -874,7 +864,7 @@ public:
 	std::string ChannelPinValue = PIN_VALUE_NONE;
 	std::string ResolutionPinValue = PIN_VALUE_NONE;
 	std::string FrameRatePinValue = PIN_VALUE_NONE;
-	std::string VideoScanTypePinValue;
+	std::string VideoScanTypePinValue = PIN_VALUE_NONE;
 	std::string PixelFormatPinValue = PIN_VALUE_NONE;
 
 	ChannelHandler Channel;
