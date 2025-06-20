@@ -28,7 +28,7 @@ NOS_REGISTER_NAME(ChannelIsInterlaced);
 
 constexpr auto PIN_VALUE_NONE = "None";
 
-enum class ChannelConfigEntry : int
+enum class Config : int
 {
 	IsInput = 0,
 	Device,
@@ -381,11 +381,11 @@ public:
 	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
 	{
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
-		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(ChannelConfigEntry::ChannelName)});
-		SetPinVisualizer(NSN_Resolution, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(ChannelConfigEntry::Resolution)});
-		SetPinVisualizer(NSN_FrameRate, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(ChannelConfigEntry::FrameRate)});
-		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(ChannelConfigEntry::VideoScanType)});
-		SetPinVisualizer(NSN_PixelFormat, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(ChannelConfigEntry::PixelFormat)});
+		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::ChannelName)});
+		SetPinVisualizer(NSN_Resolution, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::Resolution)});
+		SetPinVisualizer(NSN_FrameRate, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::FrameRate)});
+		SetPinVisualizer(NSN_VideoScanType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::VideoScanType)});
+		SetPinVisualizer(NSN_PixelFormat, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::PixelFormat)});
 
 		Channel.IsOpenPinId = *GetPinId(NSN_IsOpen);
 		Channel.DevicePinId = *GetPinId(NSN_Device);
@@ -412,7 +412,7 @@ public:
 		AddPinValueWatcher(NSN_IsInput, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			auto newValue = *InterpretPinValue<bool>(newVal) ? NOS_MEDIAIO_DIRECTION_INPUT : NOS_MEDIAIO_DIRECTION_OUTPUT;
 			Channel.Update<&ChannelHandler::Direction>(newValue);
-			UpdateAfter(ChannelConfigEntry::IsInput, !oldValue);
+			UpdateAfter(Config::IsInput, !oldValue);
 		});
 		AddPinValueWatcher(NSN_Device, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			DevicePinValue = newVal.As<sys::device::TDeviceInfo>();
@@ -435,11 +435,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::Device);
+					ResetAfter(Config::Device);
 				else if (DevicePinValue.vendor_name == PIN_VALUE_NONE)
 					AutoSelectIfSingle(NSN_Device, GetPossibleDevices());
 			}
-			UpdateAfter(ChannelConfigEntry::Device, !oldValue);
+			UpdateAfter(Config::Device, !oldValue);
 		});
 		AddPinValueWatcher(NSN_ChannelName, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ChannelPinValue = InterpretPinValue<const char>(newVal);
@@ -450,11 +450,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::ChannelName);
+					ResetAfter(Config::ChannelName);
 				else if (ChannelPinValue == PIN_VALUE_NONE)
-					AutoSelectIfSingle(NSN_ChannelName, GetPossibleValues(ChannelConfigEntry::ChannelName));
+					AutoSelectIfSingle(NSN_ChannelName, GetPossibleValues(Config::ChannelName));
 			}
-			UpdateAfter(ChannelConfigEntry::ChannelName, !oldValue);
+			UpdateAfter(Config::ChannelName, !oldValue);
 		});
 		AddPinValueWatcher(NSN_Resolution, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ResolutionPinValue = InterpretPinValue<const char>(newVal);
@@ -465,11 +465,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::Resolution);
+					ResetAfter(Config::Resolution);
 				else if (ResolutionPinValue == PIN_VALUE_NONE)
-					AutoSelectIfSingle(NSN_Resolution, GetPossibleValues(ChannelConfigEntry::Resolution));
+					AutoSelectIfSingle(NSN_Resolution, GetPossibleValues(Config::Resolution));
 			}
-			UpdateAfter(ChannelConfigEntry::Resolution, !oldValue);
+			UpdateAfter(Config::Resolution, !oldValue);
 		});
 		AddPinValueWatcher(NSN_FrameRate, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			FrameRatePinValue = InterpretPinValue<const char>(newVal);
@@ -480,11 +480,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::FrameRate);
+					ResetAfter(Config::FrameRate);
 				else if (FrameRatePinValue == PIN_VALUE_NONE)
-					AutoSelectIfSingle(NSN_FrameRate, GetPossibleValues(ChannelConfigEntry::FrameRate));
+					AutoSelectIfSingle(NSN_FrameRate, GetPossibleValues(Config::FrameRate));
 			}
-			UpdateAfter(ChannelConfigEntry::FrameRate, !oldValue);
+			UpdateAfter(Config::FrameRate, !oldValue);
 		});
 		AddPinValueWatcher(NSN_VideoScanType, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			VideoScanTypePinValue = InterpretPinValue<const char>(newVal);
@@ -495,11 +495,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::VideoScanType);
+					ResetAfter(Config::VideoScanType);
 				else if (VideoScanTypePinValue == PIN_VALUE_NONE)
-					AutoSelectIfSingle(NSN_VideoScanType, GetPossibleValues(ChannelConfigEntry::VideoScanType));
+					AutoSelectIfSingle(NSN_VideoScanType, GetPossibleValues(Config::VideoScanType));
 			}
-			UpdateAfter(ChannelConfigEntry::VideoScanType, !oldValue);
+			UpdateAfter(Config::VideoScanType, !oldValue);
 		});
 		AddPinValueWatcher(NSN_PixelFormat, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			PixelFormatPinValue = InterpretPinValue<const char>(newVal);
@@ -510,11 +510,11 @@ public:
 			else
 			{
 				if (oldValue)
-					ResetAfter(ChannelConfigEntry::PixelFormat);
+					ResetAfter(Config::PixelFormat);
 				else if (PixelFormatPinValue == PIN_VALUE_NONE)
-					AutoSelectIfSingle(NSN_PixelFormat, GetPossibleValues(ChannelConfigEntry::PixelFormat));
+					AutoSelectIfSingle(NSN_PixelFormat, GetPossibleValues(Config::PixelFormat));
 			}
-			UpdateAfter(ChannelConfigEntry::PixelFormat, !oldValue);
+			UpdateAfter(Config::PixelFormat, !oldValue);
 		});
 	}
 
@@ -552,12 +552,12 @@ public:
 		}
 	}
 
-	void UpdateAfter(ChannelConfigEntry pin, bool first)
+	void UpdateAfter(Config pin, bool first)
 	{
 		bool isInput = Channel.IsInput();
 		switch (pin)
 		{
-		case ChannelConfigEntry::IsInput: {
+		case Config::IsInput: {
 			ChangePinReadOnly(NSN_VideoScanType, isInput);
 			ChangePinReadOnly(NSN_Resolution, isInput);
 			ChangePinReadOnly(NSN_FrameRate, isInput);
@@ -567,7 +567,7 @@ public:
 				AutoSelectIfSingle(GetPinName(GetNextEntry(pin)), deviceList);
 			break;
 		}
-		case ChannelConfigEntry::Device: {
+		case Config::Device: {
 			auto next = GetNextEntry(pin);
 			auto values = GetPossibleValues(next);
 			UpdateStringList(GetStringListName(next), values);
@@ -575,10 +575,10 @@ public:
 				AutoSelectIfSingle(GetPinName(next), values);
 			break;
 		}
-		case ChannelConfigEntry::ChannelName:
-		case ChannelConfigEntry::Resolution:
-		case ChannelConfigEntry::FrameRate:
-		case ChannelConfigEntry::VideoScanType:
+		case Config::ChannelName:
+		case Config::Resolution:
+		case Config::FrameRate:
+		case Config::VideoScanType:
 		{
 			auto next = GetNextEntry(pin);
 			auto values = GetPossibleValues(next);
@@ -590,31 +590,31 @@ public:
 		}
 	}
 
-	nos::Name GetPinName(ChannelConfigEntry pin)
+	nos::Name GetPinName(Config pin)
 	{
 		switch (pin)
 		{
-			case ChannelConfigEntry::IsInput: return NSN_IsInput;
-			case ChannelConfigEntry::Device: return NSN_Device;
-			case ChannelConfigEntry::ChannelName: return NSN_ChannelName;
-			case ChannelConfigEntry::Resolution: return NSN_Resolution;
-			case ChannelConfigEntry::FrameRate: return NSN_FrameRate;
-			case ChannelConfigEntry::VideoScanType: return NSN_VideoScanType;
-			case ChannelConfigEntry::PixelFormat: return NSN_PixelFormat;
+			case Config::IsInput: return NSN_IsInput;
+			case Config::Device: return NSN_Device;
+			case Config::ChannelName: return NSN_ChannelName;
+			case Config::Resolution: return NSN_Resolution;
+			case Config::FrameRate: return NSN_FrameRate;
+			case Config::VideoScanType: return NSN_VideoScanType;
+			case Config::PixelFormat: return NSN_PixelFormat;
 			default:
 				NOS_SOFT_CHECK(false, "Invalid ChannelConfigEntry");
 				return nos::Name();
 		}
 	}
 
-	ChannelConfigEntry GetNextEntry(ChannelConfigEntry pin)
+	Config GetNextEntry(Config pin)
 	{
-		return static_cast<ChannelConfigEntry>(static_cast<int>(pin) + 1);
+		return static_cast<Config>(static_cast<int>(pin) + 1);
 	}
 
-	void ResetAfter(ChannelConfigEntry pin)
+	void ResetAfter(Config pin)
 	{
-		if (pin == ChannelConfigEntry::PixelFormat)
+		if (pin == Config::PixelFormat)
 			return;
 		auto pinToSet = GetPinName(GetNextEntry(pin));
 		// If only the current config is not in possible configs
@@ -665,27 +665,17 @@ public:
 		return Channel.IsOpen ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
 	}
 
-	std::string GetStringListName(ChannelConfigEntry type)
+	std::string GetStringListName(Config type)
 	{
 		std::stringstream prefix;
 		prefix << "decklink.";
 		switch (type)
 		{
-		case ChannelConfigEntry::ChannelName:
-			prefix << "ChannelList";
-			break;
-		case ChannelConfigEntry::Resolution:
-			prefix << "ResolutionList";
-			break;
-		case ChannelConfigEntry::FrameRate:
-			prefix << "FrameRateList";
-			break;
-		case ChannelConfigEntry::VideoScanType:
-			prefix << "VideoScanList";
-			break;
-		case ChannelConfigEntry::PixelFormat:
-			prefix << "PixelFormatList";
-			break;
+		case Config::ChannelName: prefix << "ChannelList"; break;
+		case Config::Resolution: prefix << "ResolutionList"; break;
+		case Config::FrameRate: prefix << "FrameRateList"; break;
+		case Config::VideoScanType: prefix << "VideoScanList"; break;
+		case Config::PixelFormat: prefix << "PixelFormatList"; break;
 		default:
 			NOS_SOFT_CHECK(false, "Invalid ChannelConfigEntry");
 			break;
@@ -813,20 +803,20 @@ public:
 		return frameRates;
 	}
 
-	std::vector<std::string> GetSearchKeyFor(ChannelConfigEntry type)
+	std::vector<std::string> GetSearchKeyFor(Config type)
 	{
 		auto deviceIndex = std::to_string(Channel.DeviceIndex);
 		switch (type)
 		{
-		case ChannelConfigEntry::ChannelName:
+		case Config::ChannelName:
 			return { deviceIndex };
-		case ChannelConfigEntry::Resolution:
+		case Config::Resolution:
 			return { deviceIndex, ChannelPinValue };
-		case ChannelConfigEntry::FrameRate:
+		case Config::FrameRate:
 			return { deviceIndex, ChannelPinValue, ResolutionPinValue };
-		case ChannelConfigEntry::VideoScanType:
+		case Config::VideoScanType:
 			return { deviceIndex, ChannelPinValue, ResolutionPinValue, FrameRatePinValue };
-		case ChannelConfigEntry::PixelFormat:
+		case Config::PixelFormat:
 			return { deviceIndex, ChannelPinValue, ResolutionPinValue, FrameRatePinValue, VideoScanTypePinValue };
 		default:
 			return {};
@@ -841,7 +831,7 @@ public:
 		};
 	}
 
-	std::vector<std::string> GetPossibleValues(ChannelConfigEntry type)
+	std::vector<std::string> GetPossibleValues(Config type)
 	{
 		std::vector<std::string> searchKey = GetSearchKeyFor(type);
 		std::vector<std::vector<std::string>> results;
