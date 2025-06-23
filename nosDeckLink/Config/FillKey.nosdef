@@ -4,7 +4,7 @@
       "class_name": "nos.decklink.FillKey",
       "menu_info": {
         "category": "Device|DeckLink",
-        "display_name": "DeckLink Out Key+Fill",
+        "display_name": "DeckLink Out Fill + Key",
         "name_aliases": [
           "video",
           "camera",
@@ -32,7 +32,7 @@
         "pins": [
           {
             "id": "f135d946-1035-4ad0-87df-d0957839231d",
-            "name": "Output",
+            "name": "Video",
             "type_name": "nos.sys.vulkan.Texture",
             "show_as": "INPUT_PIN",
             "can_show_as": "INPUT_PIN_OR_PROPERTY",
@@ -6747,7 +6747,7 @@
             },
             {
               "id": "8fa938d4-6c6a-475a-81fb-c9748dc09437",
-              "name": "Output",
+              "name": "Video",
               "class_name": "nos.internal.GraphInput",
               "pins": [
                 {
@@ -13118,7 +13118,7 @@
             "value": "{\n  \"Common\": 2,\n  \"Fill\": 0,\n  \"Key\": 1\n}"
           }
         ],
-        "display_name": "Decklink Out Key+Fill",
+        "display_name": "Decklink Out Fill + Key",
         "plugin_version": {
           "major": 1,
           "minor": 2,

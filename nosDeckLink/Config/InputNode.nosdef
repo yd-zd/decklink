@@ -204,7 +204,7 @@
           },
           {
             "id": "212eb79d-90f2-4d69-aefd-cb928ff52fb5",
-            "name": "Input",
+            "name": "Video",
             "type_name": "nos.sys.vulkan.Texture",
             "show_as": "OUTPUT_PIN",
             "can_show_as": "OUTPUT_PIN_ONLY",
@@ -1490,7 +1490,7 @@
             },
             {
               "id": "92e14553-7f81-4df7-bf98-5285563016fa",
-              "name": "Input",
+              "name": "Video",
               "class_name": "nos.internal.GraphOutput",
               "pins": [
                 {
