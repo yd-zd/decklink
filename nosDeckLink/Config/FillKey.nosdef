@@ -111,43 +111,6 @@
             "display_name": "IsOpen"
           },
           {
-            "id": "1ae30cf1-e217-4aa7-9446-eb2632e6af19",
-            "name": "VideoScanType",
-            "type_name": "string",
-            "show_as": "PROPERTY",
-            "can_show_as": "PROPERTY_ONLY",
-            "pin_category": "Common",
-            "visualizer": {
-              "type": "COMBO_BOX",
-              "name": "decklink.VideoScanList.a859593a-f9f2-437e-ac26-81e2a307fefa"
-            },
-            "data": "Progressive",
-            "def": "",
-            "meta_data_map": [
-              {
-                "key": "AdvancedProperty",
-                "value": "false"
-              },
-              {
-                "key": "Category",
-                "value": "Common"
-              },
-              {
-                "key": "PinDeduplicationGroup",
-                "value": "7"
-              },
-              {
-                "key": "PinPropertyPaneOrder",
-                "value": "1"
-              }
-            ],
-            "contents_type": "PortalPin",
-            "contents": {
-              "source_id": "227edfe1-63f4-4fac-809c-8034cd1338a5"
-            },
-            "display_name": "Video Scan Type"
-          },
-          {
             "id": "d385dda6-c850-4443-adae-71ee9e14a0d4",
             "name": "Device",
             "type_name": "nos.sys.device.DeviceInfo",
@@ -281,7 +244,7 @@
               },
               {
                 "key": "PinPropertyPaneOrder",
-                "value": "3"
+                "value": "2"
               }
             ],
             "contents_type": "PortalPin",
@@ -289,6 +252,43 @@
               "source_id": "363705b6-4546-413c-9033-605d71036f48"
             },
             "display_name": "Frame Rate"
+          },
+          {
+            "id": "1ae30cf1-e217-4aa7-9446-eb2632e6af19",
+            "name": "VideoScanType",
+            "type_name": "string",
+            "show_as": "PROPERTY",
+            "can_show_as": "PROPERTY_ONLY",
+            "pin_category": "Common",
+            "visualizer": {
+              "type": "COMBO_BOX",
+              "name": "decklink.VideoScanList.a859593a-f9f2-437e-ac26-81e2a307fefa"
+            },
+            "data": "Progressive",
+            "def": "",
+            "meta_data_map": [
+              {
+                "key": "AdvancedProperty",
+                "value": "false"
+              },
+              {
+                "key": "Category",
+                "value": "Common"
+              },
+              {
+                "key": "PinDeduplicationGroup",
+                "value": "7"
+              },
+              {
+                "key": "PinPropertyPaneOrder",
+                "value": "3"
+              }
+            ],
+            "contents_type": "PortalPin",
+            "contents": {
+              "source_id": "227edfe1-63f4-4fac-809c-8034cd1338a5"
+            },
+            "display_name": "Video Scan Type"
           },
           {
             "id": "a4707dcd-64e2-4bd9-bc9f-98542a1e298a",
@@ -318,7 +318,7 @@
               },
               {
                 "key": "PinPropertyPaneOrder",
-                "value": "3"
+                "value": "4"
               }
             ],
             "contents_type": "PortalPin",
