@@ -446,22 +446,25 @@ public:
 			{
 				if (oldValue)
 					ResetAfter(Config::Device);
+				else if (Channel.DeviceIndex != -1)
+				{
+					nosDeviceInfo foundDeviceInfo{};
+					auto res = nosDevice->GetDeviceInfo(newDeviceId, &foundDeviceInfo);
+					NOS_SOFT_CHECK(res == NOS_RESULT_SUCCESS, "Device must be found at this point")
+						if (NOS_RESULT_SUCCESS == res)
+						{
+							auto foundDeviceObj = sys::device::ConvertDeviceInfo(foundDeviceInfo);
+							if (DevicePinValue != foundDeviceObj)
+							{
+								OnlyUpdateDevicePinValue = true;
+								SetPinValue(NSN_Device, nos::Buffer::From(foundDeviceObj));
+							}
+						}
+				}
 				else if (DevicePinValue.vendor_name == PIN_VALUE_NONE)
 					AutoSelectIfSingle(NSN_Device, GetPossibleDevices());
 			}
 			UpdateAfter(Config::Device, !oldValue);
-
-			if (Channel.DeviceIndex != -1)
-			{
-				nosDeviceInfo foundDeviceInfo{};
-				nosDevice->GetDeviceInfo(newDeviceId, &foundDeviceInfo);
-				auto foundDeviceObj = sys::device::ConvertDeviceInfo(foundDeviceInfo);
-				if (DevicePinValue != foundDeviceObj)
-				{
-					OnlyUpdateDevicePinValue = true;
-					SetPinValue(NSN_Device, nos::Buffer::From(foundDeviceObj));
-				}
-			}
 		});
 		AddPinValueWatcher(NSN_ChannelName, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ChannelPinValue = InterpretPinValue<const char>(newVal);
