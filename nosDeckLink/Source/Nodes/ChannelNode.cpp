@@ -378,6 +378,7 @@ void DeviceStatusCallback(void* userData, const nosDeckLinkDeviceStatus* status)
 class ChannelNode : public nos::NodeContext
 {
 public:
+	bool OnlyUpdateDevicePinValue = false;
 	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
 	{
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
@@ -417,10 +418,19 @@ public:
 		AddPinValueWatcher(NSN_Device, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			DevicePinValue = newVal.As<sys::device::TDeviceInfo>();
 			Channel.ModelName = DevicePinValue.model_name;
+			if (OnlyUpdateDevicePinValue)
+			{
+				OnlyUpdateDevicePinValue = false;
+				return;
+			}
 
 			int32_t newDeviceIndex = -1;
-			if (auto deviceIndex = GetDeviceIndex(DevicePinValue))
-				newDeviceIndex = *deviceIndex;
+			nosDeviceId newDeviceId = 0;
+			if (auto deviceIdPair = GetDeviceIndex(DevicePinValue))
+			{
+				newDeviceIndex = deviceIdPair->first;
+				newDeviceId = deviceIdPair->second;
+			}
 			else
 				nosEngine.LogE("Failed to get suitable device");
 
@@ -440,6 +450,18 @@ public:
 					AutoSelectIfSingle(NSN_Device, GetPossibleDevices());
 			}
 			UpdateAfter(Config::Device, !oldValue);
+
+			if (Channel.DeviceIndex != -1)
+			{
+				nosDeviceInfo foundDeviceInfo{};
+				nosDevice->GetDeviceInfo(newDeviceId, &foundDeviceInfo);
+				auto foundDeviceObj = sys::device::ConvertDeviceInfo(foundDeviceInfo);
+				if (DevicePinValue != foundDeviceObj)
+				{
+					OnlyUpdateDevicePinValue = true;
+					SetPinValue(NSN_Device, nos::Buffer::From(foundDeviceObj));
+				}
+			}
 		});
 		AddPinValueWatcher(NSN_ChannelName, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ChannelPinValue = InterpretPinValue<const char>(newVal);
@@ -517,8 +539,8 @@ public:
 			UpdateAfter(Config::PixelFormat, !oldValue);
 		});
 	}
-
-	static std::optional<uint32_t> GetDeviceIndex(sys::device::TDeviceInfo const& deviceInfo)
+	
+	static std::optional<std::pair<uint32_t, nosDeviceId>> GetDeviceIndex(sys::device::TDeviceInfo const& deviceInfo)
 	{
 		nosDeviceInfo info = sys::device::ConvertDeviceInfo(deviceInfo);
 		nosDeviceId deviceId{};
@@ -528,13 +550,10 @@ public:
 		{
 			return std::nullopt;
 		}
-		else
-		{
-			uint64_t handle{};
-			res = nosDevice->GetDeviceHandle(deviceId, &handle);
-			assert(res == NOS_RESULT_SUCCESS);
-			return uint32_t(handle);
-		}
+		uint64_t handle{};
+		res = nosDevice->GetDeviceHandle(deviceId, &handle);
+		assert(res == NOS_RESULT_SUCCESS);
+		return std::make_pair(uint32_t(handle), deviceId);
 	}
 
 	template <typename T>
@@ -692,25 +711,26 @@ public:
 		auto devices = GetPossibleDevices();
 		for (auto& device : devices)
 		{
-			auto deviceIndex = GetDeviceIndex(device);
-			if (!deviceIndex)
+			auto deviceIdIndexPair = GetDeviceIndex(device);
+			if (!deviceIdIndexPair)
 				continue;
-			auto channels = GetPossibleChannels(*deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT);
+			auto& deviceIndex = deviceIdIndexPair->first;
+			auto channels = GetPossibleChannels(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT);
 			for (auto& channel : channels)
 			{
 				for (int i = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; i <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; i++)
 				{
 					auto videoScanType = (nosMediaIOVideoScanType)i;
-					auto resolutions = GetPossibleResolutions(*deviceIndex, channel, videoScanType);
+					auto resolutions = GetPossibleResolutions(deviceIndex, channel, videoScanType);
 					for (auto& resolution : resolutions)
 					{
-						auto frameRates = GetPossibleFrameRates(*deviceIndex, channel, videoScanType, resolution);
+						auto frameRates = GetPossibleFrameRates(deviceIndex, channel, videoScanType, resolution);
 						for (auto& frameRate : frameRates)
 						{
-							auto pixelFormats = GetPossiblePixelFormats(*deviceIndex, channel, videoScanType, resolution, frameRate);
+							auto pixelFormats = GetPossiblePixelFormats(deviceIndex, channel, videoScanType, resolution, frameRate);
 							for (auto& pixelFormat : pixelFormats)
 							{
-								auto deviceKey = std::to_string(*deviceIndex);
+								auto deviceKey = std::to_string(deviceIndex);
 								std::string channelName = nosDeckLink->GetChannelName(channel);
 								std::string videoScanTypeName = nosMediaIO->GetVideoScanTypeName(videoScanType);
 								std::string resolutionName = nosMediaIO->GetFrameGeometryName(resolution);
