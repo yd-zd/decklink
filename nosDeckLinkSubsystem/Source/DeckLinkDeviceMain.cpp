@@ -25,7 +25,7 @@ NOS_END_IMPORT_DEPS()
 
 namespace nos::decklink
 {
-std::unordered_map<uint32_t, nosDeckLinkSubsystem*> GExportedAPIVersions;
+std::unordered_map<uint32_t, nosDeckLinkSubsystem*> GExportedSubsystemVersions;
 
 nosResult NOSAPI_CALL UnloadSubsystem()
 {
@@ -509,10 +509,55 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* out)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		*out = {};
+		return NOS_RESULT_SUCCESS;
+	}
+	auto& io = subDevice->GetIO(dir);
+	out->IsOpen = io.IsCurrentlyOpen();
+	out->IsStreaming = io.IsCurrentlyRunning();
+	out->LastFrameInfo = io.GetLastFrameInfo();
+	out->Direction = dir;
+	if (auto timeInFrame = io.GetTimeInFrameNs())
+		out->TimeInFrameNs = *timeInFrame;
+
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL ResetDropDetection(uint32_t deviceIndex, nosDeckLinkChannel channel)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	subDevice->GetIO(dir).LastProcessedFrame = std::nullopt;
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 {
-	auto it = GExportedAPIVersions.find(minorVersion);
-	if (it != GExportedAPIVersions.end())
+	auto it = GExportedSubsystemVersions.find(minorVersion);
+	if (it != GExportedSubsystemVersions.end())
 	{
 		*outSubsystemContext = it->second;
 		return NOS_RESULT_SUCCESS;
@@ -546,8 +591,10 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetOutputReferenceStatus = GetOutputReferenceStatus;
 	subsystem->RegisterDeviceStatusCallback = RegisterDeviceStatusCallback;
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
+	subsystem->GetChannelState = GetChannelState;
+	subsystem->ResetDropDetection = ResetDropDetection;
 	*outSubsystemContext = subsystem;
-	GExportedAPIVersions[minorVersion] = subsystem;
+	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -557,18 +604,15 @@ nosResult NOSAPI_CALL Initialize()
 	std::filesystem::path relativeSettingsPath = "Config/Settings.json";
 	auto settingsFilePath = std::filesystem::path(nosEngine.Plugin->RootFolderPath) / relativeSettingsPath;
 	bool settingsLoaded = false;
-	std::string messageString, messageDetailsString;
+	std::string messageString;
 	nosPluginStatusMessage msg {
 		.PluginId = nosEngine.Plugin->Id,
 		.UpdateType = NOS_PLUGIN_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
-		.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_WARNING,
-		.PopupTimeoutSeconds = 10
+		.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_WARNING
 	};
-	std::string settingsFileRef = std::string("[Settings file](") + NOS_URI_EXPLORER_PREFIX + nos::PathToUtf8(settingsFilePath) + ")";
 	if (!std::filesystem::exists(settingsFilePath))
 	{
-		messageString = "Using default settings";
-		messageDetailsString = settingsFileRef + " not found.";
+		messageString = "Settings file at " + settingsFilePath.string() + " not found. Using default settings.";
 	}
 	else
 	{
@@ -580,22 +624,19 @@ nosResult NOSAPI_CALL Initialize()
 		{
 		}
 		if (auto settingsBuffer = nos::GetAssetAsType(settingsFilePath.string().c_str(),
-			NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
+													  NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
 		{
 			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
 			msg.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_INFO;
-			messageString = "Using SDI port mappings";
-			messageDetailsString = "Mappings are from " + settingsFileRef;
+			messageString = "Using SDI port mappings from " + settingsFilePath.string();
 		}
-		else {
-			messageString = "Using default settings";
-			messageDetailsString = "Failed to load " + settingsFileRef;
-		}
+		else
+			messageString =
+				"Failed to load settings file at " + settingsFilePath.string() + ". Using default settings.";
 
 	}
 	msg.Message = messageString.c_str();
-	msg.Details = messageDetailsString.c_str();
 	nosEngine.SendPluginStatusMessageUpdate(&msg);
 	if (!settingsLoaded)
 	{
@@ -607,11 +648,11 @@ nosResult NOSAPI_CALL Initialize()
 
 extern "C"
 {
-NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* subsystemFunctions)
+NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* funcs)
 {
-	subsystemFunctions->OnRequestAPI = Export;
-	subsystemFunctions->Initialize = Initialize;
-	subsystemFunctions->OnPreUnloadPlugin = UnloadSubsystem;
+	funcs->OnRequestAPI = Export;
+	funcs->Initialize = Initialize;
+	funcs->OnPreUnloadPlugin = UnloadSubsystem;
 	return NOS_RESULT_SUCCESS;
 }
 }

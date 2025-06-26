@@ -1,14 +1,13 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #pragma once
 
+#include "Generated/DeckLink_generated.h"
+#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+
 #include <vector>
 #include <memory>
 #include <unordered_map>
 #include <shared_mutex>
-#include <Nodos/PluginAPI.h>
-
-#include "DeckLink_generated.h"
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 
 namespace nos::decklink
 {

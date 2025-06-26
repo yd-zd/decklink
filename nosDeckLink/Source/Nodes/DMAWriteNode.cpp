@@ -14,6 +14,8 @@ namespace nos::decklink
 	
 struct DMAWriteNode : NodeContext
 {
+	using NodeContext::NodeContext;
+
 	void GetScheduleInfo(nosScheduleInfo* out) override
 	{
 		*out = nosScheduleInfo{

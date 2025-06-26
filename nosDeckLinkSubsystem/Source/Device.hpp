@@ -11,11 +11,8 @@
 
 // Nodos
 #include <Nodos/Types.h>
-#include <Nodos/PluginAPI.h>
 
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
-
-#include "DeckLink_generated.h"
 
 namespace nos::decklink
 {
