@@ -305,14 +305,7 @@ bool SubDevice::ResetInputFrames()
 		nosEngine.LogE("SubDevice: Input interface is not available for device: %s", ModelName.c_str());
 		return false;
 	}
-	return Input.ResetReadFrames();
-}
-
-constexpr IOHandlerBaseI& SubDevice::GetIO(nosMediaIODirection dir)
-{
-	if (dir == NOS_MEDIAIO_DIRECTION_INPUT)
-		return Input;
-	return Output;
+	return true;
 }
 
 bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout)

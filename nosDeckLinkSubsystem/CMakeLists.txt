@@ -80,7 +80,7 @@ endif()
 # DeckLink Subsystem
 # ------------------
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem)
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem)
 
 list(APPEND DEPENDENCIES ${NOS_PLUGIN_SDK_TARGET} ${NOS_MEDIAIO_TARGET} ${NOS_SYS_DEVICE_TARGET} 
                          generated_nosDeckLinkSubsystem generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
@@ -92,6 +92,7 @@ list(APPEND INCLUDE_FOLDERS
      ${CMAKE_CURRENT_BINARY_DIR})
 
 nos_add_plugin("nosDeckLinkSubsystem" "${DEPENDENCIES}" "${INCLUDE_FOLDERS}")
+set_target_properties(nosDeckLinkSubsystem PROPERTIES LANGUAGE CXX)
 
 target_sources(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SOURCES})
 
