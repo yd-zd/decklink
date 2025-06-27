@@ -129,9 +129,9 @@ struct ChannelHandler
 		Resolution = frameGeometry;
 		FrameRate = frameRate;
 		PixelFormat = pixelFormat;
-		nosEngine.SetPinValue(VideoScanTypePinId, nos::Buffer(scanTypeCstr, strlen(scanTypeCstr) + 1));
 		nosEngine.SetPinValue(ResolutionPinId, nos::Buffer(frameGeometryCstr, strlen(frameGeometryCstr) + 1));
 		nosEngine.SetPinValue(FrameRatePinId, nos::Buffer(frameRateCstr, strlen(frameRateCstr) + 1));
+		nosEngine.SetPinValue(VideoScanTypePinId, nos::Buffer(scanTypeCstr, strlen(scanTypeCstr) + 1));
 		nosEngine.SetPinValue(PixelFormatPinId, nos::Buffer(pixelFormatCstr, strlen(pixelFormatCstr) + 1));
 		UpdateChannelStatus();
 	}
