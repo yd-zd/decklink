@@ -41,9 +41,12 @@ nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Config" "${CMAKE_CURRENT_SOURCE
 # nos.sync
 nos_get_module("nos.sync" "3.1" NOS_SYNC_TARGET)
 
+# TODO: Publish as nosman package
+add_subdirectory(External/cpp-utilities)
+
 nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLink)
 
-list(APPEND DEPENDENCIES generated_nosDeckLink_dep_nosMediaIO generated_nosDeckLink_dep_nosUtilities generated_nosDeckLink_dep_nosSysDevice 
+list(APPEND DEPENDENCIES generated_nosDeckLink_dep_nosMediaIO generated_nosDeckLink_dep_nosUtilities generated_nosDeckLink_dep_nosSysDevice nosCppUtilities
     generated_nosDeckLink ${NOS_SYS_DEVICE_TARGET} ${NOS_SYS_DECKLINK_TARGET} ${NOS_SYS_MEDIAIO_TARGET} ${NOS_SYS_VULKAN_TARGET} ${NOS_PLUGIN_SDK_TARGET} ${NOS_SYNC_TARGET})
 list(APPEND INCLUDE_FOLDERS
     ${EXTERNAL_DIR}
