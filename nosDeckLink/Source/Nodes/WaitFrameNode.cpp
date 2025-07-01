@@ -111,6 +111,8 @@ struct WaitFrameNode : NodeContext
 	void OnPathStartInitiated() override
 	{
 		// This possibly takes a long time(more than a frame)
+		if (-1 == GetDeviceIndex())
+			return;
 		if (IsInput())
 			nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
 		nosVec2u deltaSecs{};
