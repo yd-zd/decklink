@@ -142,7 +142,7 @@ bool OutputHandler::Stop()
 		std::unique_lock lock(PlaybackStoppedMutex);
 		PlaybackStoppedCond.wait_for(lock, std::chrono::milliseconds(100), [this] { return PlaybackStopped; });
 		if (!PlaybackStopped)
-			nosEngine.LogE("SubDevice: Timeout waiting for playback to stop");
+			nosEngine.LogW("SubDevice: Timeout waiting for playback to stop");
 	}
 	// DeckLink does not ACTUALLY stop calling frame completion callbacks even after it informs that playback has stopped.
 	{
@@ -151,7 +151,7 @@ bool OutputHandler::Stop()
 			return LastHardwareFrameInfo.FrameNumber >= TotalFramesScheduled;
 		});
 		if (LastHardwareFrameInfo.FrameNumber < TotalFramesScheduled)
-			nosEngine.LogE("(%s) Output: Timeout waiting for all frames to be completed", GetDeviceChannelString().c_str());
+			nosEngine.LogW("(%s) Output: Timeout waiting for all frames to be completed", GetDeviceChannelString().c_str());
 	}
 	return true;
 }

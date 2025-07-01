@@ -49,6 +49,8 @@ struct WaitFrameNode : NodeContext
 
 	bool IsChannelOpen()
 	{
+		if (-1 == GetDeviceIndex())
+			return false;
 		nosDeckLinkChannelState state{};
 		if (NOS_RESULT_SUCCESS != nosDeckLink->GetChannelState(GetDeviceIndex(), GetChannel(), &state))
 			return false;
@@ -111,7 +113,7 @@ struct WaitFrameNode : NodeContext
 	void OnPathStartInitiated() override
 	{
 		// This possibly takes a long time(more than a frame)
-		if (-1 == GetDeviceIndex())
+		if (!IsChannelOpen())
 			return;
 		if (IsInput())
 			nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);

@@ -397,6 +397,8 @@ int32_t NOSAPI_CALL RegisterFrameResultCallback(uint32_t deviceIndex, nosDeckLin
 
 nosResult NOSAPI_CALL UnregisterFrameResultCallback(uint32_t deviceIndex, nosDeckLinkChannel channel, int32_t callbackId)
 {
+	if (channel == NOS_DECKLINK_CHANNEL_INVALID)
+		return NOS_RESULT_INVALID_ARGUMENT;
 	DeviceLock lock(deviceIndex);
 	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
 	if (!device)

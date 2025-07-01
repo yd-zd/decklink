@@ -266,8 +266,9 @@ struct ChannelHandler
 	{
 		std::stringstream channelString;
 		char nameBuffer[256]{};
-		auto res = nosDeckLink->GetPortMappedChannelName(DeviceIndex, Channel, nameBuffer, sizeof(nameBuffer));
-		if (res != NOS_RESULT_SUCCESS)
+		if (DeviceIndex == -1 ||
+			Channel == NOS_DECKLINK_CHANNEL_INVALID ||
+			NOS_RESULT_SUCCESS != nosDeckLink->GetPortMappedChannelName(DeviceIndex, Channel, nameBuffer, sizeof(nameBuffer)))
 			channelString << "Unknown Channel";
 		else
 			channelString << nameBuffer;
@@ -431,8 +432,6 @@ public:
 				newDeviceIndex = deviceIdPair->first;
 				newDeviceId = deviceIdPair->second;
 			}
-			else
-				nosEngine.LogE("Failed to get suitable device");
 
 			auto updated = Channel.DeviceIndex != newDeviceIndex;
 			if (updated)
@@ -957,9 +956,12 @@ void ChannelHandler::Close()
 	nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
 	UnregisterDeviceCallbacks();
 	ClearMiscMessages();
-	if (IsInput())
-		nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
-	nosDeckLink->CloseChannel(DeviceIndex, Channel);
+	if (IsOpen)
+	{
+		if (IsInput())
+			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
+		nosDeckLink->CloseChannel(DeviceIndex, Channel);
+	}
 	IsOpen = false;
 	ReferenceStatus = std::nullopt;
 	nosEngine.SetPinValue(OutChannelPinId, nos::Buffer::From(ChannelId(-1, 0, false)));
