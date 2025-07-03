@@ -2560,7 +2560,6 @@
                     "contents": { "type": "" },
                     "function_category": "Default Node",
                     "status_messages": [
-                      { "text": "Auto resize active", "type": "WARNING" }
                     ],
                     "description": "Displays value in status as node status.",
                     "plugin_version": { "major": 3, "minor": 10, "patch": 10 }
