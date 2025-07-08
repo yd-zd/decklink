@@ -380,7 +380,12 @@ class ChannelNode : public nos::NodeContext
 {
 public:
 	bool OnlyUpdateDevicePinValue = false;
-	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
+	
+	ChannelNode() : NodeContext(), Channel(*this)
+	{
+	}
+
+	nosResult OnCreate(nosFbNodePtr node) override
 	{
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
 		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::ChannelName)});
@@ -540,6 +545,7 @@ public:
 			}
 			UpdateAfter(Config::PixelFormat, !oldValue);
 		});
+		return NOS_RESULT_SUCCESS;
 	}
 	
 	static std::optional<std::pair<uint32_t, nosDeviceId>> GetDeviceIndex(sys::device::TDeviceInfo const& deviceInfo)

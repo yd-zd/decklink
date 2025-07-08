@@ -22,12 +22,15 @@ uint64_t NowNs()
 struct WaitFrameNode : NodeContext
 {
 	static constexpr uint64_t TIMEOUT_MS = 1000;
-	WaitFrameNode(nosFbNodePtr node) : NodeContext(node)
+	using NodeContext::NodeContext;
+
+	nosResult OnCreate(nosFbNodePtr node) override
 	{
 		AddPinValueWatcher(NOS_NAME("EnableSync"), [this](nos::Buffer const& newVal, std::optional<nos::Buffer> oldValue) {
 			if (!oldValue || *oldValue != newVal)
 				nosEngine.SendPathRestart(NodeId);
 		});
+		return NOS_RESULT_SUCCESS;
 	}
 
 	static nosResult SyncPathStarts(void* ctx, nosWaitResult* outRes)

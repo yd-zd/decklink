@@ -2,7 +2,6 @@
 #include "Device.hpp"
 
 // Nodos
-#include <Nodos/Modules.h>
 #include <Nodos/Name.hpp>
 
 #include "ChannelMapping.inl"
@@ -26,7 +25,7 @@ public:
 
 	HRESULT	STDMETHODCALLTYPE ProfileChanging(IDeckLinkProfile* newProfile, dlbool_t streamsWillBeForcedToStop) override
 	{
-		nosEngine.ReloadModule();
+		nosEngine.ReloadPlugin();
 		return S_OK;
 	}
 	HRESULT	STDMETHODCALLTYPE ProfileActivated(IDeckLinkProfile* newProfile) override

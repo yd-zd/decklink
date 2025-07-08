@@ -5,7 +5,6 @@
 #include <memory>
 #include <unordered_map>
 #include <shared_mutex>
-#include <Nodos/Modules.h>
 
 #include "DeckLink_generated.h"
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"

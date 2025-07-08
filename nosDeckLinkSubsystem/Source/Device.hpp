@@ -11,7 +11,6 @@
 
 // Nodos
 #include <Nodos/Types.h>
-#include <Nodos/Modules.h>
 
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 

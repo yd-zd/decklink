@@ -1,5 +1,5 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <Nodos/Name.hpp>
 
 #include "EnumConversions.hpp"
@@ -9,18 +9,18 @@ NOS_INIT()
 #include <nosMediaIO/nosMediaIO.h>
 #include <nosDeviceSubsystem/nosDeviceSubsystem.h>
 
-NOS_MEDIAIO_SUBSYSTEM_INIT()
+NOS_MEDIAIO_PLUGIN_INIT()
 NOS_DEVICE_SUBSYSTEM_INIT()
 
 NOS_BEGIN_IMPORT_DEPS()
-	NOS_MEDIAIO_SUBSYSTEM_IMPORT()
+	NOS_MEDIAIO_PLUGIN_IMPORT()
 	NOS_DEVICE_SUBSYSTEM_IMPORT()
 NOS_END_IMPORT_DEPS()
 
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 #include "Device.hpp"
 #include "SubDevice.hpp"
 #include "DeviceManager.hpp"
+
 #include <Nodos/Helpers.hpp>
 
 namespace nos::decklink
@@ -604,17 +604,20 @@ nosResult NOSAPI_CALL Initialize()
 {
 	// Get the settings
 	std::filesystem::path relativeSettingsPath = "Config/Settings.json";
-	auto settingsFilePath = std::filesystem::path(nosEngine.Module->RootFolderPath) / relativeSettingsPath;
+	auto settingsFilePath = std::filesystem::path(nosEngine.Plugin->RootFolderPath) / relativeSettingsPath;
 	bool settingsLoaded = false;
-	std::string messageString;
-	nosModuleStatusMessage msg {
-		.ModuleId = nosEngine.Module->Id,
-		.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
-		.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_WARNING
+	std::string messageString, messageDetailsString;
+	nosPluginStatusMessage msg{
+		.PluginId = nosEngine.Plugin->Id,
+		.UpdateType = NOS_PLUGIN_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+		.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_WARNING,
+		.PopupTimeoutSeconds = 10
 	};
+	std::string settingsFileRef = std::string("[Settings file](") + NOS_URI_EXPLORER_PREFIX + nos::PathToUtf8(settingsFilePath) + ")";
 	if (!std::filesystem::exists(settingsFilePath))
 	{
-		messageString = "Settings file at " + settingsFilePath.string() + " not found. Using default settings.";
+		messageString = "Using default settings";
+		messageDetailsString = settingsFileRef + " not found.";
 	}
 	else
 	{
@@ -626,20 +629,23 @@ nosResult NOSAPI_CALL Initialize()
 		{
 		}
 		if (auto settingsBuffer = nos::GetAssetAsType(settingsFilePath.string().c_str(),
-													  NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
+			NOS_NAME(sys::decklink::Settings::GetFullyQualifiedName())))
 		{
 			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
-			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
-			messageString = "Using SDI port mappings from " + settingsFilePath.string();
+			msg.MessageType = NOS_PLUGIN_STATUS_MESSAGE_TYPE_INFO;
+			messageString = "Using SDI port mappings";
+			messageDetailsString = "Mappings are from " + settingsFileRef;
 		}
-		else
-			messageString =
-				"Failed to load settings file at " + settingsFilePath.string() + ". Using default settings.";
+		else {
+			messageString = "Using default settings";
+			messageDetailsString = "Failed to load " + settingsFileRef;
+		}
 
 	}
 	msg.Message = messageString.c_str();
-	nosEngine.SendModuleStatusMessageUpdate(&msg);
+	msg.Details = messageDetailsString.c_str();
+	nosEngine.SendPluginStatusMessageUpdate(&msg);
 	if (!settingsLoaded)
 	{
 		DeviceManager::Instance()->LoadDefaultSettings();
@@ -650,11 +656,11 @@ nosResult NOSAPI_CALL Initialize()
 
 extern "C"
 {
-NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subsystemFunctions)
+NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* funcs)
 {
-	subsystemFunctions->OnRequest = Export;
-	subsystemFunctions->Initialize = Initialize;
-	subsystemFunctions->OnPreUnloadSubsystem = UnloadSubsystem;
+	funcs->OnRequestAPI = Export;
+	funcs->Initialize = Initialize;
+	funcs->OnPreUnloadPlugin = UnloadSubsystem;
 	return NOS_RESULT_SUCCESS;
 }
 }

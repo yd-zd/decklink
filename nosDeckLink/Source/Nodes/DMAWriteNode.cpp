@@ -14,9 +14,7 @@ namespace nos::decklink
 	
 struct DMAWriteNode : NodeContext
 {
-	DMAWriteNode(nosFbNodePtr node) : NodeContext(node)
-	{
-	}
+	using NodeContext::NodeContext;
 
 	void GetScheduleInfo(nosScheduleInfo* out) override
 	{
@@ -55,10 +53,10 @@ struct DMAWriteNode : NodeContext
 		for (size_t i = 0; i < params->PinCount; ++i)
 		{
 			auto& pin = params->Pins[i];
-			if (pin.Name == NOS_NAME_STATIC("Input"))
-				inputBuffer = vkss::ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*pin.Data));
-			if (pin.Name == NOS_NAME("FieldType"))
-				fieldType = *InterpretPinValue<sys::vulkan::FieldType>(*pin.Data);
+			if (pin->Name == NOS_NAME_STATIC("Input"))
+				inputBuffer = vkss::ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*pin->Data));
+			if (pin->Name == NOS_NAME("FieldType"))
+				fieldType = *InterpretPinValue<sys::vulkan::FieldType>(*pin->Data);
 		}
 
 		auto deviceIndex = CurChannelId.device_index();

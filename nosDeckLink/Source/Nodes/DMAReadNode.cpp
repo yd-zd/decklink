@@ -14,9 +14,7 @@ namespace nos::decklink
     
 struct DMAReadNode : NodeContext
 {
-	DMAReadNode(nosFbNodePtr node) : NodeContext(node)
-	{
-	}
+	using NodeContext::NodeContext;
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{

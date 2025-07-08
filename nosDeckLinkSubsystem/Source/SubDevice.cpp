@@ -1,7 +1,6 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include "SubDevice.hpp"
 
-#include <Nodos/Modules.h>
 #include <EnumConversions.hpp>
 
 namespace nos::decklink

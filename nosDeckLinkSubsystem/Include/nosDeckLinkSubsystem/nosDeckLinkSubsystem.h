@@ -5,15 +5,16 @@
 #ifndef NOS_DECKLINK_DEVICE_SUBSYSTEM_H_INCLUDED
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_H_INCLUDED
 
+
+#include <Nodos/Types.h>
+
+// nos.mediaio
+#include <nosMediaIO/nosMediaIO.h>
+
 #if __cplusplus
 extern "C"
 {
 #endif
-
-#include <Nodos/Types.h>
-
-// nos.sys.mediaio
-#include <nosMediaIO/nosMediaIO.h>
 
 #define NOS_DECKLINK_VENDOR_NAME "BlackMagic Design DeckLink"
 
@@ -200,16 +201,16 @@ typedef struct nosDeckLinkSubsystem {
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 2
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 2
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 12
 
-extern struct nosModuleInfo nosDeckLinkSubsystemModuleInfo;
+extern struct nosPluginInfo nosDeckLinkSubsystemPluginInfo;
 extern nosDeckLinkSubsystem* nosDeckLink;
 
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_INIT()      \
-	nosModuleInfo nosDeckLinkSubsystemModuleInfo; \
+	nosPluginInfo nosDeckLinkSubsystemPluginInfo; \
 	nosDeckLinkSubsystem* nosDeckLink = nullptr;
 
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_IMPORT() NOS_IMPORT_DEP(NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME, nosDeckLinkSubsystemModuleInfo, nosDeckLink)
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_IMPORT() NOS_IMPORT_DEP(NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME, nosDeckLinkSubsystemPluginInfo, nosDeckLink)
 
 #pragma endregion
 
