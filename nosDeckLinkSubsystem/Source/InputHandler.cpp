@@ -24,7 +24,7 @@ public:
 	// The callback that is called when a property of the video input stream has changed.
 	HRESULT		STDMETHODCALLTYPE VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newDisplayMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags)
 	{
-		BMDPixelFormat      pixelFormat = bmdFormat10BitYUV;
+		BMDPixelFormat      detectedPixelFormat = bmdFormat10BitYUV;
 		BMDVideoInputFlags  videoInputFlags = bmdVideoInputEnableFormatDetection;
 		
 		// // Check for video field changes
@@ -39,20 +39,20 @@ public:
 			if (detectedSignalFlags & bmdDetectedVideoInputYCbCr422)
 			{
 				if (detectedSignalFlags & bmdDetectedVideoInput8BitDepth)
-					pixelFormat = bmdFormat8BitYUV;
+					detectedPixelFormat = bmdFormat8BitYUV;
 				else if (detectedSignalFlags & bmdDetectedVideoInput10BitDepth)
-					pixelFormat = bmdFormat10BitYUV;
+					detectedPixelFormat = bmdFormat10BitYUV;
 				else
 					return E_FAIL;
 			}
 			else if (detectedSignalFlags & bmdDetectedVideoInputRGB444)
 			{
 				if (detectedSignalFlags & bmdDetectedVideoInput8BitDepth)
-					pixelFormat = bmdFormat8BitARGB;
+					detectedPixelFormat = bmdFormat8BitARGB;
 				else if (detectedSignalFlags & bmdDetectedVideoInput10BitDepth)
-					pixelFormat = bmdFormat10BitRGB;
+					detectedPixelFormat = bmdFormat10BitRGB;
 				else if (detectedSignalFlags & bmdDetectedVideoInput12BitDepth)
-					pixelFormat = bmdFormat12BitRGB;
+					detectedPixelFormat = bmdFormat12BitRGB;
 				else
 				{
 					return E_FAIL;
@@ -77,7 +77,7 @@ public:
 		
 		if (notificationEvents & (bmdVideoInputDisplayModeChanged | bmdVideoInputColorspaceChanged))
 		{
-			Input->OnInputVideoFormatChanged_DeckLinkThread(newDisplayMode->GetDisplayMode(), pixelFormat);
+			Input->OnInputVideoFormatChanged_DeckLinkThread(newDisplayMode->GetDisplayMode(), detectedPixelFormat);
 		}
 		
 		return S_OK;
@@ -163,7 +163,9 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 		return false;
 	}
 	Release(callback);
-	res = Interface->EnableVideoInput(displayMode, pixelFormat, bmdVideoInputEnableFormatDetection);
+	PixelFormat = pixelFormat;
+	DisplayMode = bmdModeUnknown;
+	res = Interface->EnableVideoInput(displayMode, PixelFormat, bmdVideoInputEnableFormatDetection);
 	if (res != S_OK)
 	{
 		nosEngine.LogE("Could not enable video input - result = %08x", res);
@@ -268,15 +270,17 @@ bool InputHandler::UpdateFrameRate(BMDDisplayMode displayMode)
 	return true;
 }
 
-void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat pixelFormat)
+void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDisplayMode, BMDPixelFormat detectedPixelFormat)
 {
+	if (DisplayMode == newDisplayMode)
+		return;
 	IsInterlaced = GetVideoScanType(newDisplayMode) == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN;
 
 	// Pause video capture
 	Interface->PauseStreams();
-	
+
 	// Enable video input with the properties of the new video stream
-	Interface->EnableVideoInput(newDisplayMode, pixelFormat, bmdVideoInputEnableFormatDetection);
+	Interface->EnableVideoInput(newDisplayMode, PixelFormat, bmdVideoInputEnableFormatDetection);
 
 	UpdateFrameRate(newDisplayMode);
 
@@ -292,9 +296,10 @@ void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDi
 		for (auto& [_, pair] : VideoFormatChangeCallbacks)
 		{
 			auto& [callback, userData] = pair;
-			callback(userData, GetVideoScanType(newDisplayMode), frameGeometry, frameRate, GetPixelFormatFromDeckLink(pixelFormat));
+			callback(userData, GetVideoScanType(newDisplayMode), frameGeometry, frameRate, GetPixelFormatFromDeckLink(PixelFormat));
 		}
 	}
+	DisplayMode = newDisplayMode;
 }
 
 int32_t InputHandler::AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData)

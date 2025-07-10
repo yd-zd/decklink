@@ -160,7 +160,6 @@
             },
             "data": "None",
             "def": "",
-            "readonly": true,
             "meta_data_map": [
               { "key": "Category", "value": "" }
             ],
@@ -1958,7 +1957,6 @@
                     "e948ddd6-6557-49a1-a954-a600af440376"
                   ],
                   "def": "",
-                  "readonly": true,
                   "meta_data_map": [
                     { "key": "Category", "value": "" }
                   ],

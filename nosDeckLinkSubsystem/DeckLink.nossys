@@ -2,7 +2,7 @@
 	"info": {
 		"id": {
 			"name": "nos.sys.decklink",
-			"version": "2.2.2"
+			"version": "2.2.3"
 		},
 		"display_name": "DeckLink Subsystem",
 		"description": "A Nodos subsystem for controlling BlackMagic Design DeckLink devices.",
