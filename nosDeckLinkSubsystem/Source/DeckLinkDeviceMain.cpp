@@ -21,7 +21,7 @@ NOS_END_IMPORT_DEPS()
 #include "SubDevice.hpp"
 #include "DeviceManager.hpp"
 
-#include <Nodos/Helpers.hpp>
+#include <Nodos/Plugin.hpp>
 
 namespace nos::decklink
 {

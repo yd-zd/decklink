@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include "InputHandler.hpp"
 
-#include <nosUtil/Stopwatch.hpp>
+#include <Nodos/Utils/Stopwatch.hpp>
 
 #include "EnumConversions.hpp"
 #include "VideoFrame.hpp"

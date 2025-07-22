@@ -1,10 +1,10 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
-#include <Nodos/PluginHelpers.hpp>
+#include <Nodos/Plugin.hpp>
 
 #include "Generated/DeckLink_generated.h"
 
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
-#include <nosUtil/Stopwatch.hpp>
+#include <Nodos/Utils/Stopwatch.hpp>
 
 #include "nosVulkanSubsystem/Helpers.hpp"
 #include "nosVulkanSubsystem/nosVulkanSubsystem.h"

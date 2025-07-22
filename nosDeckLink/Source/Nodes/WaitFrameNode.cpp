@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
-#include <Nodos/PluginHelpers.hpp>
+#include <Nodos/Plugin.hpp>
 
-#include <nosUtil/Stopwatch.hpp>
+#include <Nodos/Utils/Stopwatch.hpp>
 
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
 #include <nosSync/nosSync.h>

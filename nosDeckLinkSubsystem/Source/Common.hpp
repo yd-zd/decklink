@@ -20,7 +20,7 @@
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 
 #include <Nodos/PluginAPI.h>
-#include <nosUtil/Stopwatch.hpp>
+#include <Nodos/Utils/Stopwatch.hpp>
 
 #include "EnumConversions.hpp"
 
