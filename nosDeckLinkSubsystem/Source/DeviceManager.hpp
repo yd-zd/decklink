@@ -31,8 +31,10 @@ public:
 	void LoadSettings(sys::decklink::Settings const& settings);
 	bool ValidatePortMappings();
 	void InitializeDeviceList();
+	void FetchApiVersion();
 	std::optional<std::string> GetPortMappedChannelName(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosDeckLinkChannel GetChannelFromPortMappedName(uint32_t deviceIndex, std::string_view portMappedName);
+	std::optional<std::array<int, 2>> ApiVersion;
 protected:
 	std::unordered_map<uint32_t, std::unique_ptr<std::shared_mutex>> DeviceMutexes;
 	std::vector<std::unique_ptr<Device>> Devices;

@@ -12,6 +12,7 @@ nosDeckLinkChannel NOSAPI_CALL GetChannelFromName(const char* channelName);
 
 DeviceManager::DeviceManager()
 {
+	FetchApiVersion();
 }
 
 DeviceManager::~DeviceManager()
@@ -100,6 +101,46 @@ void DeviceManager::InitializeDeviceList()
 	Devices = CreateDevices();
 	for (auto& device : Devices)
 		DeviceMutexes[device->Index] = std::make_unique<std::shared_mutex>();
+}
+
+void DeviceManager::FetchApiVersion()
+{
+	ApiVersion = std::nullopt;
+
+	IDeckLinkAPIInformation* api = nullptr;
+	HRESULT result = S_OK;
+
+	// Create an IDeckLinkIterator object to enumerate all DeckLink cards in the system
+	result = CoCreateInstance(CLSID_CDeckLinkAPIInformation, NULL, CLSCTX_ALL, IID_IDeckLinkAPIInformation, (void**)&api);
+	if (FAILED(result))
+	{
+		nosEngine.LogE("DeckLink API information interface could not be fetched. Drivers may not be installed.");
+		return;
+	}
+
+	long long apiVersion = 0;
+	result = api->GetInt(BMDDeckLinkAPIVersion, &apiVersion);
+	if (FAILED(result))
+	{
+		nosEngine.LogE("DeckLink API version could not be read.");
+		api->Release();
+		return;
+	}
+
+	// Word, decreasing address order:
+	// Byte 4: Major
+	// Byte 3: Minor
+	// Byte 2: Sub Version
+	// Byte 1: Extra
+	uint8_t major = (apiVersion >> 24) & 0xFF;
+	uint8_t minor = (apiVersion >> 16) & 0xFF;
+	uint8_t subVersion = (apiVersion >> 8) & 0xFF;
+	uint8_t extra = apiVersion & 0xFF;
+	nosEngine.LogI("DeckLink API Version: %d.%d.%d.%d", major, minor, subVersion, extra);
+
+	api->Release();
+
+	ApiVersion = std::array<int, 2>{ major, minor };
 }
 
 std::string SimultaneousReplace(std::string_view input, const std::map<std::string, std::string>& transformations)
