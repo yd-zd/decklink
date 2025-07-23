@@ -18,7 +18,7 @@ set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
 nos_get_module("nos.sys.decklink" "2.12" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.vulkan
-nos_get_module("nos.sys.vulkan" "6.22" NOS_SYS_VULKAN_TARGET)
+nos_get_module("nos.sys.vulkan" "6.28" NOS_SYS_VULKAN_TARGET)
 
 # nos.mediaio
 nos_get_module("nos.mediaio" "2.12" NOS_MEDIAIO_TARGET)
