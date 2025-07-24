@@ -12,6 +12,14 @@ nosDeckLinkChannel NOSAPI_CALL GetChannelFromName(const char* channelName);
 
 DeviceManager::DeviceManager()
 {
+#ifdef _WIN32
+	HRESULT result = CoInitialize(NULL);
+	if (FAILED(result))
+	{
+		nosEngine.LogE("Initialization of COM failed with error: %s", _com_error(result).ErrorMessage());
+	}
+#endif
+	FetchApiVersion();
 }
 
 DeviceManager::~DeviceManager()
@@ -100,6 +108,87 @@ void DeviceManager::InitializeDeviceList()
 	Devices = CreateDevices();
 	for (auto& device : Devices)
 		DeviceMutexes[device->Index] = std::make_unique<std::shared_mutex>();
+}
+
+void DeviceManager::FetchApiVersion()
+{
+	ApiVersion = std::nullopt;
+
+	IDeckLinkAPIInformation* api = nullptr;
+	HRESULT result = S_OK;
+
+	// Create an IDeckLinkIterator object to enumerate all DeckLink cards in the system
+	result = CoCreateInstance(CLSID_CDeckLinkAPIInformation, NULL, CLSCTX_ALL, IID_IDeckLinkAPIInformation, (void**)&api);
+	if (FAILED(result))
+	{
+		nosModuleStatusMessage msg {
+			.ModuleId = nosEngine.Module->Id,
+			.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+			.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_ERROR,
+			.Message = "DeckLink API information interface could not be fetched. Drivers may not be installed."
+		};
+		nosEngine.SendModuleStatusMessageUpdate(&msg);
+		return;
+	}
+
+	long long apiVersion = 0;
+	result = api->GetInt(BMDDeckLinkAPIVersion, &apiVersion);
+	if (FAILED(result))
+	{
+		nosModuleStatusMessage msg{
+			.ModuleId = nosEngine.Module->Id,
+			.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+			.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_ERROR,
+			.Message = "DeckLink API version could not be read."
+		};
+		nosEngine.SendModuleStatusMessageUpdate(&msg);
+		api->Release();
+		return;
+	}
+
+	// Word, decreasing address order:
+	// Byte 4: Major
+	// Byte 3: Minor
+	// Byte 2: Sub Version
+	// Byte 1: Extra
+	uint8_t major = (apiVersion >> 24) & 0xFF;
+	uint8_t minor = (apiVersion >> 16) & 0xFF;
+	uint8_t subVersion = (apiVersion >> 8) & 0xFF;
+	uint8_t extra = apiVersion & 0xFF;
+	nosEngine.LogI("DeckLink API Version: %d.%d.%d.%d", major, minor, subVersion, extra);
+
+	api->Release();
+
+	ApiVersion = std::array<int, 2>{ major, minor };
+
+	bool incompatible = (*ApiVersion)[0] != NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR || (*ApiVersion)[1] < NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
+	bool warn = (*ApiVersion)[0] == NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR && (*ApiVersion)[1] > NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
+	if (incompatible)
+	{
+		std::stringstream errorMsg;
+		errorMsg << "Your driver version " << (*ApiVersion)[0] << "." << (*ApiVersion)[1] << " is incompatible, please install version " <<  NOS_DECKLINK_USED_DRIVER_API_VERSION << "!";
+		auto msg = errorMsg.str();
+		nosModuleStatusMessage status{
+			.ModuleId = nosEngine.Module->Id,
+			.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+			.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_ERROR,
+			.Message = msg.c_str()
+		};
+		nosEngine.SendModuleStatusMessageUpdate(&status);
+	}
+	else if (warn)
+	{
+		std::stringstream warnMsg;
+		warnMsg << "Your driver version " << (*ApiVersion)[0] << "." << (*ApiVersion)[1] << " has not been tested, you could install version " NOS_DECKLINK_USED_DRIVER_API_VERSION;
+		auto msg = warnMsg.str();
+		nosModuleStatusMessage status{
+			.ModuleId = nosEngine.Module->Id,
+			.UpdateType = NOS_MODULE_STATUS_MESSAGE_UPDATE_TYPE_APPEND,
+			.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_WARNING,
+			.Message = msg.c_str()
+		};
+		nosEngine.SendModuleStatusMessageUpdate(&status);
+	}
 }
 
 std::string SimultaneousReplace(std::string_view input, const std::map<std::string, std::string>& transformations)

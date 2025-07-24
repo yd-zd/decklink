@@ -143,12 +143,68 @@ public:
 	{
 		if (!supportedProfiles.contains(currentProfile))
 		{
-			ProfileStatusMessageIndex = AddMessage("Active device profile is not supported yet", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+			static std::unordered_map<BMDProfileID, const char*> PROFILE_NAMES = {
+				{{bmdProfileOneSubDeviceFullDuplex},  {"1 Sub-Device Full Duplex"}},
+				{{bmdProfileOneSubDeviceHalfDuplex}, {"1 Sub-Device Half Duplex"}},
+				{{bmdProfileTwoSubDevicesFullDuplex}, {"2 Sub-Devices Full Duplex"}},
+				{{bmdProfileTwoSubDevicesHalfDuplex}, {"2 Sub-Devices Half Duplex"}},
+				{{bmdProfileFourSubDevicesHalfDuplex}, {"4 Sub-Devices Half Duplex"}},
+			};
+			std::stringstream ss;
+			ss << "Active device profile is not supported yet!\n";
+			if (currentProfile)
+			{
+				auto it = PROFILE_NAMES.find(*currentProfile);
+				ss << "\tCurrent Profile: " << (it != PROFILE_NAMES.end() ? it->second : ("Unknown (" + std::to_string(*currentProfile) + ")")) << "\n";
+			}
+			ss << "\tSupported Profiles:\n";
+			for (auto& profileId : supportedProfiles)
+			{
+				if (profileId)
+				{
+					auto it = PROFILE_NAMES.find(*profileId);
+					ss << "\t\t" << (it != PROFILE_NAMES.end() ? it->second : ("Unknown (" + std::to_string(*profileId) + ")")) << "\n";
+				}
+			}
+			ss << "Configure connector mapping from BlackMagic DeckLink software.";
+			ProfileStatusMessageIndex = AddMessage(ss.str(), NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
 		}
 		else if (ProfileStatusMessageIndex != -1)
 		{
 			RemoveMessage(ProfileStatusMessageIndex);
 		} 
+		NotifyStatusChange();
+	}
+
+	void CheckApiVersionAndNotify()
+	{
+		auto& apiVersion = DeviceManager::Instance()->ApiVersion;
+		if (ApiVersionStatusMessageIndex != -1)
+		{
+			RemoveMessage(ApiVersionStatusMessageIndex);
+			ApiVersionStatusMessageIndex = -1;
+		}
+		if (!apiVersion)
+		{
+			ApiVersionStatusMessageIndex = AddMessage("Driver API version could not be read, please install version " NOS_DECKLINK_USED_DRIVER_API_VERSION "!", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+		}
+		else
+		{
+			bool incompatible = (*apiVersion)[0] != NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR || (*apiVersion)[1] < NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
+			bool warn = (*apiVersion)[0] == NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR && (*apiVersion)[1] > NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
+			if (incompatible)
+			{
+				std::stringstream errorMsg;
+				errorMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " is incompatible, please install version " NOS_DECKLINK_USED_DRIVER_API_VERSION "!";
+				ApiVersionStatusMessageIndex = AddMessage(errorMsg.str(), NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+			}
+			else if (warn)
+			{
+				std::stringstream warnMsg;
+				warnMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " has not been tested, you could install version " NOS_DECKLINK_USED_DRIVER_API_VERSION;
+				ApiVersionStatusMessageIndex = AddMessage(warnMsg.str(), NOS_DECKLINK_DEVICE_MESSAGE_TYPE_WARNING);
+			}
+		}
 		NotifyStatusChange();
 	}
 
@@ -189,23 +245,14 @@ protected:
 	nosDeckLinkDeviceStatus Status{};
 	std::shared_mutex StatusMutex;
 	int ProfileStatusMessageIndex = -1;
+	int ApiVersionStatusMessageIndex = -1;
 };
 	
 std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t> optGroupId)
 {
 	IDeckLinkIterator* deckLinkIterator = nullptr;
 
-	HRESULT result = E_FAIL;
-#ifdef _WIN32
-	result = CoInitialize(NULL);
-	if (FAILED(result))
-	{
-		nosEngine.LogE("Initialization of COM failed with error: %s", _com_error(result).ErrorMessage());
-		return {};
-	}
-#endif
-
-	result = GetDeckLinkIterator(&deckLinkIterator);
+	HRESULT result = GetDeckLinkIterator(&deckLinkIterator);
 	if (FAILED(result) || deckLinkIterator == nullptr)
 	{
 		nosEngine.LogE("Could not obtain DeckLink iterator");
@@ -331,6 +378,7 @@ void Device::SetupNotifications()
 			res = NotificationInterface->Subscribe(bmdStatusChanged, NotifCallback.GetPtr());
 			if (res != S_OK)
 				nosEngine.LogE("Failed to subscribe to status change for device: %s", ModelName.c_str());
+			NotifCallback->CheckApiVersionAndNotify();
 			NotifCallback->CheckProfileSupportAndNotify(ActiveProfile, SupportedProfiles);
 		}
 	}

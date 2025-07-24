@@ -64,6 +64,7 @@ inline const std::function<dlstring_t(std::string)> StdToDlString = [](std::stri
 
 	return ret_str;
 };
+
 inline HRESULT GetDeckLinkIterator(IDeckLinkIterator **deckLinkIterator)
 {
 	HRESULT result = S_OK;
