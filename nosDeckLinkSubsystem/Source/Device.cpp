@@ -186,22 +186,22 @@ public:
 		}
 		if (!apiVersion)
 		{
-			ApiVersionStatusMessageIndex = AddMessage("Driver API version could not be read, please install version 14.5!", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+			ApiVersionStatusMessageIndex = AddMessage("Driver API version could not be read, please install version " NOS_DECKLINK_USED_DRIVER_API_VERSION "!", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
 		}
 		else
 		{
-			bool incompatible = (*apiVersion)[0] != 14 || (*apiVersion)[1] < 5;
-			bool warn = (*apiVersion)[0] == 14 && (*apiVersion)[1] > 5;
+			bool incompatible = (*apiVersion)[0] != NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR || (*apiVersion)[1] < NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
+			bool warn = (*apiVersion)[0] == NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR && (*apiVersion)[1] > NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR;
 			if (incompatible)
 			{
 				std::stringstream errorMsg;
-				errorMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " is incompatible, please install version 14.5!";
+				errorMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " is incompatible, please install version " NOS_DECKLINK_USED_DRIVER_API_VERSION "!";
 				ApiVersionStatusMessageIndex = AddMessage(errorMsg.str(), NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
 			}
 			else if (warn)
 			{
 				std::stringstream warnMsg;
-				warnMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " has not been tested, you could install version 14.5";
+				warnMsg << "Your driver version " << (*apiVersion)[0] << "." << (*apiVersion)[1] << " has not been tested, you could install version " NOS_DECKLINK_USED_DRIVER_API_VERSION;
 				ApiVersionStatusMessageIndex = AddMessage(warnMsg.str(), NOS_DECKLINK_DEVICE_MESSAGE_TYPE_WARNING);
 			}
 		}
@@ -252,17 +252,7 @@ std::vector<std::unique_ptr<class Device>> CreateDevices(std::optional<uint32_t>
 {
 	IDeckLinkIterator* deckLinkIterator = nullptr;
 
-	HRESULT result = E_FAIL;
-#ifdef _WIN32
-	result = CoInitialize(NULL);
-	if (FAILED(result))
-	{
-		nosEngine.LogE("Initialization of COM failed with error: %s", _com_error(result).ErrorMessage());
-		return {};
-	}
-#endif
-
-	result = GetDeckLinkIterator(&deckLinkIterator);
+	HRESULT result = GetDeckLinkIterator(&deckLinkIterator);
 	if (FAILED(result) || deckLinkIterator == nullptr)
 	{
 		nosEngine.LogE("Could not obtain DeckLink iterator");
