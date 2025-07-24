@@ -9,6 +9,15 @@
 #include "DeckLink_generated.h"
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
 
+#define NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR 14
+#define NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR 5
+
+#define __NOS_DECKLINK_INTERNAL_STR_IMPL(x) #x
+#define __NOS_DECKLINK_INTERNAL_STR(x) __NOS_DECKLINK_INTERNAL_STR_IMPL(x)
+
+#define NOS_DECKLINK_USED_DRIVER_API_VERSION \
+    __NOS_DECKLINK_INTERNAL_STR(NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR) "." __NOS_DECKLINK_INTERNAL_STR(NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR)
+
 namespace nos::decklink
 {
 class Device;
@@ -30,8 +39,10 @@ public:
 	void LoadSettings(sys::decklink::Settings const& settings);
 	bool ValidatePortMappings();
 	void InitializeDeviceList();
+	void FetchApiVersion();
 	std::optional<std::string> GetPortMappedChannelName(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosDeckLinkChannel GetChannelFromPortMappedName(uint32_t deviceIndex, std::string_view portMappedName);
+	std::optional<std::array<int, 2>> ApiVersion;
 protected:
 	std::unordered_map<uint32_t, std::unique_ptr<std::shared_mutex>> DeviceMutexes;
 	std::vector<std::unique_ptr<Device>> Devices;
