@@ -87,8 +87,7 @@ SubDevice::SubDevice(IDeckLink* deviceInterface)
 	res = DLDevice->QueryInterface(IID_IDeckLinkProfileManager, (void**)&ProfileManager);
 	if (res != S_OK || !ProfileManager)
 	{
-		nosEngine.LogE("DeckLinkDevice: Failed to get profile manager for device: %s", ModelName.c_str());
-		return;
+		nosEngine.LogD("DeckLinkDevice: ProfileManager interface is not available for device: %s", ModelName.c_str());
 	}
 }
 

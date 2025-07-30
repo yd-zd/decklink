@@ -63,8 +63,8 @@ public:
 
 	IDeckLinkProfileManager* ProfileManager = nullptr;
 	IDeckLink* DLDevice = nullptr;
-protected:
 	IDeckLinkProfileAttributes* ProfileAttributes = nullptr;
+protected:
 	IDeckLinkConfiguration* Configuration = nullptr;
 
 	OutputHandler Output{};

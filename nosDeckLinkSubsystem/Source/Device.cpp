@@ -141,7 +141,7 @@ public:
 
 	void CheckProfileSupportAndNotify(std::optional<BMDProfileID> const& currentProfile, std::unordered_set<std::optional<BMDProfileID>> const& supportedProfiles)
 	{
-		if (!supportedProfiles.contains(currentProfile))
+		if (!supportedProfiles.contains(std::nullopt) && !supportedProfiles.contains(currentProfile))
 		{
 			static std::unordered_map<BMDProfileID, const char*> PROFILE_NAMES = {
 				{{bmdProfileOneSubDeviceFullDuplex},  {"1 Sub-Device Full Duplex"}},
@@ -431,19 +431,23 @@ bool Device::CanOpenChannel(nosMediaIODirection dir, nosDeckLinkChannel channel,
 		
 	auto& [subDeviceIndex, subDevice] = cit->second;
 	auto& chMap = GetChannelMap();
-	auto mit = chMap.find(ModelName);
-	if (mit == chMap.end())
+	auto modelIt = chMap.find(ModelName);
+	if (modelIt == chMap.end())
 		return false;
-	auto pit = mit->second.find(ActiveProfile);
-	if (pit == mit->second.end())
-		return false;
-	auto sit = pit->second.find(subDeviceIndex);
-	if (sit == pit->second.end())
+	auto profileIt = modelIt->second.find(ActiveProfile);
+	if (profileIt == modelIt->second.end())
+		if (modelIt->second.find(std::nullopt) == modelIt->second.end())
+			// No profile support for this device
+			return false;
+		else
+			profileIt = modelIt->second.begin();
+	auto subDeviceIt = profileIt->second.find(subDeviceIndex);
+	if (subDeviceIt == profileIt->second.end())
 		return false;
 
 	std::unordered_set<nosMediaIODirection> supportedDirections; // For this channel and subdevice
-	auto channelIt = sit->second.find(channel);
-	if (channelIt == sit->second.end())
+	auto channelIt = subDeviceIt->second.find(channel);
+	if (channelIt == subDeviceIt->second.end())
 		return false;
 
 	for (auto& dirForCh : channelIt->second)
@@ -453,6 +457,7 @@ bool Device::CanOpenChannel(nosMediaIODirection dir, nosDeckLinkChannel channel,
 		return false;
 
 	// Now, check subdevice is busy with our direction.
+	// TODO: Full-duplexity?
 	if (subDevice->IsBusyWith(dir))
 		return false;
 
@@ -500,13 +505,27 @@ Nullable<IDeckLinkProfileManager> Device::GetProfileManager() const
 	return SubDevices[0]->ProfileManager;
 }
 
+std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> GetProfileIdAndDeviceInterface(IDeckLinkProfileAttributes* profileAttributes)
+{
+	int64_t profileId{};
+	std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> result;
+	if (profileAttributes->GetInt(BMDDeckLinkProfileID, &profileId) == S_OK)
+		result.first = BMDProfileID(profileId);
+	int64_t deviceInterface{};
+	if (profileAttributes->GetInt(BMDDeckLinkDeviceInterface, &deviceInterface) == S_OK)
+		result.second = BMDDeviceInterface(deviceInterface);
+	return result;
+}
+
 std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> Device::GetActiveProfileAndInterface() const
 {
 	if (SubDevices.empty())
 		return {std::nullopt, std::nullopt};
 	auto mainSubDevice = GetMainSubDevice();
-	if (!mainSubDevice || !mainSubDevice->ProfileManager)
+	if (!mainSubDevice)
 		return {std::nullopt, std::nullopt};
+	if (!mainSubDevice->ProfileManager)
+		return GetProfileIdAndDeviceInterface(mainSubDevice->ProfileAttributes);
 	IDeckLinkProfileIterator* profileIterator = nullptr;
 	auto res = mainSubDevice->ProfileManager->GetProfiles(&profileIterator);
 	if (res != S_OK)
@@ -523,13 +542,7 @@ std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> Device
 			IDeckLinkProfileAttributes* profileAttributes = nullptr;
 			if (profile->QueryInterface(IID_IDeckLinkProfileAttributes, (void**)&profileAttributes) == S_OK)
 			{
-				int64_t profileId{};
-				std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> result;
-				if (profileAttributes->GetInt(BMDDeckLinkProfileID, &profileId) == S_OK)
-					result.first = BMDProfileID(profileId);
-				int64_t deviceInterface{};
-				if (profileAttributes->GetInt(BMDDeckLinkDeviceInterface, &deviceInterface) == S_OK)
-					result.second = BMDDeviceInterface(deviceInterface);
+				auto result = GetProfileIdAndDeviceInterface(profileAttributes);
 				Release(profileAttributes);
 				Release(profile);
 				Release(profileIterator);
@@ -772,7 +785,7 @@ void Device::RemoveDeviceStatusCallback(int32_t callbackId)
 void Device::RegisterDevice()
 {
 	uint32_t deviceFlags = NOS_DEVICE_FLAG_VIDEO_IO;
-	if (*DeviceInterfaceType == bmdDeviceInterfacePCI)
+	if (DeviceInterfaceType && *DeviceInterfaceType == bmdDeviceInterfacePCI)
 		deviceFlags |= NOS_DEVICE_FLAG_PCI;
 	std::string serialNumber = std::to_string(GetMainSubDevice()->PersistentId);
 	nosRegisterDeviceParams params = {
@@ -806,7 +819,7 @@ void Device::PrepareChannelSubDeviceMap()
 	for (auto& [profile, rest2] : mapping)
 	{
 		SupportedProfiles.insert(profile);
-		if (ActiveProfile != profile)
+		if (profile && ActiveProfile != profile)
 			continue;
 		for (auto& [subDeviceIndex, rest3] : rest2)
 		{
