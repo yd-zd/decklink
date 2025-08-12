@@ -78,7 +78,6 @@ struct ChannelHandler
 	nosMediaIOPixelFormat PixelFormat = NOS_MEDIAIO_PIXEL_FORMAT_INVALID;
 	int32_t VideoInputChangeCallbackId = -1;
 	int32_t FrameResultCallbackId = -1;
-	int32_t DeviceInvalidatedCallbackId = -1;
 	int32_t DeviceStatusCallbackId = -1;
 	std::optional<nosDeckLinkReferenceStatus> ReferenceStatus;
 
@@ -178,11 +177,6 @@ struct ChannelHandler
 				nosDeckLink->UnregisterDeviceStatusCallback(DeviceIndex, DeviceStatusCallbackId);
 				DeviceStatusCallbackId = -1;
 			}
-			if (DeviceInvalidatedCallbackId != -1)
-			{
-				nosDeckLink->UnregisterDeviceInvalidatedCallback(DeviceIndex, DeviceInvalidatedCallbackId);
-				DeviceInvalidatedCallbackId = -1;
-			}
 		}
 	}
 
@@ -191,7 +185,6 @@ struct ChannelHandler
 		if (DeviceIndex != -1)
 		{
 			DeviceStatusCallbackId = nosDeckLink->RegisterDeviceStatusCallback(DeviceIndex, &DeviceStatusCallback, this);
-			DeviceInvalidatedCallbackId = nosDeckLink->RegisterDeviceInvalidatedCallback(DeviceIndex, &decklink::DeviceInvalidated, this);
 		}
 	}
 

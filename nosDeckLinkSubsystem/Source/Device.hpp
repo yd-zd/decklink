@@ -85,6 +85,9 @@ protected:
 	void RegisterDevice();
 
 	void PrepareChannelSubDeviceMap();
+
+	void SwitchToSupportedProfile();
+
 	Nullable<IDeckLinkStatus> StatusInterface = nullptr;
 	Nullable<IDeckLinkNotification> NotificationInterface = nullptr;
 	Nullable<NotificationCallback> NotifCallback = nullptr;
