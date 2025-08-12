@@ -14,6 +14,81 @@
 
 namespace nos::decklink
 {
+std::string ProfileIDToString(BMDProfileID profileId)
+{
+	switch (profileId)
+	{
+	case bmdProfileOneSubDeviceFullDuplex:
+		return "1 Sub-Device Full Duplex";
+	case bmdProfileOneSubDeviceHalfDuplex:
+		return "1 Sub-Device Half Duplex";
+	case bmdProfileTwoSubDevicesFullDuplex:
+		return "2 Sub-Devices Full Duplex";
+	case bmdProfileTwoSubDevicesHalfDuplex:
+		return "2 Sub-Devices Half Duplex";
+	case bmdProfileFourSubDevicesHalfDuplex:
+		return "4 Sub-Devices Half Duplex";
+	default:
+		return std::string("Unknown Profile (") + std::to_string(profileId) + ")";
+	}
+}
+
+std::vector<std::unique_ptr<SubDevice>> CreateAllSubDevices()
+{
+	IDeckLinkIterator* deckLinkIterator = nullptr;
+
+	HRESULT result = GetDeckLinkIterator(&deckLinkIterator);
+	if (FAILED(result) || deckLinkIterator == nullptr)
+	{
+		nosEngine.LogE("Could not obtain DeckLink iterator");
+		return {};
+	}
+
+	IDeckLink* deckLink = NULL;
+	uint32_t   deviceNumber = 0;
+
+	// Obtain an IDeckLink instance for each device on the system
+	std::vector<std::unique_ptr<SubDevice>> subDevices;
+	while (deckLinkIterator->Next(&deckLink) == S_OK)
+	{
+		auto bmDevice = std::make_unique<SubDevice>(deckLink);
+		subDevices.push_back(std::move(bmDevice));
+		deviceNumber++;
+	}
+
+	if (deckLinkIterator)
+		deckLinkIterator->Release();
+
+	return subDevices;
+}
+
+std::vector<std::unique_ptr<SubDevice>> CreateSubDevicesForDevice(uint32_t groupId)
+{
+	auto filtered = CreateAllSubDevices();
+	for (auto it = filtered.begin(); it != filtered.end();)
+		it = ((*it)->DeviceGroupId == groupId) ? std::next(it) : filtered.erase(it);
+	return filtered;
+}
+
+std::vector<std::unique_ptr<class Device>> CreateDevices()
+{
+	auto subDevices = CreateAllSubDevices();
+
+	std::unordered_map<int64_t, std::vector<std::unique_ptr<SubDevice>>> subDevicePerDevice;
+	for (auto& subDevice : subDevices)
+		subDevicePerDevice[subDevice->DeviceGroupId].push_back(std::move(subDevice));
+
+	std::vector<std::unique_ptr<Device>> devices;
+	uint32_t deviceIndex = 0;
+	for (auto& [groupId, subDevices] : subDevicePerDevice)
+	{
+		auto device = std::make_unique<Device>(deviceIndex, std::move(subDevices));
+		devices.push_back(std::move(device));
+		++deviceIndex;
+	}
+
+	return devices;
+}
 
 class ProfileChangeCallback : public Object<IDeckLinkProfileCallback>
 {
@@ -140,29 +215,24 @@ public:
 
 	void CheckProfileSupportAndNotify(std::optional<BMDProfileID> const& currentProfile, std::unordered_set<std::optional<BMDProfileID>> const& supportedProfiles)
 	{
-		if (!supportedProfiles.contains(std::nullopt) && !supportedProfiles.contains(currentProfile))
+		if (supportedProfiles.empty())
 		{
-			static std::unordered_map<BMDProfileID, const char*> PROFILE_NAMES = {
-				{{bmdProfileOneSubDeviceFullDuplex},  {"1 Sub-Device Full Duplex"}},
-				{{bmdProfileOneSubDeviceHalfDuplex}, {"1 Sub-Device Half Duplex"}},
-				{{bmdProfileTwoSubDevicesFullDuplex}, {"2 Sub-Devices Full Duplex"}},
-				{{bmdProfileTwoSubDevicesHalfDuplex}, {"2 Sub-Devices Half Duplex"}},
-				{{bmdProfileFourSubDevicesHalfDuplex}, {"4 Sub-Devices Half Duplex"}},
-			};
+			ProfileStatusMessageIndex = AddMessage("Device is not supported yet!", NOS_DECKLINK_DEVICE_MESSAGE_TYPE_ERROR);
+		}
+		else if (!supportedProfiles.contains(std::nullopt) && !supportedProfiles.contains(currentProfile))
+		{
 			std::stringstream ss;
 			ss << "Active device profile is not supported yet!\n";
 			if (currentProfile)
 			{
-				auto it = PROFILE_NAMES.find(*currentProfile);
-				ss << "\tCurrent Profile: " << (it != PROFILE_NAMES.end() ? it->second : ("Unknown (" + std::to_string(*currentProfile) + ")")) << "\n";
+				ss << "\tCurrent Profile: " << ProfileIDToString(*currentProfile) << "\n";
 			}
 			ss << "\tSupported Profiles:\n";
 			for (auto& profileId : supportedProfiles)
 			{
 				if (profileId)
 				{
-					auto it = PROFILE_NAMES.find(*profileId);
-					ss << "\t\t" << (it != PROFILE_NAMES.end() ? it->second : ("Unknown (" + std::to_string(*profileId) + ")")) << "\n";
+					ss << "\t\t" << ProfileIDToString(*profileId) << "\n";
 				}
 			}
 			ss << "Configure connector mapping from BlackMagic DeckLink software.";
@@ -171,7 +241,7 @@ public:
 		else if (ProfileStatusMessageIndex != -1)
 		{
 			RemoveMessage(ProfileStatusMessageIndex);
-		} 
+		}
 		NotifyStatusChange();
 	}
 
@@ -338,6 +408,8 @@ Device::Device(uint32_t index, std::vector<std::unique_ptr<SubDevice>>&& subDevi
 	SetupNotifications();
 
 	RegisterDevice();
+
+	SwitchToSupportedProfile();
 }
 
 void Device::Destroy()
@@ -835,4 +907,19 @@ void Device::PrepareChannelSubDeviceMap()
 		}
 	}
 }
+
+void Device::SwitchToSupportedProfile()
+{
+	if (SupportedProfiles.empty())
+		return;
+	if (ActiveProfile && SupportedProfiles.contains(ActiveProfile))
+		return;
+	auto& firstProfile = *SupportedProfiles.begin();
+	if (firstProfile)
+	{
+		nosEngine.LogI("Switching to supported profile: %s for device: %s", ProfileIDToString(*firstProfile).c_str(), ModelName.c_str());
+		UpdateProfile(*firstProfile);
+	}
+}
+
 }
