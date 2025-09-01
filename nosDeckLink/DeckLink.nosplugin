@@ -2,38 +2,38 @@
 	"info": {
 		"id": {
 			"name": "nos.decklink",
-			"version": "1.12.6"
+			"version": "2.0.0"
 		},
 		"display_name": "DeckLink",
 		"description": "Video I/O plugin for BlackMagic Design DeckLink cards.",
 		"dependencies": [
 			{
 				"name": "nos.mediaio",
-				"version": "2.12"
+				"version": "3.0"
 			},
 			{
 				"name": "nos.sys.decklink",
-				"version": "2.11"
+				"version": "3.0"
 			},
 			{
 				"name": "nos.sys.vulkan",
-				"version": "6.28"
+				"version": "7.0"
 			},
 			{
 				"name": "nos.utilities",
-				"version": "3.21"
+				"version": "3.28"
 			},
 			{
 				"name": "nos.reflect",
-				"version": "1.11"
+				"version": "2.0"
 			},
 			{
 				"name": "nos.math",
-				"version": "1.21"
+				"version": "1.23"
 			},
 			{
 				"name": "nos.sys.device",
-				"version": "0.10"
+				"version": "1.0"
 			},
 			{
 				"name": "nos.sync",
@@ -42,18 +42,6 @@
 		],
 		"category": "Media I/O"
 	},
-	"node_definitions": [
-		"Config/DMAWrite.nosdef",
-		"Config/DMARead.nosdef",
-		"Config/WaitFrame.nosdef",
-		"Config/Channel.nosdef",
-		"Config/OutputNode.nosdef",
-		"Config/InputNode.nosdef",
-		"Config/FillKey.nosdef"
-	],
-	"custom_types": [
-		"Config/DeckLink.fbs"
-	],
 	"binary_path": "Binaries/nosDeckLink",
 	"associated_nodes": [
 		{
@@ -86,6 +74,5 @@
 			"class_name": "Input",
 			"display_name": "DeckLink In"
 		}
-	],
-	"third_party_software": []
+	]
 }
