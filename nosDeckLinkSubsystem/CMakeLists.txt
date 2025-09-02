@@ -17,12 +17,12 @@ add_compile_definitions(NOS_DISABLE_DEPRECATED)
 nos_find_plugin_sdk("39.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 # nos.mediaio
-nos_get_module("nos.mediaio" "2.12" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "2.12" NOS_MEDIAIO_PATH)
-nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
+nos_get_module("nos.mediaio" "3.0" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "3.0" NOS_MEDIAIO_PATH)
+nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
 
 # nos.sys.device
-nos_get_module("nos.sys.device" "0.10" NOS_SYS_DEVICE_TARGET)
+nos_get_module("nos.sys.device" "1.0" NOS_SYS_DEVICE_TARGET)
 
 # DeckLink SDK
 # ------------

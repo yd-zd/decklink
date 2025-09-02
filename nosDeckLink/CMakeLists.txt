@@ -14,25 +14,25 @@ add_compile_definitions(NOS_DISABLE_DEPRECATED)
 nos_find_plugin_sdk("39.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 # nos.sys.decklink
-nos_get_module("nos.sys.decklink" "2.12" NOS_SYS_DECKLINK_TARGET)
+nos_get_module("nos.sys.decklink" "3.0" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.vulkan
-nos_get_module("nos.sys.vulkan" "6.28" NOS_SYS_VULKAN_TARGET)
+nos_get_module("nos.sys.vulkan" "7.0" NOS_SYS_VULKAN_TARGET)
 
 # nos.mediaio
-nos_get_module("nos.mediaio" "2.12" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "2.12" NOS_MEDIAIO_PATH)
-nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
+nos_get_module("nos.mediaio" "3.0" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "3.0" NOS_MEDIAIO_PATH)
+nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
 
 # nos.utilities
 nos_get_module("nos.utilities" "3.21" NOS_UTILITIES_TARGET)
 nos_find_module_path("nos.utilities" "3.21" NOS_UTILITIES_PATH)
-nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosUtilities)
+nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosUtilities)
 
 # nos.sys.device
-nos_get_module("nos.sys.device" "0.10" NOS_SYS_DEVICE_TARGET)
-nos_find_module_path("nos.sys.device" "0.10" NOS_SYS_DEVICE_PATH)
-nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosSysDevice)
+nos_get_module("nos.sys.device" "1.0" NOS_SYS_DEVICE_TARGET)
+nos_find_module_path("nos.sys.device" "1.0" NOS_SYS_DEVICE_PATH)
+nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosSysDevice)
 
 # nos.sync
 nos_get_module("nos.sync" "10.1" NOS_SYNC_TARGET)
@@ -40,7 +40,7 @@ nos_get_module("nos.sync" "10.1" NOS_SYNC_TARGET)
 # TODO: Publish as nosman package
 add_subdirectory(External/cpp-utilities)
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLink)
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SDK_DIR}/types" generated_nosDeckLink)
 
 list(APPEND DEPENDENCIES generated_nosDeckLink_dep_nosMediaIO generated_nosDeckLink_dep_nosUtilities generated_nosDeckLink_dep_nosSysDevice nosCppUtilities
     generated_nosDeckLink ${NOS_SYS_DEVICE_TARGET} ${NOS_SYS_DECKLINK_TARGET} ${NOS_MEDIAIO_TARGET} ${NOS_SYS_VULKAN_TARGET} ${NOS_PLUGIN_SDK_TARGET} ${NOS_SYNC_TARGET})
