@@ -119,9 +119,13 @@ void DeviceManager::FetchApiVersion()
 	IDeckLinkAPIInformation* api = nullptr;
 	HRESULT result = S_OK;
 
-	// Create an IDeckLinkIterator object to enumerate all DeckLink cards in the system
+	// Create an IDeckLinkAPIInformation object to query DeckLink API version
+#ifdef _WIN32
 	result = CoCreateInstance(CLSID_CDeckLinkAPIInformation, NULL, CLSCTX_ALL, IID_IDeckLinkAPIInformation, (void**)&api);
-	if (FAILED(result))
+#else
+	api = CreateDeckLinkAPIInformationInstance();
+#endif
+	if (FAILED(result) || !api)
 	{
 		nosPluginStatusMessage msg {
 			.PluginId = nosEngine.Plugin->Id,
