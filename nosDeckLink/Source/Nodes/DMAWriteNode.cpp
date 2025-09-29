@@ -54,7 +54,7 @@ struct DMAWriteNode : NodeContext
 		{
 			auto& pin = params->Pins[i];
 			if (pin->Name == NOS_NAME_STATIC("Input"))
-				inputBuffer = vkss::ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*pin->Data));
+				inputBuffer = sys::ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*pin->Data));
 			if (pin->Name == NOS_NAME("FieldType"))
 				fieldType = *InterpretPinValue<sys::vulkan::FieldType>(*pin->Data);
 		}

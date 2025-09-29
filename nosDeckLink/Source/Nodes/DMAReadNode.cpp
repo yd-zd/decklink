@@ -19,7 +19,7 @@ struct DMAReadNode : NodeContext
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
 		NodeExecuteParams execParams = params;
-		nosResourceShareInfo bufferToWrite = vkss:: ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*execParams[NOS_NAME_STATIC("BufferToWrite")].Data));
+		nosResourceShareInfo bufferToWrite = sys:: ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*execParams[NOS_NAME_STATIC("BufferToWrite")].Data));
 		ChannelId* channelId = InterpretPinValue<ChannelId>(*execParams[NOS_NAME_STATIC("ChannelId")].Data);
 
 		if (!bufferToWrite.Memory.Handle)
@@ -37,7 +37,7 @@ struct DMAReadNode : NodeContext
 		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBufferSize);
 
 		bufferToWrite.Info.Buffer.FieldType = NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE;
-		nosEngine.SetPinValue(execParams[NOS_NAME_STATIC("Output")].Id, Buffer::From(vkss::ConvertBufferInfo(bufferToWrite)));
+		nosEngine.SetPinValue(execParams[NOS_NAME_STATIC("Output")].Id, Buffer::From(sys::ConvertBufferInfo(bufferToWrite)));
 
 		return NOS_RESULT_SUCCESS;
 	}
