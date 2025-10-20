@@ -14,7 +14,7 @@ add_compile_definitions(NOS_DISABLE_DEPRECATED)
 nos_find_plugin_sdk("40.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 # nos.sys.decklink
-nos_get_module("nos.sys.decklink" "3.0" NOS_SYS_DECKLINK_TARGET)
+nos_get_module("nos.sys.decklink" "3.1" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.vulkan
 nos_get_module("nos.sys.vulkan" "7.1" NOS_SYS_VULKAN_TARGET)
