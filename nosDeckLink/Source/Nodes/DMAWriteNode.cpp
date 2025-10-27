@@ -29,7 +29,7 @@ struct DMAWriteNode : NodeContext
 	{ 
 		if (pinName == NOS_NAME_STATIC("ChannelId"))
 		{
-			auto& newChannelId = *InterpretPinValue<ChannelId>(value);
+			auto& newChannelId = *static_cast<ChannelId*>(value.Data);
 			if (CurChannelId == newChannelId)
 				return;
 			CurChannelId = newChannelId;
@@ -46,34 +46,32 @@ struct DMAWriteNode : NodeContext
 		}
 	}
 
-	nosResult ExecuteNode(nosNodeExecuteParams* params) override
+	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
-		nosResourceShareInfo inputBuffer{};
-		auto fieldType = nos::sys::vulkan::FieldType::UNKNOWN;
-		for (size_t i = 0; i < params->PinCount; ++i)
-		{
-			auto& pin = params->Pins[i];
-			if (pin->Name == NOS_NAME_STATIC("Input"))
-				inputBuffer = sys::ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*pin->Data));
-			if (pin->Name == NOS_NAME("FieldType"))
-				fieldType = *InterpretPinValue<sys::vulkan::FieldType>(*pin->Data);
-		}
+		auto inputBuffer = params.GetPinObject(NOS_NAME("Input"));
+		auto fieldType = *params.GetPinData<sys::vulkan::FieldType>(NOS_NAME("FieldType"));
 
 		auto deviceIndex = CurChannelId.device_index();
 		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
 
-		if (!inputBuffer.Memory.Handle)
+		if (!inputBuffer)
 			return NOS_RESULT_FAILED;
 
-		auto buffer = nosVulkan->Map(&inputBuffer);
-		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBuffer.Info.Buffer.Size);
+		auto buffer = nosVulkan->Map(inputBuffer);
+		if (!buffer)
+		{
+			nosEngine.LogE("Failed to map DMA write input buffer.");
+			return NOS_RESULT_FAILED;
+		}
+		auto bufInfo = sys::vulkan::GetResourceInfo(inputBuffer);
+		if (!bufInfo)
+		{
+			nosEngine.LogE("Failed to get DMA write input buffer info.");
+			return NOS_RESULT_FAILED;
+		}
+		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, bufInfo->Buffer.Size);
 
-		nosScheduleNodeParams schedule {
-			.NodeId = NodeId,
-			.AddScheduleCount = 1
-		};
-		nosEngine.ScheduleNode(&schedule);
-		
+		SendScheduleRequest(1);
 		return NOS_RESULT_SUCCESS;
 	}
 

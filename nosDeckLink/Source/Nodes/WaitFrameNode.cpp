@@ -100,14 +100,14 @@ struct WaitFrameNode : NodeContext
 	{ 
 		if (pinName == NOS_NAME("ChannelId"))
 		{
-			auto& newChannelId = *InterpretPinValue<ChannelId>(value);
+			auto& newChannelId = *static_cast<ChannelId*>(value.Data);
 			if (CurChannelId == newChannelId)
 				return;
 			CurChannelId = newChannelId;
 		}
 	}
 
-	nosResult ExecuteNode(nosNodeExecuteParams* params) override
+	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
 		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
 		return NOS_RESULT_SUCCESS;

@@ -403,15 +403,15 @@ public:
 		BuildPossibleOutputConfigs();
 
 		// TODO: Refactor repetitive code in pin value watchers.
-		AddPinValueWatcher(NSN_IsOpen, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			Channel.ShouldOpen = *InterpretPinValue<bool>(newVal);
+		AddPinValueWatcher<bool>(NSN_IsOpen, [this](const bool* newVal, std::optional<const bool*> oldValue) {
+			Channel.ShouldOpen = *newVal;
 			if (!Channel.ShouldOpen)
 				Channel.Close();
 			else
 				Channel.Open();
 		});
-		AddPinValueWatcher(NSN_IsInput, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			auto newValue = *InterpretPinValue<bool>(newVal) ? NOS_MEDIAIO_DIRECTION_INPUT : NOS_MEDIAIO_DIRECTION_OUTPUT;
+		AddPinValueWatcher<bool>(NSN_IsInput, [this](const bool* newVal, std::optional<const bool*> oldValue) {
+			auto newValue = *newVal ? NOS_MEDIAIO_DIRECTION_INPUT : NOS_MEDIAIO_DIRECTION_OUTPUT;
 			Channel.Update<&ChannelHandler::Direction>(newValue);
 			UpdateAfter(Config::IsInput, !oldValue);
 		});
@@ -464,8 +464,8 @@ public:
 			}
 			UpdateAfter(Config::Device, !oldValue);
 		});
-		AddPinValueWatcher(NSN_ChannelName, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			ChannelPinValue = InterpretPinValue<const char>(newVal);
+		AddPinValueWatcher<const char>(NSN_ChannelName, [this](const char* newVal, std::optional<const char*> oldValue) {
+			ChannelPinValue = newVal;
 			auto newChannel = nosDeckLink->GetChannelFromPortMappedName(Channel.DeviceIndex, ChannelPinValue.c_str());
 			Channel.Update<&ChannelHandler::Channel>(newChannel);
 			if (ChannelPinValue != PIN_VALUE_NONE && newChannel == NOS_DECKLINK_CHANNEL_INVALID)
@@ -479,8 +479,8 @@ public:
 			}
 			UpdateAfter(Config::ChannelName, !oldValue);
 		});
-		AddPinValueWatcher(NSN_Resolution, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			ResolutionPinValue = InterpretPinValue<const char>(newVal);
+		AddPinValueWatcher<const char>(NSN_Resolution, [this](const char* newVal, std::optional<const char*> oldValue) {
+			ResolutionPinValue = newVal;
 			auto newResolution = nosMediaIO->GetFrameGeometryFromString(ResolutionPinValue.c_str());
 			Channel.Update<&ChannelHandler::Resolution>(newResolution, !Channel.IsInput());
 			if (ResolutionPinValue != PIN_VALUE_NONE && newResolution == NOS_MEDIAIO_FRAME_GEOMETRY_INVALID)
@@ -494,8 +494,8 @@ public:
 			}
 			UpdateAfter(Config::Resolution, !oldValue);
 		});
-		AddPinValueWatcher(NSN_FrameRate, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			FrameRatePinValue = InterpretPinValue<const char>(newVal);
+		AddPinValueWatcher<const char>(NSN_FrameRate, [this](const char* newVal, std::optional<const char*> oldValue) {
+			FrameRatePinValue = newVal;
 			auto newFrameRate = nosMediaIO->GetFrameRateFromString(FrameRatePinValue.c_str());
 			Channel.Update<&ChannelHandler::FrameRate>(newFrameRate, !Channel.IsInput());
 			if (FrameRatePinValue != PIN_VALUE_NONE && newFrameRate == NOS_MEDIAIO_FRAME_RATE_INVALID)
@@ -509,8 +509,8 @@ public:
 			}
 			UpdateAfter(Config::FrameRate, !oldValue);
 		});
-		AddPinValueWatcher(NSN_VideoScanType, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			VideoScanTypePinValue = InterpretPinValue<const char>(newVal);
+		AddPinValueWatcher<const char>(NSN_VideoScanType, [this](const char* newVal, std::optional<const char*> oldValue) {
+			VideoScanTypePinValue = newVal;
 			auto newVideoScanType = nosMediaIO->GetVideoScanTypeFromString(VideoScanTypePinValue.c_str());
 			Channel.Update<&ChannelHandler::VideoScanType>(newVideoScanType, !Channel.IsInput());
 			if (VideoScanTypePinValue != PIN_VALUE_NONE && newVideoScanType == NOS_MEDIAIO_VIDEO_SCAN_TYPE_INVALID)
@@ -524,8 +524,8 @@ public:
 			}
 			UpdateAfter(Config::VideoScanType, !oldValue);
 		});
-		AddPinValueWatcher(NSN_PixelFormat, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
-			PixelFormatPinValue = InterpretPinValue<const char>(newVal);
+		AddPinValueWatcher<const char>(NSN_PixelFormat, [this](const char* newVal, std::optional<const char*> oldValue) {
+			PixelFormatPinValue = newVal;
 			auto newPixelFormat = nosMediaIO->GetPixelFormatFromString(PixelFormatPinValue.c_str());
 			Channel.Update<&ChannelHandler::PixelFormat>(newPixelFormat);
 			if (PixelFormatPinValue != PIN_VALUE_NONE && newPixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID)
@@ -654,14 +654,14 @@ public:
 			SetPinValue(name, nosBuffer{.Data = (void*)PIN_VALUE_NONE, .Size = 5});
 	}
 
-	nosResult ExecuteNode(nosNodeExecuteParams* params) override
+	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
-		params->MarkAllOutsDirty = NOS_FALSE;
+		params.MarkAllOutsDirty = NOS_FALSE;
 		{
 			std::unique_lock lock(Channel.DecklinkThreadMutex);
-			if (Channel.DeckLinkThreadStatus.DropDetectionEnabled == (params->TimingInfo.TimingMode == NOS_EXECUTION_TIMING_MODE_VARIABLE_STEP))
+			if (Channel.DeckLinkThreadStatus.DropDetectionEnabled == params.GetVariableStepTiming().has_value())
 			{
-				if (params->TimingInfo.TimingMode == NOS_EXECUTION_TIMING_MODE_VARIABLE_STEP)
+				if (params.GetVariableStepTiming().has_value())
 					Channel.DeckLinkThreadStatus = {};
 				else
 				{

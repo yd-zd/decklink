@@ -14,15 +14,23 @@ endif()
 
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
 # Nodos SDK
-nos_find_plugin_sdk("39.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+nos_find_plugin_sdk("40.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+
+# nos.sys.vulkan
+nos_get_module("nos.sys.vulkan" "8.0" NOS_SYS_VULKAN_TARGET)
+nos_find_module_path("nos.sys.vulkan" "8.0" NOS_SYS_VULKAN_PATH)
+
+# nos.audio
+nos_get_module("nos.audio" "1.0" NOS_AUDIO_TARGET)
+nos_find_module_path("nos.audio" "1.0" NOS_AUDIO_PATH)
 
 # nos.mediaio
-nos_get_module("nos.mediaio" "3.0" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "3.0" NOS_MEDIAIO_PATH)
-nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
+nos_get_module("nos.mediaio" "4.0" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "4.0" NOS_MEDIAIO_PATH)
+nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_VULKAN_PATH};${NOS_AUDIO_PATH};${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLinkSubsystem_dep_nosMediaIO)
 
 # nos.sys.device
-nos_get_module("nos.sys.device" "1.0" NOS_SYS_DEVICE_TARGET)
+nos_get_module("nos.sys.device" "2.0" NOS_SYS_DEVICE_TARGET)
 
 # DeckLink SDK
 # ------------
@@ -82,7 +90,7 @@ endif()
 nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source" "cpp" "${NOS_SDK_DIR}/Types" generated_nosDeckLinkSubsystem)
 
 list(APPEND DEPENDENCIES ${NOS_PLUGIN_SDK_TARGET} ${NOS_MEDIAIO_TARGET} ${NOS_SYS_DEVICE_TARGET} 
-                         generated_nosDeckLinkSubsystem generated_nosDeckLinkSubsystem_dep_nosSysMediaIO)
+                         generated_nosDeckLinkSubsystem generated_nosDeckLinkSubsystem_dep_nosMediaIO)
 list(APPEND DEPENDENCIES DeckLinkSDK)
 list(APPEND INCLUDE_FOLDERS
      ${EXTERNAL_DIR}

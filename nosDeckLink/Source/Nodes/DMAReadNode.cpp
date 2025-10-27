@@ -16,28 +16,38 @@ struct DMAReadNode : NodeContext
 {
 	using NodeContext::NodeContext;
 
-	nosResult ExecuteNode(nosNodeExecuteParams* params) override
+	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
-		NodeExecuteParams execParams = params;
-		nosResourceShareInfo bufferToWrite = sys:: ConvertToResourceInfo(*InterpretPinValue<sys::vulkan::Buffer>(*execParams[NOS_NAME_STATIC("BufferToWrite")].Data));
-		ChannelId* channelId = InterpretPinValue<ChannelId>(*execParams[NOS_NAME_STATIC("ChannelId")].Data);
+		auto bufferToWrite = params.GetPinObject(NOS_NAME("BufferToWrite"));
+		const auto& channelId = *params.GetPinData<ChannelId>(NOS_NAME("ChannelId"));
 
-		if (!bufferToWrite.Memory.Handle)
+		if (!bufferToWrite)
 		{
 			nosEngine.LogE("DMA read target buffer is not valid.");
 			return NOS_RESULT_FAILED;
 		}
 
-		auto deviceIndex = channelId->device_index();
-		auto channel = static_cast<nosDeckLinkChannel>(channelId->channel_index());
+		auto deviceIndex = channelId.device_index();
+		auto channel = static_cast<nosDeckLinkChannel>(channelId.channel_index());
 
-		uint8_t* buffer = nosVulkan->Map(&bufferToWrite);
-		auto inputBufferSize = bufferToWrite.Memory.Size;
+		uint8_t* buffer = nosVulkan->Map(bufferToWrite);
+		auto bufInfo = sys::vulkan::GetResourceInfo(bufferToWrite);
+		if (!buffer)
+		{
+			nosEngine.LogE("Failed to map DMA read target buffer.");
+			return NOS_RESULT_FAILED;
+		}
+		if (!bufInfo)
+		{
+			nosEngine.LogE("Failed to get DMA read target buffer info.");
+			return NOS_RESULT_FAILED;
+		}
+		auto inputBufferSize = bufInfo->Buffer.Size;
 
 		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBufferSize);
 
-		bufferToWrite.Info.Buffer.FieldType = NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE;
-		nosEngine.SetPinValue(execParams[NOS_NAME_STATIC("Output")].Id, Buffer::From(sys::ConvertBufferInfo(bufferToWrite)));
+		nosVulkan->SetResourceFieldType(bufferToWrite, NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE);
+		SetPinObject(NOS_NAME("Output"), bufferToWrite);
 
 		return NOS_RESULT_SUCCESS;
 	}

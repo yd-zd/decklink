@@ -11,31 +11,38 @@ endif()
 
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
 # Nodos SDK
-nos_find_plugin_sdk("39.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+nos_find_plugin_sdk("40.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 # nos.sys.decklink
 nos_get_module("nos.sys.decklink" "3.0" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.vulkan
-nos_get_module("nos.sys.vulkan" "7.0" NOS_SYS_VULKAN_TARGET)
-
-# nos.mediaio
-nos_get_module("nos.mediaio" "3.0" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "3.0" NOS_MEDIAIO_PATH)
-nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosMediaIO)
-
-# nos.utilities
-nos_get_module("nos.utilities" "3.21" NOS_UTILITIES_TARGET)
-nos_find_module_path("nos.utilities" "3.21" NOS_UTILITIES_PATH)
-nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosUtilities)
-
-# nos.sys.device
-nos_get_module("nos.sys.device" "1.0" NOS_SYS_DEVICE_TARGET)
-nos_find_module_path("nos.sys.device" "1.0" NOS_SYS_DEVICE_PATH)
-nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosSysDevice)
+nos_get_module("nos.sys.vulkan" "8.0" NOS_SYS_VULKAN_TARGET)
+nos_find_module_path("nos.sys.vulkan" "8.0" NOS_SYS_VULKAN_PATH)
 
 # nos.sync
-nos_get_module("nos.sync" "10.1" NOS_SYNC_TARGET)
+nos_get_module("nos.sync" "11.1" NOS_SYNC_TARGET)
+nos_find_module_path("nos.sync" "11.1" NOS_SYNC_PATH)
+
+# nos.audio
+nos_get_module("nos.audio" "1.0" NOS_AUDIO_TARGET)
+nos_find_module_path("nos.audio" "1.0" NOS_AUDIO_PATH)
+
+# nos.mediaio
+nos_get_module("nos.mediaio" "4.0" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "4.0" NOS_MEDIAIO_PATH)
+nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_VULKAN_PATH};${NOS_AUDIO_PATH};${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosMediaIO)
+
+# nos.utilities
+nos_get_module("nos.utilities" "4.0" NOS_UTILITIES_TARGET)
+nos_find_module_path("nos.utilities" "4.0" NOS_UTILITIES_PATH)
+nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_VULKAN_PATH};${NOS_AUDIO_PATH};${NOS_UTILITIES_PATH};${NOS_SYNC_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosUtilities)
+
+# nos.sys.device
+nos_get_module("nos.sys.device" "2.0" NOS_SYS_DEVICE_TARGET)
+nos_find_module_path("nos.sys.device" "2.0" NOS_SYS_DEVICE_PATH)
+nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosSysDevice)
+
 
 # TODO: Publish as nosman package
 add_subdirectory(External/cpp-utilities)
