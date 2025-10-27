@@ -200,7 +200,7 @@ typedef struct nosDeckLinkSubsystem {
 
 // Make sure these are same with nossys file.
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_NAME "nos.sys.decklink"
-#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 3
+#define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MAJOR 4
 #define NOS_DECKLINK_DEVICE_SUBSYSTEM_VERSION_MINOR 0
 
 extern struct nosPluginInfo nosDeckLinkSubsystemPluginInfo;

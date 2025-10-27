@@ -49,7 +49,6 @@ struct DMAWriteNode : NodeContext
 	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
 		auto inputBuffer = params.GetPinObject(NOS_NAME("Input"));
-		auto fieldType = *params.GetPinData<sys::vulkan::FieldType>(NOS_NAME("FieldType"));
 
 		auto deviceIndex = CurChannelId.device_index();
 		auto channel = static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
