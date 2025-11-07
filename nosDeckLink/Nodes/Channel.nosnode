@@ -1,114 +1,114 @@
 {
-    "nodes": [
-        {
-            "class_name": "Channel",
-            "menu_info": {
-                "display_name": "Channel",
-                "category": "Device|DeckLink"
-            },
-            "node": {
-                "display_name": "DeckLink Channel",
-                "contents_type": "Job",
-                "description": "Configures device and opens a channel",
-                "pins": [
-                    {
-                        "name": "Thread",
-                        "type_name": "nos.exe",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "Continue",
-                        "type_name": "nos.exe",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "ChannelId",
-                        "type_name": "nos.decklink.ChannelId",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_OR_PROPERTY"
-                    },
-                    {
-                        "name": "IsOpen",
-                        "type_name": "bool",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY",
-                        "data": true
-                    },
-                    {
-                        "name": "IsInput",
-                        "type_name": "bool",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "Device",
-                        "type_name": "nos.sys.device.DeviceInfo",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY",
-                        "data": {}
-                    },
-                    {
-                        "name": "ChannelName",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "Resolution",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "FrameRate",
-                        "display_name": "Frame Rate",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "VideoScanType",
-                        "display_name": "Video Scan Type",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "PixelFormat",
-                        "display_name": "Pixel Format",
-                        "type_name": "string",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
-                    },
-                    {
-                        "name": "ChannelResolution",
-                        "display_name": "Channel Resolution",
-                        "type_name": "nos.fb.vec2u",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_OR_PROPERTY",
-                        "readonly": true
-                    },
-                    {
-                        "name": "ChannelPixelFormat",
-                        "display_name": "Channel Pixel Format",
-                        "type_name": "nos.mediaio.YCbCrPixelFormat",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_OR_PROPERTY",
-                        "readonly": true
-                    },
-                    {
-                        "name": "ChannelIsInterlaced",
-                        "display_name": "Is Interlaced",
-                        "type_name": "bool",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_OR_PROPERTY",
-                        "readonly": true
-                    }
-                ],
-                "functions": []
-            }
-        }
-    ]
+	"nodes": [
+		{
+			"class_name": "Channel",
+			"menu_info": {
+				"display_name": "Channel",
+				"category": "Device|DeckLink"
+			},
+			"node": {
+				"display_name": "DeckLink Channel",
+				"contents_type": "Job",
+				"description": "Configures device and opens a channel",
+				"pins": [
+					{
+						"name": "Thread",
+						"type_name": "nos.exe",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "Continue",
+						"type_name": "nos.exe",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					},
+					{
+						"name": "ChannelId",
+						"type_name": "nos.decklink.ChannelId",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_OR_PROPERTY"
+					},
+					{
+						"name": "IsOpen",
+						"type_name": "bool",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY",
+						"data": true
+					},
+					{
+						"name": "IsInput",
+						"type_name": "bool",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "Device",
+						"type_name": "nos.sys.device.DeviceInfo",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY",
+						"data": {}
+					},
+					{
+						"name": "ChannelName",
+						"type_name": "string",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "Resolution",
+						"type_name": "string",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "FrameRate",
+						"display_name": "Frame Rate",
+						"type_name": "string",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "VideoScanType",
+						"display_name": "Video Scan Type",
+						"type_name": "string",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "PixelFormat",
+						"display_name": "Pixel Format",
+						"type_name": "string",
+						"show_as": "PROPERTY",
+						"can_show_as": "PROPERTY_ONLY"
+					},
+					{
+						"name": "ChannelResolution",
+						"display_name": "Channel Resolution",
+						"type_name": "nos.fb.vec2u",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_OR_PROPERTY",
+						"readonly": true
+					},
+					{
+						"name": "ChannelPixelFormat",
+						"display_name": "Channel Pixel Format",
+						"type_name": "nos.mediaio.YCbCrPixelFormat",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_OR_PROPERTY",
+						"readonly": true
+					},
+					{
+						"name": "ChannelIsInterlaced",
+						"display_name": "Is Interlaced",
+						"type_name": "bool",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_OR_PROPERTY",
+						"readonly": true
+					}
+				],
+				"functions": []
+			}
+		}
+	]
 }

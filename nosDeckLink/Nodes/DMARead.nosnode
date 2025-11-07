@@ -1,61 +1,61 @@
 {
-    "nodes": [
-        {
-            "class_name": "DMARead",
-            "menu_info": {
-                "display_name": "DMA Read",
-                "category": "Device|DeckLink"
-            },
-            "node": {
-                "display_name": "DeckLink DMA Read",
-                "contents_type": "Job",
-                "description": "Reads YCbCr frames from the specified channel",
-                "pins": [
-                    {
-                        "name": "Run",
-                        "type_name": "nos.exe",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "DMA Complete",
-                        "type_name": "nos.exe",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "ChannelId",
-                        "type_name": "nos.decklink.ChannelId",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "BufferToWrite",
-                        "type_name": "nos.sys.vulkan.Buffer",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "Output",
-                        "type_name": "nos.sys.vulkan.Buffer",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_ONLY"
-                    }
-                ],
-                "functions": [
-                    {
-                        "class_name": "Drop",
-                        "contents_type": "Job",
-                        "pins": [
-                            {
-                                "name": "Propagate",
-                                "type_name": "nos.exe",
-                                "show_as": "OUTPUT_PIN"
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-    ]
+	"nodes": [
+		{
+			"class_name": "DMARead",
+			"menu_info": {
+				"display_name": "DMA Read",
+				"category": "Device|DeckLink"
+			},
+			"node": {
+				"display_name": "DeckLink DMA Read",
+				"contents_type": "Job",
+				"description": "Reads YCbCr frames from the specified channel",
+				"pins": [
+					{
+						"name": "Run",
+						"type_name": "nos.exe",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "DMA Complete",
+						"type_name": "nos.exe",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					},
+					{
+						"name": "ChannelId",
+						"type_name": "nos.decklink.ChannelId",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "BufferToWrite",
+						"type_name": "nos.sys.vulkan.Buffer",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "Output",
+						"type_name": "nos.sys.vulkan.Buffer",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					}
+				],
+				"functions": [
+					{
+						"class_name": "Drop",
+						"contents_type": "Job",
+						"pins": [
+							{
+								"name": "Propagate",
+								"type_name": "nos.exe",
+								"show_as": "OUTPUT_PIN"
+							}
+						]
+					}
+				]
+			}
+		}
+	]
 }

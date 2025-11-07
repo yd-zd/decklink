@@ -1,47 +1,47 @@
 {
-    "nodes": [
-        {
-            "class_name": "WaitFrame",
-            "menu_info": {
-                "display_name": "Wait Frame",
-                "category": "Device|DeckLink"
-            },
-            "node": {
-                "class_name": "WaitFrame",
-                "display_name": "DeckLink Wait Frame",
-                "contents_type": "Job",
-                "description": "",
-                "pins": [
-                    {
-                        "name": "Thread",
-                        "type_name": "nos.exe",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "FrameAvailable",
-                        "display_name": "Frame Available",
-                        "type_name": "nos.exe",
-                        "show_as": "OUTPUT_PIN",
-                        "can_show_as": "OUTPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "ChannelId",
-                        "type_name": "nos.decklink.ChannelId",
-                        "show_as": "INPUT_PIN",
-                        "can_show_as": "INPUT_PIN_ONLY"
-                    },
-                    {
-                        "name": "EnableSync",
-                        "type_name": "bool",
-                        "show_as": "PROPERTY",
-                        "can_show_as": "INPUT_PIN_OR_PROPERTY",
-                        "description": "Synchronize VBL with other I/O nodes' VBLs. If no common reference lock is used, this won't make much difference.",
-                        "data": true
-                    }
-                ],
-                "functions": []
-            }
-        }
-    ]
+	"nodes": [
+		{
+			"class_name": "WaitFrame",
+			"menu_info": {
+				"display_name": "Wait Frame",
+				"category": "Device|DeckLink"
+			},
+			"node": {
+				"class_name": "WaitFrame",
+				"display_name": "DeckLink Wait Frame",
+				"contents_type": "Job",
+				"description": "",
+				"pins": [
+					{
+						"name": "Thread",
+						"type_name": "nos.exe",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "FrameAvailable",
+						"display_name": "Frame Available",
+						"type_name": "nos.exe",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					},
+					{
+						"name": "ChannelId",
+						"type_name": "nos.decklink.ChannelId",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "EnableSync",
+						"type_name": "bool",
+						"show_as": "PROPERTY",
+						"can_show_as": "INPUT_PIN_OR_PROPERTY",
+						"description": "Synchronize VBL with other I/O nodes' VBLs. If no common reference lock is used, this won't make much difference.",
+						"data": true
+					}
+				],
+				"functions": []
+			}
+		}
+	]
 }
