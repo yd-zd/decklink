@@ -5,7 +5,7 @@
 #if _WIN32
 #include <comdef.h>
 #endif
-#include <DeckLinkAPI.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 
 // Nodos
 #include <Nodos/Types.h>
@@ -17,7 +17,7 @@
 #include <chrono>
 #include <string>
 
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+#include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
 #include <Nodos/PluginAPI.h>
 #include <Nodos/Utils/Stopwatch.hpp>

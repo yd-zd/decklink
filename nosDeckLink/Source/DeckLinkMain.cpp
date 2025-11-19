@@ -1,10 +1,10 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 
 #include <Nodos/Plugin.hpp>
-#include <nosVulkanSubsystem/nosVulkanSubsystem.h>
-#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosSysVulkan/nosVulkanSubsystem.h>
+#include <nosSysDevice/nosDeviceSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
+#include <nosMediaio/nosMediaIO.h>
 #include <nosSync/nosSync.h>
 
 NOS_INIT()

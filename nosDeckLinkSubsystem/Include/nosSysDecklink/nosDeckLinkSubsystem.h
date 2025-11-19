@@ -9,7 +9,7 @@
 #include <Nodos/Types.h>
 
 // nos.mediaio
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosMediaio/nosMediaIO.h>
 
 #if __cplusplus
 extern "C"

@@ -1,12 +1,12 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/Plugin.hpp>
 
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
-#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
+#include <nosSysDevice/nosDeviceSubsystem.h>
 
-#include "Generated/Conversion_generated.h"
-#include "Generated/DeckLink_generated.h"
-#include "nosDeviceSubsystem/Device_generated.h"
+#include "nosMediaio/Conversion_generated.h"
+#include "nosDecklink/DeckLink_generated.h"
+#include "nosSysDevice/Device_generated.h"
 
 #include <PrefixTree.hpp>
 

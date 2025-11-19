@@ -6,8 +6,8 @@
 
 NOS_INIT()
 
-#include <nosMediaIO/nosMediaIO.h>
-#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
+#include <nosMediaio/nosMediaIO.h>
+#include <nosSysDevice/nosDeviceSubsystem.h>
 
 NOS_MEDIAIO_PLUGIN_INIT()
 NOS_DEVICE_SUBSYSTEM_INIT()

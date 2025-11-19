@@ -12,9 +12,9 @@
 // Nodos
 #include <Nodos/Types.h>
 
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+#include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
-#include "DeckLink_generated.h"
+#include "nosSysDecklink/DeckLink_generated.h"
 
 namespace nos::decklink
 {

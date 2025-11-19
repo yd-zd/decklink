@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <shared_mutex>
 
-#include "DeckLink_generated.h"
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+#include "nosSysDecklink/DeckLink_generated.h"
+#include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
 #define NOS_DECKLINK_USED_DRIVER_API_VERSION_MAJOR 14
 #define NOS_DECKLINK_USED_DRIVER_API_VERSION_MINOR 5

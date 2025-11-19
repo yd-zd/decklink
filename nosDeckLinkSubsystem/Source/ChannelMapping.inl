@@ -5,7 +5,7 @@
 #include <string>
 
 #include "DeckLinkAPI.h"
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+#include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
 namespace nos::decklink
 {
