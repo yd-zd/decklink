@@ -94,5 +94,7 @@ nos_add_plugin("nosDeckLinkSubsystem" "${DEPENDENCIES}" "${INCLUDE_FOLDERS}")
 
 target_sources(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SOURCES})
 
+target_compile_definitions(nosDeckLinkSubsystem PRIVATE -DNOMINMAX)
+
 # Project generation
 nos_group_targets("nosDeckLinkSubsystem" "NOS Subsystems")
