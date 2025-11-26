@@ -14,7 +14,7 @@ endif()
 
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
 # Nodos SDK
-nos_find_plugin_sdk("40.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+nos_find_plugin_sdk("41.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 
 # nos.sys.vulkan
 nos_get_module("nos.sys.vulkan" "8.0" NOS_SYS_VULKAN_TARGET)
@@ -101,6 +101,8 @@ list(APPEND INCLUDE_FOLDERS
 nos_add_plugin("nosDeckLinkSubsystem" "${DEPENDENCIES}" "${INCLUDE_FOLDERS}")
 
 target_sources(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SOURCES})
+
+target_compile_definitions(nosDeckLinkSubsystem PRIVATE -DNOMINMAX)
 
 # Project generation
 nos_group_targets("nosDeckLinkSubsystem" "NOS Subsystems")

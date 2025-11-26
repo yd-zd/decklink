@@ -76,8 +76,7 @@ struct DMAWriteNode : NodeContext
 
 	void OnPathStart() override
 	{
-		nosScheduleNodeParams schedule{.NodeId = NodeId, .AddScheduleCount = 1};
-		nosEngine.ScheduleNode(&schedule);
+		SendScheduleRequest(1);
 	}
 
 	ChannelId CurChannelId;
