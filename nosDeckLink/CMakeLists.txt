@@ -20,13 +20,13 @@ nos_get_module("nos.sys.decklink" "3.1" NOS_SYS_DECKLINK_TARGET)
 nos_get_module("nos.sys.vulkan" "7.1" NOS_SYS_VULKAN_TARGET)
 
 # nos.mediaio
-nos_get_module("nos.mediaio" "3.1" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "3.1" NOS_MEDIAIO_PATH)
+nos_get_module("nos.mediaio" "3.2" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "3.2" NOS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosMediaIO)
 
 # nos.utilities
-nos_get_module("nos.utilities" "3.29" NOS_UTILITIES_TARGET)
-nos_find_module_path("nos.utilities" "3.29" NOS_UTILITIES_PATH)
+nos_get_module("nos.utilities" "3.31" NOS_UTILITIES_TARGET)
+nos_find_module_path("nos.utilities" "3.31" NOS_UTILITIES_PATH)
 nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/Types" generated_nosDeckLink_dep_nosUtilities)
 
 # nos.sys.device
