@@ -46,6 +46,8 @@ if (WIN32)
     set_source_files_properties(${MIDL_OUTPUT} PROPERTIES GENERATED TRUE)
 
     add_custom_target(DeckLinkSDK DEPENDS ${MIDL_OUTPUT})
+    
+    target_compile_definitions(${NOS_PLUGIN_TARGET} PRIVATE -DNOMINMAX)
 elseif(LINUX)
     set(DECKLINK_SDK_INCLUDE_DIR ${DECKLINK_SDK_DIR}/Linux/include)
     set(DECKLINK_SOURCES ${DECKLINK_SDK_INCLUDE_DIR}/DeckLinkAPIDispatch.cpp)
@@ -60,8 +62,3 @@ add_dependencies(${NOS_PLUGIN_TARGET} DeckLinkSDK)
 target_sources(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SOURCES})
 target_include_directories(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SDK_INCLUDE_DIR})
 nos_group_targets("DeckLinkSDK" "External")
-
-target_compile_definitions(nosDeckLinkSubsystem PRIVATE -DNOMINMAX)
-
-# Project generation
-nos_group_targets(${NOS_PLUGIN_TARGET} "NOS Subsystems")
