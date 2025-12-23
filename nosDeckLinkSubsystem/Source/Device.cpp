@@ -10,7 +10,7 @@
 #include "SubDevice.hpp"
 
 // External
-#include <nosDeviceSubsystem/nosDeviceSubsystem.h>
+#include <nosSysDevice/nosDeviceSubsystem.h>
 
 namespace nos::decklink
 {

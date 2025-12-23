@@ -1,13 +1,13 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/Plugin.hpp>
 
-#include "Generated/DeckLink_generated.h"
+#include "nosDecklink/DeckLink_generated.h"
 
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <Nodos/Utils/Stopwatch.hpp>
 
-#include "nosVulkanSubsystem/Helpers.hpp"
-#include "nosVulkanSubsystem/nosVulkanSubsystem.h"
+#include "nosSysVulkan/Helpers.hpp"
+#include "nosSysVulkan/nosVulkanSubsystem.h"
 
 namespace nos::decklink
 {

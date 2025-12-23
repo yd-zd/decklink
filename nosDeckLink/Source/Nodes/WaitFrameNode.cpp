@@ -3,13 +3,13 @@
 
 #include <Nodos/Utils/Stopwatch.hpp>
 
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <nosSync/nosSync.h>
 
-#include "Generated/DeckLink_generated.h"
+#include "nosDecklink/DeckLink_generated.h"
 
 // External
-#include <nosVulkanSubsystem/nosVulkanSubsystem.h>
+#include <nosSysVulkan/nosVulkanSubsystem.h>
 
 namespace nos::decklink
 {
