@@ -9,7 +9,7 @@
 		"dependencies": [
 			{
 				"name": "nos.mediaio",
-				"version": "3.3.1"
+				"version": "3.4"
 			},
 			{
 				"name": "nos.sys.decklink",
@@ -75,5 +75,5 @@
 			"display_name": "DeckLink In"
 		}
 	],
-    "sdk_version": "40.0"
+	"sdk_version": "40.0"
 }
