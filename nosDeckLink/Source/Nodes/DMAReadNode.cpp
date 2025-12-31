@@ -6,8 +6,8 @@
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
 #include <Nodos/Utils/Stopwatch.hpp>
 
-#include "nosVulkanSubsystem/Helpers.hpp"
-#include "nosVulkanSubsystem/nosVulkanSubsystem.h"
+#include "nosSysVulkan/Helpers.hpp"
+#include "nosSysVulkan/nosVulkanSubsystem.h"
 
 namespace nos::decklink
 {

@@ -74,5 +74,6 @@
 			"class_name": "Input",
 			"display_name": "DeckLink In"
 		}
-	]
+	],
+	"sdk_version": "41.0"
 }

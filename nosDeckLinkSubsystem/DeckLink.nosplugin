@@ -19,5 +19,6 @@
 		"category": "Device"
 	},
 	"binary_path": "Binaries/nosDeckLinkSubsystem",
-	"third_party_software": []
+	"third_party_software": [],
+	"sdk_version": "41.0"
 }

@@ -9,7 +9,7 @@
 #include "Generated/DeckLink_generated.h"
 
 // External
-#include <nosVulkanSubsystem/nosVulkanSubsystem.h>
+#include <nosSysVulkan/nosVulkanSubsystem.h>
 
 namespace nos::decklink
 {
