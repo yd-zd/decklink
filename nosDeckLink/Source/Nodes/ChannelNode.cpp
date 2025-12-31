@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/Plugin.hpp>
 
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <nosSysDevice/nosDeviceSubsystem.h>
 
 #include "Generated/Conversion_generated.h"

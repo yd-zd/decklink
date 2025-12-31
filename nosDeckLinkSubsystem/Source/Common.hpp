@@ -17,7 +17,7 @@
 #include <chrono>
 #include <string>
 
-#include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
+#include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
 #include <Nodos/PluginAPI.h>
 #include <Nodos/Utils/Stopwatch.hpp>

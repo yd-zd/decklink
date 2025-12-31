@@ -3,7 +3,7 @@
 #include <Nodos/Plugin.hpp>
 #include <nosSysVulkan/nosVulkanSubsystem.h>
 #include <nosSysDevice/nosDeviceSubsystem.h>
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <nosMediaIO/nosMediaIO.h>
 #include <nosSync/nosSync.h>
 

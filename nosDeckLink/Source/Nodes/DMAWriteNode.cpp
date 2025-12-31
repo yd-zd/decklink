@@ -3,7 +3,7 @@
 
 #include <nosSysVulkan/nosVulkanSubsystem.h>
 #include <nosSysVulkan/Helpers.hpp>
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 
 #include <Nodos/Utils/Stopwatch.hpp>
 

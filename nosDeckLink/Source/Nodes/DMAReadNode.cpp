@@ -3,7 +3,7 @@
 
 #include "Generated/DeckLink_generated.h"
 
-#include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
+#include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <Nodos/Utils/Stopwatch.hpp>
 
 #include "nosSysVulkan/Helpers.hpp"
