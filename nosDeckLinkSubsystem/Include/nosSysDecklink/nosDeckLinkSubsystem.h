@@ -194,6 +194,12 @@ typedef struct nosDeckLinkSubsystem {
 
 	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
 	nosResult (NOSAPI_CALL* ResetDropDetection)(uint32_t deviceIndex, nosDeckLinkChannel channel);
+
+	// Audio I/O
+	nosResult (NOSAPI_CALL* GetAudioFormat)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount);
+	nosResult (NOSAPI_CALL* GetLatestAudioInput)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied);
+	nosResult (NOSAPI_CALL* WriteAudioSamplesSync)(uint32_t deviceIndex, nosDeckLinkChannel channel, const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten);
+	nosResult (NOSAPI_CALL* FlushBufferedAudioSamples)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros

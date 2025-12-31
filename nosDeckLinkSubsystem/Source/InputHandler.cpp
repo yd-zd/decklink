@@ -85,6 +85,8 @@ public:
 	HRESULT STDMETHODCALLTYPE VideoInputFrameArrived (/* in */ IDeckLinkVideoInputFrame* videoFrame, /* in */ IDeckLinkAudioInputPacket* audioPacket)
 	{
 		Input->OnInputFrameArrived_DeckLinkThread(videoFrame);
+		if (audioPacket)
+			Input->OnInputAudioArrived_DeckLinkThread(audioPacket);
 		return S_OK;
 	}
 
@@ -170,6 +172,12 @@ bool InputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 		nosEngine.LogE("Could not enable video input - result = %08x", res);
 		return false;
 	}
+	res = Interface->EnableAudioInput(AudioSampleRate, AudioSampleType, AudioChannelCount);
+	if (res != S_OK)
+	{
+		nosEngine.LogE("Could not enable audio input - result = %08x", res);
+		return false;
+	}
 	if (!UpdateFrameRate(displayMode))
 		return false;
 	return true;
@@ -198,6 +206,8 @@ bool InputHandler::Stop()
 bool InputHandler::Close()
 {
 	if (S_OK != Interface->DisableVideoInput())
+		return false;
+	if (S_OK != Interface->DisableAudioInput())
 		return false;
 	return true;
 }
@@ -299,6 +309,22 @@ void InputHandler::OnInputVideoFormatChanged_DeckLinkThread(BMDDisplayMode newDi
 		}
 	}
 	DisplayMode = newDisplayMode;
+}
+
+void InputHandler::OnInputAudioArrived_DeckLinkThread(IDeckLinkAudioInputPacket* audioPacket)
+{
+	long sampleFrames = audioPacket->GetSampleFrameCount();
+	void* bytes = nullptr;
+	if (audioPacket->GetBytes(&bytes) != S_OK || bytes == nullptr || sampleFrames <= 0)
+		return;
+	uint32_t bytesPerSample = (AudioSampleType == bmdAudioSampleType16bitInteger) ? 2u : 4u;
+	uint64_t totalBytes = uint64_t(sampleFrames) * bytesPerSample * AudioChannelCount;
+	AudioBufferStore.resize(size_t(totalBytes));
+	std::memcpy(AudioBufferStore.data(), bytes, size_t(totalBytes));
+	{
+		std::unique_lock lock(ReadAudioMutex);
+		ReadAudioBuffer = { .Data = AudioBufferStore.data(), .Size = AudioBufferStore.size() };
+	}
 }
 
 int32_t InputHandler::AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData)

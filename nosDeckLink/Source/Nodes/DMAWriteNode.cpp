@@ -25,11 +25,11 @@ struct DMAWriteNode : NodeContext
 		};
 	}
 
-	void OnPinValueChanged(nos::Name pinName, uuid const& pinId, nosBuffer value) override
+	void OnPinObjectChanged(nos::Name pinName, uuid const& pinId, nosObjectId newHandle) override
 	{ 
 		if (pinName == NOS_NAME_STATIC("ChannelId"))
 		{
-			auto& newChannelId = *static_cast<ChannelId*>(value.Data);
+			auto& newChannelId = *InterpretObject<ChannelId>(newHandle);
 			if (CurChannelId == newChannelId)
 				return;
 			CurChannelId = newChannelId;

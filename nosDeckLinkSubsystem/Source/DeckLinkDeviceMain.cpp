@@ -60,6 +60,91 @@ SubDevice* GetSubDevice(uint32_t deviceIndex, nosMediaIODirection dir, nosDeckLi
 }
 }
 
+nosResult NOSAPI_CALL GetAudioFormat(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice)
+	{
+		nosEngine.LogE("No sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	if (!subDevice->GetAudioFormat(dir, sampleRate, sampleTypeBits, channelCount))
+		return NOS_RESULT_FAILED;
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL GetLatestAudioInput(uint32_t deviceIndex, nosDeckLinkChannel channel, void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice || dir != NOS_MEDIAIO_DIRECTION_INPUT)
+	{
+		nosEngine.LogE("No input sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	if (!buffer || !outBytesCopied)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	if (!subDevice->GetLatestAudioInput(buffer, bufferSizeBytes, outBytesCopied))
+		return NOS_RESULT_FAILED;
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL WriteAudioSamplesSync(uint32_t deviceIndex, nosDeckLinkChannel channel, const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice || dir != NOS_MEDIAIO_DIRECTION_OUTPUT)
+	{
+		nosEngine.LogE("No output sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	if (!buffer)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	uint32_t framesWritten = 0;
+	bool ok = subDevice->WriteAudioSamplesSync(buffer, sampleFrameCount, &framesWritten);
+	if (!ok)
+		return NOS_RESULT_FAILED;
+	if (outFramesWritten)
+		*outFramesWritten = framesWritten;
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL FlushBufferedAudioSamples(uint32_t deviceIndex, nosDeckLinkChannel channel)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
+	if (!subDevice || dir != NOS_MEDIAIO_DIRECTION_OUTPUT)
+	{
+		nosEngine.LogE("No output sub-device found open channel %s", GetChannelName(channel));
+		return NOS_RESULT_NOT_FOUND;
+	}
+	return subDevice->FlushBufferedAudioSamples() ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
+}
 void NOSAPI_CALL GetDevices(size_t* outCount, nosDeckLinkDeviceDesc* outDeviceDescriptors)
 {
 	if (outCount == nullptr)
@@ -595,6 +680,10 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->UnregisterDeviceStatusCallback = UnregisterDeviceStatusCallback;
 	subsystem->GetChannelState = GetChannelState;
 	subsystem->ResetDropDetection = ResetDropDetection;
+	subsystem->GetAudioFormat = GetAudioFormat;
+	subsystem->GetLatestAudioInput = GetLatestAudioInput;
+	subsystem->WriteAudioSamplesSync = WriteAudioSamplesSync;
+	subsystem->FlushBufferedAudioSamples = FlushBufferedAudioSamples;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

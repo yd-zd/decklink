@@ -321,4 +321,65 @@ std::optional<nosVec2u> SubDevice::GetDeltaSeconds(nosMediaIODirection dir)
 	return GetIO(dir).GetDeltaSeconds();
 }
 
+bool SubDevice::GetAudioFormat(nosMediaIODirection dir, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount)
+{
+	if (dir == NOS_MEDIAIO_DIRECTION_INPUT)
+	{
+		*sampleRate = uint32_t(Input.AudioSampleRate);
+		*sampleTypeBits = uint32_t(Input.AudioSampleType);
+		*channelCount = Input.AudioChannelCount;
+		return true;
+	}
+	else if (dir == NOS_MEDIAIO_DIRECTION_OUTPUT)
+	{
+		*sampleRate = uint32_t(Output.AudioSampleRate);
+		*sampleTypeBits = uint32_t(Output.AudioSampleType);
+		*channelCount = Output.AudioChannelCount;
+		return true;
+	}
+	return false;
+}
+
+bool SubDevice::GetLatestAudioInput(void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied)
+{
+	if (!Input.IsCurrentlyOpen())
+		return false;
+	std::unique_lock lock(Input.ReadAudioMutex);
+	size_t available = Input.ReadAudioBuffer.Size;
+	if (available == 0)
+	{
+		*outBytesCopied = 0;
+		return true;
+	}
+	size_t toCopy = std::min(available, bufferSizeBytes);
+	std::memcpy(buffer, Input.ReadAudioBuffer.Data, toCopy);
+	*outBytesCopied = toCopy;
+	return true;
+}
+
+bool SubDevice::WriteAudioSamplesSync(const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten)
+{
+	if (!Output.IsCurrentlyOpen())
+		return false;
+	if (!Output.Interface)
+		return false;
+	uint32_t written = 0;
+	auto hr = Output.Interface->WriteAudioSamplesSync(const_cast<void*>(buffer), sampleFrameCount, &written);
+	if (hr != S_OK)
+		return false;
+	if (outFramesWritten)
+		*outFramesWritten = written;
+	return true;
+}
+
+bool SubDevice::FlushBufferedAudioSamples()
+{
+	if (!Output.IsCurrentlyOpen())
+		return false;
+	if (!Output.Interface)
+		return false;
+	auto hr = Output.Interface->FlushBufferedAudioSamples();
+	return hr == S_OK;
+}
+
 }

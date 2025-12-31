@@ -30,6 +30,8 @@ enum class Nodes : int
 	DMARead,
 	WaitFrame,
 	Channel,
+	AudioRead,
+	AudioWrite,
 	Count
 };
 
@@ -37,6 +39,8 @@ nosResult RegisterDMAWriteNode(nosNodeFunctions*);
 nosResult RegisterDMAReadNode(nosNodeFunctions*);
 nosResult RegisterWaitFrameNode(nosNodeFunctions*);
 nosResult RegisterChannelNode(nosNodeFunctions*);
+nosResult RegisterAudioReadNode(nosNodeFunctions*);
+nosResult RegisterAudioWriteNode(nosNodeFunctions*);
 
 struct DeckLinkPluginFunctions : nos::PluginFunctions
 {
@@ -51,6 +55,8 @@ struct DeckLinkPluginFunctions : nos::PluginFunctions
 		NOS_RETURN_ON_FAILURE(RegisterWaitFrameNode(outList[(int)Nodes::WaitFrame]))
 		NOS_RETURN_ON_FAILURE(RegisterChannelNode(outList[(int)Nodes::Channel]))
 		NOS_RETURN_ON_FAILURE(RegisterDMAReadNode(outList[(int)Nodes::DMARead]))
+		NOS_RETURN_ON_FAILURE(RegisterAudioReadNode(outList[(int)Nodes::AudioRead]))
+		NOS_RETURN_ON_FAILURE(RegisterAudioWriteNode(outList[(int)Nodes::AudioWrite]))
 		return NOS_RESULT_SUCCESS;
 	}
 };

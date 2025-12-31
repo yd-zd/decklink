@@ -1,0 +1,44 @@
+{
+	"nodes": [
+		{
+			"class_name": "AudioRead",
+			"menu_info": {
+				"display_name": "Audio Read",
+				"category": "Device|DeckLink"
+			},
+			"node": {
+				"display_name": "DeckLink Audio Read",
+				"contents_type": "Job",
+				"description": "Reads PCM audio from the specified channel and outputs nos.audio.AudioPacket",
+				"pins": [
+					{
+						"name": "Run",
+						"type_name": "nos.exe",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "Continue",
+						"type_name": "nos.exe",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					},
+					{
+						"name": "ChannelId",
+						"type_name": "nos.decklink.ChannelId",
+						"show_as": "INPUT_PIN",
+						"can_show_as": "INPUT_PIN_ONLY"
+					},
+					{
+						"name": "Audio",
+						"type_name": "nos.audio.AudioPacket",
+						"show_as": "OUTPUT_PIN",
+						"can_show_as": "OUTPUT_PIN_ONLY"
+					}
+				],
+				"functions": []
+			}
+		}
+	],
+	"schema_version": "1.4-v1"
+}

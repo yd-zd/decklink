@@ -12,6 +12,10 @@
 				"version": "4.0"
 			},
 			{
+				"name": "nos.audio",
+				"version": "1.0"
+			},
+			{
 				"name": "nos.sys.decklink",
 				"version": "4.0"
 			},
@@ -73,6 +77,18 @@
 			"category": "Device|DeckLink",
 			"class_name": "Input",
 			"display_name": "DeckLink In"
+		}
+		,
+		{
+			"category": "Device|DeckLink",
+			"class_name": "AudioRead",
+			"display_name": "Audio Read"
+		}
+		,
+		{
+			"category": "Device|DeckLink",
+			"class_name": "AudioWrite",
+			"display_name": "Audio Write"
 		}
 	],
 	"sdk_version": "41.0"

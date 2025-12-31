@@ -29,6 +29,28 @@ public:
 private:
 	OutputHandler*  Output;
 };
+
+class AudioCallback : public Object<IDeckLinkAudioOutputCallback>
+{
+public:
+	AudioCallback(OutputHandler* outputHandler) : Output(outputHandler) {}
+	HRESULT STDMETHODCALLTYPE RenderAudioSamples(/* in */ BOOL preroll) override
+	{
+		uint32_t framesToWrite = 480; // 10ms at 48kHz
+		uint32_t framesWritten = 0;
+		uint32_t bytesPerSample = (Output->AudioSampleType == bmdAudioSampleType16bitInteger) ? 2u : 4u;
+		size_t bytesNeeded = size_t(framesToWrite) * bytesPerSample * Output->AudioChannelCount;
+		if (Output->AudioSilenceBuffer.size() < bytesNeeded)
+			Output->AudioSilenceBuffer.assign(bytesNeeded, 0);
+		if (Output->Interface)
+		{
+			Output->Interface->WriteAudioSamplesSync(Output->AudioSilenceBuffer.data(), framesToWrite, &framesWritten);
+		}
+		return S_OK;
+	}
+private:
+	OutputHandler* Output;
+};
 	
 HRESULT	OutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
@@ -85,6 +107,10 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 	if (res != S_OK)
 		return false;
 
+	res = Interface->EnableAudioOutput(AudioSampleRate, AudioSampleType, AudioChannelCount, bmdAudioOutputStreamContinuous);
+	if (res != S_OK)
+		return false;
+
 	auto outputCallback = new OutputCallback(this);
 	if (outputCallback == nullptr)
 	{
@@ -97,6 +123,20 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 	{
 		nosEngine.LogE("SubDevice: Failed to set output callback");
 		Close();
+		return false;
+	}
+
+	auto audioCallback = new AudioCallback(this);
+	if (!audioCallback)
+	{
+		nosEngine.LogE("Could not create audio output callback");
+		return false;
+	}
+	res = Interface->SetAudioCallback(audioCallback);
+	Release(audioCallback);
+	if (res != S_OK)
+	{
+		nosEngine.LogE("SubDevice: Failed to set audio output callback");
 		return false;
 	}
 
@@ -120,6 +160,8 @@ bool OutputHandler::Start()
 	}
 	for (auto i = 0; i < VideoFrames.size(); ++i)
 		ScheduleNextFrame(VideoFrames[i]);
+	Interface->BeginAudioPreroll();
+	Interface->EndAudioPreroll();
 	auto res = Interface->StartScheduledPlayback(0, TimeScale, 1.0);
 	if (res != S_OK)
 	{
@@ -143,6 +185,7 @@ bool OutputHandler::Stop()
 		if (!PlaybackStopped)
 			nosEngine.LogW("SubDevice: Timeout waiting for playback to stop");
 	}
+	Interface->FlushBufferedAudioSamples();
 	// DeckLink does not ACTUALLY stop calling frame completion callbacks even after it informs that playback has stopped.
 	{
 		std::unique_lock lock(LastHardwareFrameInfoMutex);
@@ -163,9 +206,11 @@ bool OutputHandler::Close()
 		nosEngine.LogE("SubDevice: Failed to disable video output");
 		return false;
 	}
+    Interface->DisableAudioOutput();
 	for (auto& frame : VideoFrames)
 		Release(frame);
 	Interface->SetScheduledFrameCompletionCallback(nullptr);
+    Interface->SetAudioCallback(nullptr);
 	return true;
 }
 

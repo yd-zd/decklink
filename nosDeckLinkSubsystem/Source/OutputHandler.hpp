@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Common.hpp"
+#include <vector>
 
 namespace nos::decklink
 {
@@ -10,6 +11,11 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	std::array<IDeckLinkMutableVideoFrame*, 2> VideoFrames{};
 	
 	std::atomic_uint32_t TotalFramesScheduled = 0;
+
+	BMDAudioSampleRate AudioSampleRate = bmdAudioSampleRate48kHz;
+	BMDAudioSampleType AudioSampleType = bmdAudioSampleType16bitInteger;
+	uint32_t AudioChannelCount = 2;
+	std::vector<uint8_t> AudioSilenceBuffer;
 
 	~OutputHandler() override;
 
