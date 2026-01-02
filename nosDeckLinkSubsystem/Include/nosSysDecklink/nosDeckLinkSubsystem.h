@@ -169,12 +169,15 @@ typedef struct nosDeckLinkSubsystem {
 	nosResult (NOSAPI_CALL* UnregisterInputVideoFormatChangeCallback)(uint32_t deviceIndex, nosDeckLinkChannel channel, int32_t callbackId);
 	int32_t   (NOSAPI_CALL* RegisterFrameResultCallback)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkFrameResultCallback callback, void* userData);
 	nosResult (NOSAPI_CALL* UnregisterFrameResultCallback)(uint32_t deviceIndex, nosDeckLinkChannel channel, int32_t callbackId);
+	nosResult (NOSAPI_CALL* GetAudioFormat)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount);
 
 	// I/O
 	nosResult (NOSAPI_CALL* WaitFrame)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t timeoutMs);
-	nosResult (NOSAPI_CALL* DMATransfer)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, size_t size);
+	nosResult (NOSAPI_CALL* DMAVideoTransfer)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, size_t size);
+	nosResult (NOSAPI_CALL* DMAAudioTransfer)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRW);
 	nosResult (NOSAPI_CALL* StartStream)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 	nosResult (NOSAPI_CALL* StopStream)(uint32_t deviceIndex, nosDeckLinkChannel channel);
+	nosResult (NOSAPI_CALL* FlushBufferedAudioSamples)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 
 	int32_t   (NOSAPI_CALL* RegisterDeviceInvalidatedCallback)(uint32_t deviceIndex, nosDeckLinkDeviceInvalidatedCallback callback, void* userData);
 	nosResult (NOSAPI_CALL* UnregisterDeviceInvalidatedCallback)(uint32_t deviceIndex, int32_t callbackId);
@@ -194,12 +197,6 @@ typedef struct nosDeckLinkSubsystem {
 
 	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
 	nosResult (NOSAPI_CALL* ResetDropDetection)(uint32_t deviceIndex, nosDeckLinkChannel channel);
-
-	// Audio I/O
-	nosResult (NOSAPI_CALL* GetAudioFormat)(uint32_t deviceIndex, nosDeckLinkChannel channel, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount);
-	nosResult (NOSAPI_CALL* GetLatestAudioInput)(uint32_t deviceIndex, nosDeckLinkChannel channel, void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied);
-	nosResult (NOSAPI_CALL* WriteAudioSamplesSync)(uint32_t deviceIndex, nosDeckLinkChannel channel, const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten);
-	nosResult (NOSAPI_CALL* FlushBufferedAudioSamples)(uint32_t deviceIndex, nosDeckLinkChannel channel);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros

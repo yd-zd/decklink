@@ -27,7 +27,8 @@
 namespace nos::decklink
 {
 
-#define NOS_DECKLINK_DIAGNOSTICS 0
+#define NOS_DECKLINK_VIDEO_DIAGNOSTICS 0
+#define NOS_DECKLINK_AUDIO_DIAGNOSTICS 0
 
 template <typename T>
 auto Release(T& obj)
@@ -177,6 +178,10 @@ struct IOHandlerBaseI
 
 	bool IsInterlaced = false;
 
+	BMDAudioSampleRate AudioSampleRate = bmdAudioSampleRate48kHz;
+	BMDAudioSampleType AudioSampleType = bmdAudioSampleType32bitInteger;
+	uint32_t AudioChannelCount = 2;
+
 	virtual bool Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat) = 0;
 	virtual bool Close() = 0;
 
@@ -186,7 +191,8 @@ struct IOHandlerBaseI
 	bool CloseStream();
 
 	bool WaitFrame(std::chrono::milliseconds timeout);
-	void DmaTransfer(void* buffer, size_t size);
+	void DmaVideoTransfer(void* buffer, size_t size);
+	void DmaAudioTransfer(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten);
 	std::optional<nosVec2u> GetDeltaSeconds() const;
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
@@ -201,7 +207,8 @@ struct IOHandlerBaseI
 protected:
 	virtual bool Start() = 0;
 	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
-	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
+	virtual void DmaVideoTransferImpl(void* buffer, size_t size) = 0;
+	virtual void DmaAudioTransferImpl(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten) = 0;
 	virtual bool Stop() = 0;
 	void OnFrameEnd(nosDeckLinkFrameResult result);
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;

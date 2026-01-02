@@ -47,14 +47,13 @@ public:
 	// Input/Output
 	bool StartStream(nosMediaIODirection mode);
 	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout);
-	void DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
+	void DmaVideoTransfer(nosMediaIODirection dir, void* buffer, size_t size);
+	void DmaAudioTransfer(nosMediaIODirection dir, void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten);
 	std::optional<nosVec2u> GetDeltaSeconds(nosMediaIODirection dir);
 	bool StopStream(nosMediaIODirection mode);
 
 	// Audio helpers
 	bool GetAudioFormat(nosMediaIODirection dir, uint32_t* sampleRate, uint32_t* sampleTypeBits, uint32_t* channelCount);
-	bool GetLatestAudioInput(void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied);
-	bool WriteAudioSamplesSync(const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten);
 	bool FlushBufferedAudioSamples();
 
 	void TagChannel(nosMediaIODirection dir, nosDeckLinkChannel channel);

@@ -10,93 +10,120 @@
 
 #include "Generated/DeckLink_generated.h"
 #include "nosAudio/Audio_generated.h"
+#include "nosAudio/AudioConversions.hpp"
 
 namespace nos::decklink
 {
 struct AudioWriteNode : NodeContext
 {
-    using NodeContext::NodeContext;
+	using NodeContext::NodeContext;
 
-    nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
-    {
-        const auto& channelId = *params.GetPinData<ChannelId>(NOS_NAME("ChannelId"));
-        auto deviceIndex = channelId.device_index();
-        auto channel = static_cast<nosDeckLinkChannel>(channelId.channel_index());
+	std::string LastStatusMessage;
 
-        // Read AudioPacket composite: fields 'desc' and 'buffer'
-        auto fullAudio = params.GetPinObject(NOS_NAME("Audio"));
-        if (!fullAudio)
-            return NOS_RESULT_SUCCESS; // nothing to write
+	void SetNodeStatusMessageIfChanged(const std::string& message, fb::NodeStatusMessageType type)
+	{
+		if (LastStatusMessage != message)
+		{
+			SetNodeStatusMessage(message, type);
+			LastStatusMessage = message;
+		}
+	}
 
-        ObjectRef descObj{}, bufObj{};
-        nosEngine.ObjectAPI->GetField(fullAudio, NOS_NAME("desc"), &descObj.GetStorage());
-        nosEngine.ObjectAPI->GetField(fullAudio, NOS_NAME("buffer"), &bufObj.GetStorage());
-        if (!descObj || !bufObj)
-            return NOS_RESULT_FAILED;
+	void OnPathStart() override { BackBuffer.clear(); }
 
-        nosImmutableBuffer descBuf{};
-        if (NOS_RESULT_SUCCESS != nosEngine.ObjectAPI->GetObjectDataView(descObj, &descBuf))
-            return NOS_RESULT_FAILED;
-        auto& packetDesc = *static_cast<const nos::audio::AudioPacketDescriptor*>(descBuf.Data);
+	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
+	{
+		const auto& channelId = *params.GetPinData<ChannelId>(NOS_NAME("ChannelId"));
+		auto deviceIndex = channelId.device_index();
+		auto channel = static_cast<nosDeckLinkChannel>(channelId.channel_index());
 
-        uint32_t sampleRate = packetDesc.sample_rate();
-        uint32_t numSamples = packetDesc.num_samples();
-        uint32_t channelCount = packetDesc.channel_count();
-        // Buffer contains int24 stored in MSB of int32
-		const int32_t* inSamples = reinterpret_cast<const int32_t*>(nosVulkan->Map(bufObj));
-        if (!inSamples)
-            return NOS_RESULT_FAILED;
+		// Read AudioPacket composite: fields 'desc' and 'buffer'
+		CompositeObjectRef fullAudio = params.GetPinObject(NOS_NAME("Audio"));
+		if (!fullAudio)
+			return NOS_RESULT_SUCCESS; // nothing to write
 
-        // Ask DeckLink format for sample type
-        uint32_t dlRate = 0, sampleTypeBits = 0, dlChannels = 0;
-        nosDeckLink->GetAudioFormat(deviceIndex, channel, &dlRate, &sampleTypeBits, &dlChannels);
-        if (dlRate && dlRate != sampleRate)
-        {
-            // simple rate mismatch; proceed but note potential drift
-        }
-        if (dlChannels && dlChannels != channelCount)
-        {
-            // channel mismatch; write only min(dlChannels, channelCount)
-            channelCount = std::min(dlChannels, channelCount);
-        }
+		auto descObj = fullAudio.GetField(NOS_NAME("desc"));
+		auto bufObj = fullAudio.GetField(NOS_NAME("buffer"));
+		if (!descObj || !bufObj)
+			return NOS_RESULT_FAILED;
 
-        // Convert shifted-int24 to PCM according to sampleTypeBits
-        const uint32_t frames = numSamples;
-        std::vector<uint8_t> pcm;
-        if (sampleTypeBits == 16)
-        {
-            pcm.resize(size_t(frames) * channelCount * 2);
-            int16_t* out16 = reinterpret_cast<int16_t*>(pcm.data());
-            for (uint32_t i = 0; i < frames * channelCount; ++i)
-            {
-                // Recover 24-bit sample then normalize to float
-                int32_t s24 = (inSamples[i] >> 8);
-                float v = std::max(-1.0f, std::min(1.0f, float(s24) / 8388607.0f));
-                out16[i] = static_cast<int16_t>(std::lrintf(v * 32767.0f));
-            }
-        }
-        else
-        {
-            pcm.resize(size_t(frames) * channelCount * 4);
-            int32_t* out32 = reinterpret_cast<int32_t*>(pcm.data());
-            for (uint32_t i = 0; i < frames * channelCount; ++i)
-            {
-                int32_t s24 = (inSamples[i] >> 8);
-                float v = std::max(-1.0f, std::min(1.0f, float(s24) / 8388607.0f));
-                out32[i] = static_cast<int32_t>(std::lrintf(v * 2147483647.0f));
-            }
-        }
+		auto descBuf = GetObjectDataView(*descObj);
+		if (!descBuf)
+			return NOS_RESULT_FAILED;
+		auto& packetDesc = *static_cast<const nos::audio::AudioPacketDescriptor*>(descBuf->Data);
 
-        uint32_t written = 0;
-        nosResult r = nosDeckLink->WriteAudioSamplesSync(deviceIndex, channel, pcm.data(), pcm.size(), &written);
-        (void)r;
-        return NOS_RESULT_SUCCESS;
-    }
+		uint32_t sampleRate = packetDesc.sample_rate();
+		uint32_t numSamples = packetDesc.num_samples();
+		uint32_t channelCount = packetDesc.channel_count();
+		// Buffer contains int24 stored in MSB of int32
+		const int32_t* inSamples = reinterpret_cast<const int32_t*>(nosVulkan->Map(*bufObj));
+		if (!inSamples)
+			return NOS_RESULT_FAILED;
+
+		// Ask DeckLink format for sample type
+		uint32_t dlRate = 0, sampleTypeBits = 0, dlChannels = 0;
+		nosDeckLink->GetAudioFormat(deviceIndex, channel, &dlRate, &sampleTypeBits, &dlChannels);
+		if (dlRate && dlRate != sampleRate)
+		{
+			SetNodeStatusMessageIfChanged("DeckLink device expects " + std::to_string(dlRate) +
+											  " Hz\nInput sample rate is " + std::to_string(sampleRate) + " Hz",
+										  fb::NodeStatusMessageType::FAILURE);
+			return NOS_RESULT_FAILED;
+		}
+		if (dlChannels && dlChannels != channelCount)
+		{
+			// channel mismatch; write only min(dlChannels, channelCount)
+			channelCount = std::min(dlChannels, channelCount);
+		}
+
+		if (!BackBuffer.empty())
+		{
+			uint32_t written = 0;
+			nosResult res = nosDeckLink->DMAAudioTransfer(
+				deviceIndex, channel, BackBuffer.data(), uint32_t(BackBuffer.size() / channelCount), &written);
+			if (res != NOS_RESULT_SUCCESS)
+			{
+				nosEngine.LogW("AudioWrite: Failed to write backbuffered audio samples to DeckLink device");
+				return res;
+			}
+			for (uint32_t i = written * channelCount; i < BackBuffer.size(); ++i)
+			{
+				BackBuffer[i - written * channelCount] = BackBuffer[i];
+			}
+			BackBuffer.resize(BackBuffer.size() - written * channelCount);
+		}
+		// Convert shifted-int24 to PCM according to sampleTypeBits
+		// Input: 24-bit samples stored in MSB of int32 (bits [31:8]), LSB is zero
+		const uint32_t frames = numSamples;
+		std::vector<int32_t> pcm(frames * channelCount);
+		for (uint32_t i = 0; i < frames * channelCount; ++i)
+		{
+			// Extract 24-bit from MSB and extend to 32-bit
+			auto sampleFloat = audio::ShiftedInt24ToFloat(inSamples[i]);
+			// Scale to int32
+			pcm[i] =
+				static_cast<int32_t>(std::round(sampleFloat * static_cast<float>((1ULL << sampleTypeBits) / 2 - 1)));
+		}
+		uint32_t written = 0;
+		nosResult res = nosDeckLink->DMAAudioTransfer(deviceIndex, channel, pcm.data(), frames, &written);
+		if (written != frames)
+		{
+			nosEngine.LogW(
+				"AudioWrite: Not all audio frames were written to DeckLink device (written %u / %u)", written, frames);
+			for (uint32_t i = written * channelCount; i < frames * channelCount; ++i)
+			{
+				BackBuffer.push_back(pcm[i]);
+			}
+		}
+		return res;
+	}
+
+	std::vector<int32_t> BackBuffer;
 };
 
 nosResult RegisterAudioWriteNode(nosNodeFunctions* functions)
 {
-    NOS_BIND_NODE_CLASS(NOS_NAME("AudioWrite"), AudioWriteNode, functions)
-    return NOS_RESULT_SUCCESS;
+	NOS_BIND_NODE_CLASS(NOS_NAME("AudioWrite"), AudioWriteNode, functions)
+	return NOS_RESULT_SUCCESS;
 }
 } // namespace nos::decklink

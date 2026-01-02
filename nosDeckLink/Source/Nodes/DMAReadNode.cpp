@@ -44,7 +44,7 @@ struct DMAReadNode : NodeContext
 		}
 		auto inputBufferSize = bufInfo->Buffer.Size;
 
-		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBufferSize);
+		nosDeckLink->DMAVideoTransfer(deviceIndex, channel, buffer, inputBufferSize);
 
 		nosVulkan->SetResourceFieldType(bufferToWrite, NOS_TEXTURE_FIELD_TYPE_PROGRESSIVE);
 		SetPinObject(NOS_NAME("Output"), bufferToWrite);

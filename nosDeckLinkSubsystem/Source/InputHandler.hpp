@@ -16,18 +16,12 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 	std::mutex ReadFrameMutex;
 	nosBuffer ReadFrameBuffer;
 
-	std::mutex ReadAudioMutex;
-	nosBuffer ReadAudioBuffer;
-	std::vector<uint8_t> AudioBufferStore;
-	BMDAudioSampleRate AudioSampleRate = bmdAudioSampleRate48kHz;
-	BMDAudioSampleType AudioSampleType = bmdAudioSampleType16bitInteger;
-	uint32_t AudioChannelCount = 2;
-
 	std::condition_variable FrameArrivedCV;
 
 	bool Flush();
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
-	void DmaTransferImpl(void* buffer, size_t size) override;
+	void DmaVideoTransferImpl(void* buffer, size_t size) override;
+	void DmaAudioTransferImpl(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw) override;
 	bool UpdateFrameRate(BMDDisplayMode displayMode);
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);

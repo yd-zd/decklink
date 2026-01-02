@@ -68,7 +68,7 @@ struct DMAWriteNode : NodeContext
 			nosEngine.LogE("Failed to get DMA write input buffer info.");
 			return NOS_RESULT_FAILED;
 		}
-		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, bufInfo->Buffer.Size);
+		nosDeckLink->DMAVideoTransfer(deviceIndex, channel, buffer, bufInfo->Buffer.Size);
 
 		SendScheduleRequest(1);
 		return NOS_RESULT_SUCCESS;

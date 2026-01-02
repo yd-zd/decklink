@@ -3,6 +3,7 @@
 
 #include "Common.hpp"
 #include <vector>
+#include <Nodos/Plugin.hpp>
 
 namespace nos::decklink
 {
@@ -12,15 +13,11 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	
 	std::atomic_uint32_t TotalFramesScheduled = 0;
 
-	BMDAudioSampleRate AudioSampleRate = bmdAudioSampleRate48kHz;
-	BMDAudioSampleType AudioSampleType = bmdAudioSampleType16bitInteger;
-	uint32_t AudioChannelCount = 2;
-	std::vector<uint8_t> AudioSilenceBuffer;
-
 	~OutputHandler() override;
 
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
-	void DmaTransferImpl(void* buffer, size_t size) override;
+	void DmaVideoTransferImpl(void* buffer, size_t size) override;
+	void DmaAudioTransferImpl(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw) override;
 	std::optional<uint64_t> GetNanosecondsSinceStreamStarted();
 	std::optional<BMDTimeValue> GetCurrentStreamTime();
 	
@@ -39,8 +36,10 @@ protected:
 	std::atomic_bool PlaybackStopRequested = false;
 	
 	std::condition_variable FrameCompletedCV;
-	std::mutex DMATargetMutex;
-	nosBuffer DMATarget{};
-	nosBuffer NextDMATarget{};
+	std::mutex DmaTargetsMutex;
+	nosBuffer VideoDmaTarget{};
+	nosBuffer NextVideoDmaTarget{};
+
+	size_t AudioPacketsScheduled = 0;
 };
 }

@@ -80,54 +80,6 @@ nosResult NOSAPI_CALL GetAudioFormat(uint32_t deviceIndex, nosDeckLinkChannel ch
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL GetLatestAudioInput(uint32_t deviceIndex, nosDeckLinkChannel channel, void* buffer, size_t bufferSizeBytes, size_t* outBytesCopied)
-{
-	DeviceLock lock(deviceIndex);
-	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
-	if (!device)
-	{
-		nosEngine.LogE("No such device with index %d", deviceIndex);
-		return NOS_RESULT_NOT_FOUND;
-	}
-	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
-	if (!subDevice || dir != NOS_MEDIAIO_DIRECTION_INPUT)
-	{
-		nosEngine.LogE("No input sub-device found open channel %s", GetChannelName(channel));
-		return NOS_RESULT_NOT_FOUND;
-	}
-	if (!buffer || !outBytesCopied)
-		return NOS_RESULT_INVALID_ARGUMENT;
-	if (!subDevice->GetLatestAudioInput(buffer, bufferSizeBytes, outBytesCopied))
-		return NOS_RESULT_FAILED;
-	return NOS_RESULT_SUCCESS;
-}
-
-nosResult NOSAPI_CALL WriteAudioSamplesSync(uint32_t deviceIndex, nosDeckLinkChannel channel, const void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten)
-{
-	DeviceLock lock(deviceIndex);
-	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
-	if (!device)
-	{
-		nosEngine.LogE("No such device with index %d", deviceIndex);
-		return NOS_RESULT_NOT_FOUND;
-	}
-	auto [subDevice, dir] = device->GetSubDeviceOfOpenChannel(channel);
-	if (!subDevice || dir != NOS_MEDIAIO_DIRECTION_OUTPUT)
-	{
-		nosEngine.LogE("No output sub-device found open channel %s", GetChannelName(channel));
-		return NOS_RESULT_NOT_FOUND;
-	}
-	if (!buffer)
-		return NOS_RESULT_INVALID_ARGUMENT;
-	uint32_t framesWritten = 0;
-	bool ok = subDevice->WriteAudioSamplesSync(buffer, sampleFrameCount, &framesWritten);
-	if (!ok)
-		return NOS_RESULT_FAILED;
-	if (outFramesWritten)
-		*outFramesWritten = framesWritten;
-	return NOS_RESULT_SUCCESS;
-}
-
 nosResult NOSAPI_CALL FlushBufferedAudioSamples(uint32_t deviceIndex, nosDeckLinkChannel channel)
 {
 	DeviceLock lock(deviceIndex);
@@ -375,7 +327,7 @@ nosResult NOSAPI_CALL WaitFrame(uint32_t deviceIndex, nosDeckLinkChannel channel
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL DMATransfer(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, size_t size)
+nosResult NOSAPI_CALL DMAVideoTransfer(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, size_t size)
 {
 	DeviceLock lock(deviceIndex);
 	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
@@ -384,7 +336,21 @@ nosResult NOSAPI_CALL DMATransfer(uint32_t deviceIndex, nosDeckLinkChannel chann
 		nosEngine.LogE("No such device with index %d", deviceIndex);
 		return NOS_RESULT_NOT_FOUND;
 	}
-	if (!device->DmaTransfer(channel, data, size))
+	if (!device->DmaVideoTransfer(channel, data, size))
+		return NOS_RESULT_FAILED;
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL DMAAudioTransfer(uint32_t deviceIndex, nosDeckLinkChannel channel, void* data, uint32_t sampleFrameCount, uint32_t* outFramesRW)
+{
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+	if (!device->DmaAudioTransfer(channel, data, sampleFrameCount, outFramesRW))
 		return NOS_RESULT_FAILED;
 	return NOS_RESULT_SUCCESS;
 }
@@ -663,7 +629,8 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->CloseChannel = CloseChannel;
 	subsystem->GetCurrentDeltaSecondsOfChannel = GetCurrentDeltaSecondsOfChannel;
 	subsystem->WaitFrame = WaitFrame;
-	subsystem->DMATransfer = DMATransfer;
+	subsystem->DMAVideoTransfer = DMAVideoTransfer;
+	subsystem->DMAAudioTransfer = DMAAudioTransfer;
 	subsystem->RegisterInputVideoFormatChangeCallback = RegisterInputVideoFormatChangeCallback;
 	subsystem->UnregisterInputVideoFormatChangeCallback = UnregisterInputVideoFormatChangeCallback;
 	subsystem->StartStream = StartStream;
@@ -681,8 +648,6 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetChannelState = GetChannelState;
 	subsystem->ResetDropDetection = ResetDropDetection;
 	subsystem->GetAudioFormat = GetAudioFormat;
-	subsystem->GetLatestAudioInput = GetLatestAudioInput;
-	subsystem->WriteAudioSamplesSync = WriteAudioSamplesSync;
 	subsystem->FlushBufferedAudioSamples = FlushBufferedAudioSamples;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;

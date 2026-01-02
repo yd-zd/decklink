@@ -73,19 +73,24 @@ bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
+void IOHandlerBaseI::DmaVideoTransfer(void* buffer, size_t size)
 {
 	util::Stopwatch sw;
-	DmaTransferImpl(buffer, size);
+	DmaVideoTransferImpl(buffer, size);
 	char watchLogBuf[128];
 	snprintf(watchLogBuf, sizeof(watchLogBuf), "(%s) DMA", GetDeviceChannelString().c_str());
 	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
-#if NOS_DECKLINK_DIAGNOSTICS
+#if NOS_DECKLINK_VIDEO_DIAGNOSTICS
 	char title[128], value[128];
 	snprintf(title, sizeof(title), "(%s) Last Processed Frame", GetDeviceChannelString().c_str());
 	snprintf(value, sizeof(value), "%llu", *LastProcessedFrame);
 	nosEngine.WatchLog(title, value);
 #endif
+}
+
+void IOHandlerBaseI::DmaAudioTransfer(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesWritten)
+{
+	DmaAudioTransferImpl(buffer, sampleFrameCount, outFramesWritten);
 }
 
 std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
@@ -126,7 +131,7 @@ uint64_t IOHandlerBaseI::TimeToNanoseconds(BMDTimeValue time, BMDTimeScale scale
 void IOHandlerBaseI::OnFrameEnd(nosDeckLinkFrameResult result)
 {
 	++FramesProcessed;
-#if NOS_DECKLINK_DIAGNOSTICS
+#if NOS_DECKLINK_VIDEO_DIAGNOSTICS
 	char title[128];
 	snprintf(title, sizeof(title), "(%s) Frames Processed", GetDeviceChannelString().c_str());
 	char value[128];

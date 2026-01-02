@@ -60,7 +60,8 @@ public:
 	std::optional<nosVec2u> GetCurrentDeltaSecondsOfChannel(nosDeckLinkChannel channel);
 
 	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout);
-	bool DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size);
+	bool DmaVideoTransfer(nosDeckLinkChannel channel, void* buffer, size_t size);
+	bool DmaAudioTransfer(nosDeckLinkChannel channel, void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw);
 
 	void ClearSubDevices();
 

@@ -224,7 +224,7 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void InputHandler::DmaTransferImpl(void* buffer, size_t size)
+void InputHandler::DmaVideoTransferImpl(void* buffer, size_t size)
 {
 	nosBuffer readBuffer{};
 	{
@@ -264,6 +264,11 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 		}
 	}
 	LastProcessedFrame = lastFrame;
+}
+
+void InputHandler::DmaAudioTransferImpl(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw)
+{
+	// TODO.
 }
 
 bool InputHandler::UpdateFrameRate(BMDDisplayMode displayMode)
@@ -319,12 +324,7 @@ void InputHandler::OnInputAudioArrived_DeckLinkThread(IDeckLinkAudioInputPacket*
 		return;
 	uint32_t bytesPerSample = (AudioSampleType == bmdAudioSampleType16bitInteger) ? 2u : 4u;
 	uint64_t totalBytes = uint64_t(sampleFrames) * bytesPerSample * AudioChannelCount;
-	AudioBufferStore.resize(size_t(totalBytes));
-	std::memcpy(AudioBufferStore.data(), bytes, size_t(totalBytes));
-	{
-		std::unique_lock lock(ReadAudioMutex);
-		ReadAudioBuffer = { .Data = AudioBufferStore.data(), .Size = AudioBufferStore.size() };
-	}
+	// TODO.
 }
 
 int32_t InputHandler::AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData)

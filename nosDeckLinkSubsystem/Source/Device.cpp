@@ -729,7 +729,7 @@ bool Device::WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds tim
 	return subDevice->WaitFrame(mode, timeout);
 }
 
-bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
+bool Device::DmaVideoTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 {
 	auto it = OpenChannels.find(channel);
 	if (it == OpenChannels.end())
@@ -738,7 +738,20 @@ bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 		return false;
 	}
 	auto [subDevice, mode] = it->second;
-	subDevice->DmaTransfer(mode, buffer, size);
+	subDevice->DmaVideoTransfer(mode, buffer, size);
+	return true;
+}
+
+bool Device::DmaAudioTransfer(nosDeckLinkChannel channel, void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw)
+{
+	auto it = OpenChannels.find(channel);
+	if (it == OpenChannels.end())
+	{
+		nosEngine.LogE("No open channel found for channel %s", GetChannelName(channel));
+		return false;
+	}
+	auto [subDevice, mode] = it->second;
+	subDevice->DmaAudioTransfer(mode, buffer, sampleFrameCount, outFramesRw);
 	return true;
 }
 

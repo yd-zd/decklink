@@ -29,28 +29,6 @@ public:
 private:
 	OutputHandler*  Output;
 };
-
-class AudioCallback : public Object<IDeckLinkAudioOutputCallback>
-{
-public:
-	AudioCallback(OutputHandler* outputHandler) : Output(outputHandler) {}
-	HRESULT STDMETHODCALLTYPE RenderAudioSamples(/* in */ BOOL preroll) override
-	{
-		uint32_t framesToWrite = 480; // 10ms at 48kHz
-		uint32_t framesWritten = 0;
-		uint32_t bytesPerSample = (Output->AudioSampleType == bmdAudioSampleType16bitInteger) ? 2u : 4u;
-		size_t bytesNeeded = size_t(framesToWrite) * bytesPerSample * Output->AudioChannelCount;
-		if (Output->AudioSilenceBuffer.size() < bytesNeeded)
-			Output->AudioSilenceBuffer.assign(bytesNeeded, 0);
-		if (Output->Interface)
-		{
-			Output->Interface->WriteAudioSamplesSync(Output->AudioSilenceBuffer.data(), framesToWrite, &framesWritten);
-		}
-		return S_OK;
-	}
-private:
-	OutputHandler* Output;
-};
 	
 HRESULT	OutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
@@ -126,20 +104,6 @@ bool OutputHandler::Open(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 		return false;
 	}
 
-	auto audioCallback = new AudioCallback(this);
-	if (!audioCallback)
-	{
-		nosEngine.LogE("Could not create audio output callback");
-		return false;
-	}
-	res = Interface->SetAudioCallback(audioCallback);
-	Release(audioCallback);
-	if (res != S_OK)
-	{
-		nosEngine.LogE("SubDevice: Failed to set audio output callback");
-		return false;
-	}
-
 	IsInterlaced = GetVideoScanType(displayMode) == NOS_MEDIAIO_VIDEO_INTERLACED_SCAN;
 	return true;
 }
@@ -148,11 +112,12 @@ bool OutputHandler::Start()
 {
 	PlaybackStopRequested = false;
 	TotalFramesScheduled = 0;
+	AudioPacketsScheduled = 0;
 	LastHardwareFrameInfo = {};
 	{
-		std::unique_lock lock(DMATargetMutex);
-		DMATarget = {};
-		NextDMATarget = {};
+		std::unique_lock lock(DmaTargetsMutex);
+		VideoDmaTarget = {};
+		NextVideoDmaTarget = {};
 	}
 	{
 		std::unique_lock lock(PlaybackStoppedMutex);
@@ -160,8 +125,6 @@ bool OutputHandler::Start()
 	}
 	for (auto i = 0; i < VideoFrames.size(); ++i)
 		ScheduleNextFrame(VideoFrames[i]);
-	Interface->BeginAudioPreroll();
-	Interface->EndAudioPreroll();
 	auto res = Interface->StartScheduledPlayback(0, TimeScale, 1.0);
 	if (res != S_OK)
 	{
@@ -210,7 +173,6 @@ bool OutputHandler::Close()
 	for (auto& frame : VideoFrames)
 		Release(frame);
 	Interface->SetScheduledFrameCompletionCallback(nullptr);
-    Interface->SetAudioCallback(nullptr);
 	return true;
 }
 
@@ -226,15 +188,15 @@ bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
+void OutputHandler::DmaVideoTransferImpl(void* buffer, size_t size)
 {
-	std::unique_lock lock(DMATargetMutex);
-	if (!DMATarget.Data)
+	std::unique_lock lock(DmaTargetsMutex);
+	if (!VideoDmaTarget.Data)
 	{
 		nosEngine.LogE("(%s) Output: Buffer already in use, cannot write new data", GetDeviceChannelString().c_str());
 		return;
 	}
-	memcpy(DMATarget.Data, buffer, std::min(size, DMATarget.Size));
+	memcpy(VideoDmaTarget.Data, buffer, std::min(size, VideoDmaTarget.Size));
 
 	uint64_t nextFrame;
 	{
@@ -255,6 +217,18 @@ void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 		}
 	}
 	LastProcessedFrame = nextFrame;
+}
+
+void OutputHandler::DmaAudioTransferImpl(void* buffer, uint32_t sampleFrameCount, uint32_t* outFramesRw)
+{
+#if NOS_DECKLINK_AUDIO_DIAGNOSTICS
+	nosEngine.LogD("(%s) Audio DMA: Scheduling %u audio frames for frame %llu",
+				   GetDeviceChannelString().c_str(),
+				   sampleFrameCount,
+				   AudioPacketsScheduled);
+#endif
+	Interface->ScheduleAudioSamples(
+		buffer, sampleFrameCount, AudioPacketsScheduled++ * FrameDuration, TimeScale, outFramesRw);
 }
 
 std::optional<uint64_t> OutputHandler::GetNanosecondsSinceStreamStarted()
@@ -286,25 +260,25 @@ void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 	HRESULT result =
 		Interface->ScheduleVideoFrame(frameToSchedule, TotalFramesScheduled * FrameDuration, FrameDuration, TimeScale);
 	if (result != S_OK)
-		nosEngine.LogE("(%s) DMA Write: Failed to schedule next frame", GetDeviceChannelString().c_str());
-	else
 	{
-		++TotalFramesScheduled;
+		nosEngine.LogE("(%s) DMA Write: Failed to schedule next frame", GetDeviceChannelString().c_str());
+		return;
 	}
+	++TotalFramesScheduled;
 }
 
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
 	auto time = std::chrono::steady_clock::now().time_since_epoch().count();
 	{
-		std::unique_lock lock(DMATargetMutex);
-		DMATarget = NextDMATarget;
+		std::unique_lock lock(DmaTargetsMutex);
+		VideoDmaTarget = NextVideoDmaTarget;
 	}
 	VideoFrame output(completedFrame);
 	output.StartAccess(bmdBufferAccessWrite);
 	size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
 	auto videoBufferBytes = output.GetBytes();
-	NextDMATarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
+	NextVideoDmaTarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
 	auto streamTimeNs = GetNanosecondsSinceStreamStarted();
 	auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
 	output.EndAccess();
@@ -319,12 +293,12 @@ void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* 
 		{
 			LastHardwareFrameInfo.FrameNumber++;
 		}
-#if NOS_DECKLINK_DIAGNOSTICS
+#if NOS_DECKLINK_VIDEO_DIAGNOSTICS
 		nosEngine.LogD("(%s) Frame %llu arrived at %llu", GetDeviceChannelString().c_str(), LastHardwareFrameInfo.FrameNumber, LastHardwareFrameInfo.TimestampNs);
 #endif
 		LastHardwareFrameInfo.DeltaSeconds = { .x = uint32_t(FrameDuration), .y = uint32_t(TimeScale) };
 	}
-	FrameCompletedCV.notify_all();;
+	FrameCompletedCV.notify_all();
 	if (PlaybackStopRequested)
 	{
 		nosEngine.LogW("(%s) Output: Frame complete callback invoked after stop requested, last frame: %llu", GetDeviceChannelString().c_str(), LastHardwareFrameInfo.FrameNumber);
