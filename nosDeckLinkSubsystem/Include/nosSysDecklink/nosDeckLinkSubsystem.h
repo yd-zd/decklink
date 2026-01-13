@@ -11,10 +11,7 @@
 // nos.mediaio
 #include <nosMediaIO/nosMediaIO.h>
 
-#if __cplusplus
-extern "C"
-{
-#endif
+NOS_BEGIN_C_LINKAGE
 
 #define NOS_DECKLINK_VENDOR_NAME "BlackMagic Design DeckLink"
 
@@ -217,8 +214,6 @@ extern nosDeckLinkSubsystem* nosDeckLink;
 
 #pragma endregion
 
-#if __cplusplus
-}
-#endif
+NOS_END_C_LINKAGE
 
 #endif
