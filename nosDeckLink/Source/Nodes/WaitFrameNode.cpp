@@ -6,7 +6,7 @@
 #include <nosSysDecklink/nosDeckLinkSubsystem.h>
 #include <nosSync/nosSync.h>
 
-#include "Generated/DeckLink_generated.h"
+#include "nosDecklink/DeckLink_generated.h"
 
 // External
 #include <nosSysVulkan/nosVulkanSubsystem.h>

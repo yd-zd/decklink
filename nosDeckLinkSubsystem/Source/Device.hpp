@@ -14,7 +14,7 @@
 
 #include "nosSysDecklink/nosDeckLinkSubsystem.h"
 
-#include "DeckLink_generated.h"
+#include "nosSysDecklink/DeckLink_generated.h"
 
 namespace nos::decklink
 {

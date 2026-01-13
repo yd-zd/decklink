@@ -8,7 +8,7 @@
 #include <nosSysVulkan/nosVulkanSubsystem.h>
 #include <nosSysVulkan/Helpers.hpp>
 
-#include "Generated/DeckLink_generated.h"
+#include "nosDecklink/DeckLink_generated.h"
 #include "nosAudio/Audio_generated.h"
 #include "nosAudio/AudioConversions.hpp"
 
