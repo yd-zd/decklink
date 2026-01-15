@@ -269,7 +269,7 @@ protected:
 class BMD_PUBLIC IDeckLinkDisplayMode : public IUnknown
 {
 public:
-    virtual HRESULT GetName (/* out */ const char** name) = 0;
+    virtual HRESULT GetName (/* out */ CFStringRef* name) = 0;
     virtual BMDDisplayMode GetDisplayMode (void) = 0;
     virtual long GetWidth (void) = 0;
     virtual long GetHeight (void) = 0;

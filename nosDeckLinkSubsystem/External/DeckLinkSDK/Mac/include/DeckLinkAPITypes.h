@@ -29,6 +29,10 @@
  * -- AUTOMATICALLY GENERATED - DO NOT EDIT ---
  */
 
+#ifndef BMD_DECKLINKAPITYPES_H
+#define BMD_DECKLINKAPITYPES_H
+
+
 #ifndef BMD_CONST
     #if defined(_MSC_VER)
         #define BMD_CONST __declspec(selectany) static const
@@ -37,24 +41,26 @@
     #endif
 #endif
 
+#ifndef BMD_PUBLIC
+	#define BMD_PUBLIC
+#endif
+
 // Type Declarations
 
-typedef LONGLONG BMDTimeValue;
-typedef LONGLONG BMDTimeScale;
-typedef unsigned int BMDTimecodeBCD;
-typedef unsigned int BMDTimecodeUserBits;
-typedef LONGLONG BMDIPFlowID;
+typedef int64_t BMDTimeValue;
+typedef int64_t BMDTimeScale;
+typedef uint32_t BMDTimecodeBCD;
+typedef uint32_t BMDTimecodeUserBits;
+typedef int64_t BMDIPFlowID;
 
-// Enumeration Mapping
+// Interface ID Declarations
 
-cpp_quote("typedef unsigned int BMDTimecodeFlags;")
-cpp_quote("#if 0")
-typedef enum _BMDTimecodeFlags BMDTimecodeFlags;
-cpp_quote("#endif")
+BMD_CONST REFIID IID_IDeckLinkTimecode                            = /* BC6CFBD3-8317-4325-AC1C-1216391E9340 */ { 0xBC,0x6C,0xFB,0xD3,0x83,0x17,0x43,0x25,0xAC,0x1C,0x12,0x16,0x39,0x1E,0x93,0x40 };
 
 /* Enum BMDTimecodeFlags - Timecode flags */
 
-[v1_enum] enum _BMDTimecodeFlags {
+typedef uint32_t BMDTimecodeFlags;
+enum _BMDTimecodeFlags {
     bmdTimecodeFlagDefault                                       = 0,
     bmdTimecodeIsDropFrame                                       = 1 << 0,
     bmdTimecodeFieldMark                                         = 1 << 1,
@@ -65,7 +71,8 @@ cpp_quote("#endif")
 
 /* Enum BMDVideoConnection - Video connection types */
 
-typedef [v1_enum] enum _BMDVideoConnection {
+typedef uint32_t BMDVideoConnection;
+enum _BMDVideoConnection {
     bmdVideoConnectionUnspecified                                = 0,
     bmdVideoConnectionSDI                                        = 1 << 0,
     bmdVideoConnectionHDMI                                       = 1 << 1,
@@ -76,11 +83,12 @@ typedef [v1_enum] enum _BMDVideoConnection {
     bmdVideoConnectionEthernet                                   = 1 << 6,
     bmdVideoConnectionOpticalEthernet                            = 1 << 7,
     bmdVideoConnectionInternal                                   = 1 << 8
-} BMDVideoConnection;
+};
 
 /* Enum BMDAudioConnection - Audio connection types */
 
-typedef [v1_enum] enum _BMDAudioConnection {
+typedef uint32_t BMDAudioConnection;
+enum _BMDAudioConnection {
     bmdAudioConnectionEmbedded                                   = 1 << 0,
     bmdAudioConnectionAESEBU                                     = 1 << 1,
     bmdAudioConnectionAnalog                                     = 1 << 2,
@@ -88,35 +96,45 @@ typedef [v1_enum] enum _BMDAudioConnection {
     bmdAudioConnectionAnalogRCA                                  = 1 << 4,
     bmdAudioConnectionMicrophone                                 = 1 << 5,
     bmdAudioConnectionHeadphones                                 = 1 << 6
-} BMDAudioConnection;
+};
 
 /* Enum BMDDeckControlConnection - Deck control connections */
 
-typedef [v1_enum] enum _BMDDeckControlConnection {
+typedef uint32_t BMDDeckControlConnection;
+enum _BMDDeckControlConnection {
     bmdDeckControlConnectionRS422Remote1                         = 1 << 0,
     bmdDeckControlConnectionRS422Remote2                         = 1 << 1
-} BMDDeckControlConnection;
+};
+
+#if defined(__cplusplus)
 
 // Forward Declarations
 
-interface IDeckLinkTimecode;
+class IDeckLinkTimecode;
 
 /* Interface IDeckLinkTimecode - Used for video frame timecode representation. */
 
-[
-    object,
-    uuid(BC6CFBD3-8317-4325-AC1C-1216391E9340),
-    helpstring("Used for video frame timecode representation.")
-] interface IDeckLinkTimecode : IUnknown
+class BMD_PUBLIC IDeckLinkTimecode : public IUnknown
 {
-    BMDTimecodeBCD GetBCD (void);
-    HRESULT GetComponents ([out] unsigned char* hours, [out] unsigned char* minutes, [out] unsigned char* seconds, [out] unsigned char* frames);
-    HRESULT GetString ([out] BSTR* timecode);
-    BMDTimecodeFlags GetFlags (void);
-    HRESULT GetTimecodeUserBits ([out] BMDTimecodeUserBits* userBits);
+public:
+    virtual BMDTimecodeBCD GetBCD (void) = 0;
+    virtual HRESULT GetComponents (/* out */ uint8_t* hours, /* out */ uint8_t* minutes, /* out */ uint8_t* seconds, /* out */ uint8_t* frames) = 0;
+    virtual HRESULT GetString (/* out */ CFStringRef* timecode) = 0;
+    virtual BMDTimecodeFlags GetFlags (void) = 0;
+    virtual HRESULT GetTimecodeUserBits (/* out */ BMDTimecodeUserBits* userBits) = 0;
+
+protected:
+    virtual ~IDeckLinkTimecode () {} // call Release method to drop reference count
 };
 
-/* Coclasses */
+/* Functions */
 
-importlib("stdole2.tlb");
+extern "C" {
 
+
+}
+
+
+
+#endif /* defined(__cplusplus) */
+#endif /* defined(BMD_DECKLINKAPITYPES_H) */

@@ -29,6 +29,10 @@
  * -- AUTOMATICALLY GENERATED - DO NOT EDIT ---
  */
 
+#ifndef BMD_DECKLINKAPIDISCOVERY_H
+#define BMD_DECKLINKAPIDISCOVERY_H
+
+
 #ifndef BMD_CONST
     #if defined(_MSC_VER)
         #define BMD_CONST __declspec(selectany) static const
@@ -37,31 +41,43 @@
     #endif
 #endif
 
+#ifndef BMD_PUBLIC
+	#define BMD_PUBLIC
+#endif
+
 // Type Declarations
 
 
-// Enumeration Mapping
+// Interface ID Declarations
 
-cpp_quote("#if 0")
-cpp_quote("#endif")
+BMD_CONST REFIID IID_IDeckLink                                    = /* C418FBDD-0587-48ED-8FE5-640F0A14AF91 */ { 0xC4,0x18,0xFB,0xDD,0x05,0x87,0x48,0xED,0x8F,0xE5,0x64,0x0F,0x0A,0x14,0xAF,0x91 };
+
+#if defined(__cplusplus)
 
 // Forward Declarations
 
-interface IDeckLink;
+class IDeckLink;
 
 /* Interface IDeckLink - Represents a DeckLink device */
 
-[
-    object,
-    uuid(C418FBDD-0587-48ED-8FE5-640F0A14AF91),
-    helpstring("Represents a DeckLink device")
-] interface IDeckLink : IUnknown
+class BMD_PUBLIC IDeckLink : public IUnknown
 {
-    HRESULT GetModelName ([out] BSTR* modelName);
-    HRESULT GetDisplayName ([out] BSTR* displayName);
+public:
+    virtual HRESULT GetModelName (/* out */ CFStringRef* modelName) = 0;
+    virtual HRESULT GetDisplayName (/* out */ CFStringRef* displayName) = 0;
+
+protected:
+    virtual ~IDeckLink () {} // call Release method to drop reference count
 };
 
-/* Coclasses */
+/* Functions */
 
-importlib("stdole2.tlb");
+extern "C" {
 
+
+}
+
+
+
+#endif /* defined(__cplusplus) */
+#endif /* defined(BMD_DECKLINKAPIDISCOVERY_H) */

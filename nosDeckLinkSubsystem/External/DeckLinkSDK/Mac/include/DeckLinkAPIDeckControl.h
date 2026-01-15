@@ -192,7 +192,7 @@ public:
     virtual HRESULT StepBack (/* out */ BMDDeckControlError* error) = 0;
     virtual HRESULT Jog (/* in */ double rate, /* out */ BMDDeckControlError* error) = 0;
     virtual HRESULT Shuttle (/* in */ double rate, /* out */ BMDDeckControlError* error) = 0;
-    virtual HRESULT GetTimecodeString (/* out */ const char** currentTimeCode, /* out */ BMDDeckControlError* error) = 0;
+    virtual HRESULT GetTimecodeString (/* out */ CFStringRef* currentTimeCode, /* out */ BMDDeckControlError* error) = 0;
     virtual HRESULT GetTimecode (/* out */ IDeckLinkTimecode** currentTimecode, /* out */ BMDDeckControlError* error) = 0;
     virtual HRESULT GetTimecodeBCD (/* out */ BMDTimecodeBCD* currentTimecode, /* out */ BMDDeckControlError* error) = 0;
     virtual HRESULT SetPreroll (/* in */ uint32_t prerollSeconds) = 0;
