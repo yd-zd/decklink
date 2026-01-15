@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <DeckLinkAPI.h>
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosMediaio/nosMediaIO.h>
 #include <nosSysDecklink/nosDeckLinkSubsystem.h>
 
 namespace nos::decklink

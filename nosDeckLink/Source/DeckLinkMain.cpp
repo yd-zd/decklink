@@ -4,7 +4,7 @@
 #include <nosSysVulkan/nosVulkanSubsystem.h>
 #include <nosSysDevice/nosDeviceSubsystem.h>
 #include <nosSysDecklink/nosDeckLinkSubsystem.h>
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosMediaio/nosMediaIO.h>
 #include <nosSync/nosSync.h>
 
 NOS_INIT_WITH_MIN_REQUIRED_MINOR(0)

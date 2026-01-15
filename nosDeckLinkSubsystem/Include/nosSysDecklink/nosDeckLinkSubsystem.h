@@ -9,7 +9,7 @@
 #include <Nodos/Types.h>
 
 // nos.mediaio
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosMediaio/nosMediaIO.h>
 
 NOS_BEGIN_C_LINKAGE
 

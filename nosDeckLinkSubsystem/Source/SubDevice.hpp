@@ -6,7 +6,7 @@
 #include "OutputHandler.hpp"
 #include "InputHandler.hpp"
 
-#include <nosMediaIO/nosMediaIO.h>
+#include <nosMediaio/nosMediaIO.h>
 
 namespace nos::decklink
 {
