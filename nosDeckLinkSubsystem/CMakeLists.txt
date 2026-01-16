@@ -11,7 +11,7 @@ if (WIN32)
             ${COMPILED_DECKLINK_FOLDER}/DeckLinkAPI_i.c
             ${COMPILED_DECKLINK_FOLDER}/DeckLinkAPI.h)
 
-    set(DECKLINK_SDK_INCLUDE_DIR ${DECKLINK_SDK_DIR}/Win/include)
+    set(DECKLINK_SDK_IDL_DIR ${DECKLINK_SDK_DIR}/Win/include)
 
     # Link COM support
     list(APPEND PLATFORM_LIBRARIES comsuppw.lib)
@@ -21,8 +21,10 @@ if (WIN32)
     set(MIDL_OUTPUT_HEADER "${COMPILED_DECKLINK_FOLDER}\\DeckLinkAPI.h")
     set(MIDL_OUTPUT_TLB "${COMPILED_DECKLINK_FOLDER}\\DeckLinkAPI.tlb")
     set(DECKLINK_API_INTEROP "${COMPILED_DECKLINK_FOLDER}\\Interop.DeckLinkAPI.dll")
-    set(DECKLINK_API_IDL "${DECKLINK_SDK_INCLUDE_DIR}\\DeckLinkAPI.idl")
-    set(DECKLINK_SDK_INCLUDE_DIR ${COMPILED_DECKLINK_FOLDER})
+    set(DECKLINK_API_IDL "${DECKLINK_SDK_IDL_DIR}\\DeckLinkAPI.idl")
+    set(DECKLINK_SDK_INCLUDE_DIRS
+            ${COMPILED_DECKLINK_FOLDER}
+            ${DECKLINK_SDK_IDL_DIR})
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)")
         set(MIDL_MACHINE win32)
@@ -60,5 +62,9 @@ endif()
 
 add_dependencies(${NOS_PLUGIN_TARGET} DeckLinkSDK)
 target_sources(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SOURCES})
-target_include_directories(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SDK_INCLUDE_DIR})
+if (WIN32)
+    target_include_directories(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SDK_INCLUDE_DIRS})
+else()
+    target_include_directories(${NOS_PLUGIN_TARGET} PRIVATE ${DECKLINK_SDK_INCLUDE_DIR})
+endif()
 nos_group_targets("DeckLinkSDK" "External")
