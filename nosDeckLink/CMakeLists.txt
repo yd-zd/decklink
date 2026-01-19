@@ -1,6 +1,8 @@
 # Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 
 # TODO: Publish as nosman package
+target_compile_definitions(${NOS_PLUGIN_TARGET} PRIVATE NOS_DISABLE_DEPRECATED)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/External/cpp-utilities ${CMAKE_CURRENT_BINARY_DIR}/External/cpp-utilities)
 target_link_libraries(${NOS_PLUGIN_TARGET} PRIVATE nosCppUtilities)
 

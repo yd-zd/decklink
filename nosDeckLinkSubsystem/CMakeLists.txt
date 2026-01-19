@@ -1,5 +1,7 @@
 # Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 
+target_compile_definitions(${NOS_PLUGIN_TARGET} PRIVATE NOS_DISABLE_DEPRECATED)
+
 # DeckLink SDK
 # ------------
 set(DECKLINK_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/External/DeckLinkSDK")
