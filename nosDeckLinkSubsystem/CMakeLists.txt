@@ -27,23 +27,26 @@ nos_get_module("nos.sys.device" "0.2" NOS_SYS_DEVICE_TARGET)
 set(DECKLINK_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/External/DeckLinkSDK/")
 
 if (WIN32)
-     # Add DeckLink API
+    set(COMPILED_DECKLINK_FOLDER ${CMAKE_CURRENT_BINARY_DIR}/External/DeckLink)
+    # Add DeckLink API
     set(DECKLINK_SOURCES
-            ${CMAKE_CURRENT_BINARY_DIR}/DeckLinkAPI_i.c
-            ${CMAKE_CURRENT_BINARY_DIR}/DeckLinkAPI.h)
+            ${COMPILED_DECKLINK_FOLDER}/DeckLinkAPI_i.c
+            ${COMPILED_DECKLINK_FOLDER}/DeckLinkAPI.h)
 
-    set(DECKLINK_SDK_INCLUDE_DIR ${DECKLINK_SDK_DIR}/Win/include)
+    set(DECKLINK_SDK_IDL_DIR ${DECKLINK_SDK_DIR}/Win/include)
 
     # Link COM support
     list(APPEND PLATFORM_LIBRARIES comsuppw.lib)
 
     # Compile DeckLink API IDL to build directory
-    set(MIDL_OUTPUT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}\\DeckLinkAPI_i.c")
-    set(MIDL_OUTPUT_HEADER "${CMAKE_CURRENT_BINARY_DIR}\\DeckLinkAPI.h")
-    set(MIDL_OUTPUT_TLB "${CMAKE_CURRENT_BINARY_DIR}\\DeckLinkAPI.tlb")
-    set(DECKLINK_API_INTEROP "${CMAKE_CURRENT_BINARY_DIR}\\Interop.DeckLinkAPI.dll")
-    set(DECKLINK_API_IDL "${DECKLINK_SDK_INCLUDE_DIR}\\DeckLinkAPI.idl")
-    set(DECKLINK_SDK_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(MIDL_OUTPUT_SOURCE "${COMPILED_DECKLINK_FOLDER}\\DeckLinkAPI_i.c")
+    set(MIDL_OUTPUT_HEADER "${COMPILED_DECKLINK_FOLDER}\\DeckLinkAPI.h")
+    set(MIDL_OUTPUT_TLB "${COMPILED_DECKLINK_FOLDER}\\DeckLinkAPI.tlb")
+    set(DECKLINK_API_INTEROP "${COMPILED_DECKLINK_FOLDER}\\Interop.DeckLinkAPI.dll")
+    set(DECKLINK_API_IDL "${DECKLINK_SDK_IDL_DIR}\\DeckLinkAPI.idl")
+    set(DECKLINK_SDK_INCLUDE_DIRS
+            ${COMPILED_DECKLINK_FOLDER}
+            ${DECKLINK_SDK_IDL_DIR})
 
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)")
         set(MIDL_MACHINE win32)
@@ -60,13 +63,14 @@ if (WIN32)
     add_custom_command(
             OUTPUT ${MIDL_OUTPUT}
             DEPENDS ${DECKLINK_API_IDL}
-            COMMAND midl /env ${MIDL_MACHINE} /header ${MIDL_OUTPUT_HEADER} ${DECKLINK_API_IDL} /tlb ${MIDL_OUTPUT_TLB}
+            COMMAND midl /env ${MIDL_MACHINE} /Oicf /header ${MIDL_OUTPUT_HEADER} ${DECKLINK_API_IDL} /iid ${MIDL_OUTPUT_SOURCE} /tlb ${MIDL_OUTPUT_TLB}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             )
 
     set_source_files_properties(${MIDL_OUTPUT} PROPERTIES GENERATED TRUE)
 
     add_custom_target(DeckLinkSDK DEPENDS ${MIDL_OUTPUT})
+    
 elseif(LINUX)
     set(DECKLINK_SDK_INCLUDE_DIR ${DECKLINK_SDK_DIR}/Linux/include)
     set(DECKLINK_SOURCES ${DECKLINK_SDK_INCLUDE_DIR}/DeckLinkAPIDispatch.cpp)
@@ -91,6 +95,11 @@ list(APPEND INCLUDE_FOLDERS
 nos_add_subsystem("nosDeckLinkSubsystem" "${DEPENDENCIES}" "${INCLUDE_FOLDERS}")
 
 target_sources(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SOURCES})
-
+target_compile_definitions(nosDeckLinkSubsystem PRIVATE -DNOMINMAX)
+if (WIN32)
+    target_include_directories(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SDK_INCLUDE_DIRS})
+else()
+    target_include_directories(nosDeckLinkSubsystem PRIVATE ${DECKLINK_SDK_INCLUDE_DIR})
+endif()
 # Project generation
 nos_group_targets("nosDeckLinkSubsystem" "NOS Subsystems")
