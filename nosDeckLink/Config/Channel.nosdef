@@ -56,6 +56,13 @@
                         "can_show_as": "PROPERTY_ONLY"
                     },
                     {
+                        "name": "ConnectionType",
+                        "display_name": "Connection Type",
+                        "type_name": "string",
+                        "show_as": "PROPERTY",
+                        "can_show_as": "PROPERTY_ONLY"
+                    },
+                    {
                         "name": "Resolution",
                         "type_name": "string",
                         "show_as": "PROPERTY",

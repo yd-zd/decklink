@@ -665,7 +665,7 @@ void Device::UpdateProfile(BMDProfileID newProfileId)
 	Release(profileIter);
 }
 
-bool Device::OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
+bool Device::OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat, BMDVideoConnection connection)
 {
 	auto subDevice = GetSubDeviceOfChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
@@ -673,7 +673,7 @@ bool Device::OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, 
 		nosEngine.LogE("No sub-device found for channel %s", GetChannelName(channel));
 		return false;
 	}
-	if (subDevice->OpenOutput(displayMode, pixelFormat))
+	if (subDevice->OpenOutput(displayMode, pixelFormat, connection))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_OUTPUT };
 		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
@@ -743,7 +743,7 @@ bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 	return true;
 }
 
-bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
+bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat, BMDVideoConnection connection)
 {
 	auto subDevice = GetSubDeviceOfChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);
 	if (!subDevice)
@@ -751,7 +751,7 @@ bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
 		nosEngine.LogE("No sub-device found for channel %s", GetChannelName(channel));
 		return false;
 	}
-	if (subDevice->OpenInput(pixelFormat))
+	if (subDevice->OpenInput(pixelFormat, connection))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_INPUT };
 		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);

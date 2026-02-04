@@ -110,7 +110,9 @@ bool SubDevice::IsBusyWith(nosMediaIODirection mode)
 	return false;
 }
 
-std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoScanType scanType, std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats)
+std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoConnectionType connectionType,
+	nosMediaIOVideoScanType scanType, 
+	std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats)
 {
 	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> supported;
 	if (!Output)
@@ -126,7 +128,7 @@ std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetS
 			auto fg = static_cast<nosMediaIOFrameGeometry>(i);
 			for (auto& displayMode : GetDisplayModesForFrameGeometry(fg))
 			{
-				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
+				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(GetDeckLinkVideoConnectionType(connectionType), displayMode, GetDeckLinkPixelFormat(pixelFormat)))
 				{
 					supported[fg].insert(GetFrameRateFromDisplayMode(displayMode));
 				}
@@ -136,7 +138,8 @@ std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> SubDevice::GetS
 	return supported;
 }
 
-std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> SubDevice::GetSupportedOutputVideoFormats(nosMediaIOVideoScanType scanType)
+std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> SubDevice::GetSupportedOutputVideoFormats(nosMediaIOVideoConnectionType connectionType,
+	nosMediaIOVideoScanType scanType)
 {
 	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> supported;
 	if (!Output)
@@ -155,7 +158,7 @@ std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMedi
 			auto fg = static_cast<nosMediaIOFrameGeometry>(i);
 			for (auto& displayMode : GetDisplayModesForFrameGeometry(fg))
 			{
-				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(displayMode, GetDeckLinkPixelFormat(pixelFormat)))
+				if (GetVideoScanType(displayMode) == scanType && DoesSupportOutputVideoMode(GetDeckLinkVideoConnectionType(connectionType), displayMode, GetDeckLinkPixelFormat(pixelFormat)))
 				{
 					supported[fg][GetFrameRateFromDisplayMode(displayMode)].insert(pixelFormat);
 				}
@@ -206,13 +209,13 @@ void SubDevice::TagDevice(uint32_t deviceIndex)
 	GetIO(NOS_MEDIAIO_DIRECTION_OUTPUT).DeviceIndex = deviceIndex;
 }
 
-bool SubDevice::DoesSupportOutputVideoMode(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
+bool SubDevice::DoesSupportOutputVideoMode(BMDVideoConnection connection, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
 {
 	if (!Output)
 		return false;
 	BOOL supported{};
 	BMDDisplayMode actualDisplayMode{};
-	auto res = Output->DoesSupportVideoMode(bmdVideoConnectionSDI, displayMode, pixelFormat, bmdNoVideoOutputConversion, bmdSupportedVideoModeDefault, &actualDisplayMode, &supported);
+	auto res = Output->DoesSupportVideoMode(connection, displayMode, pixelFormat, bmdNoVideoOutputConversion, bmdSupportedVideoModeDefault, &actualDisplayMode, &supported);
 	if (res != S_OK)
 	{
 		nosEngine.LogE("SubDevice: Failed to check video mode support for device: %s", ModelName.c_str());
@@ -227,13 +230,30 @@ bool SubDevice::DoesSupportOutputVideoMode(BMDDisplayMode displayMode, BMDPixelF
 	return supported;
 }
 
-bool SubDevice::OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat)
+static bool ApplyVideoConnection(IDeckLinkConfiguration* configuration, nosMediaIODirection dir, BMDVideoConnection connection, std::string const& modelName)
+{
+	if (!configuration || connection == bmdVideoConnectionUnspecified)
+		return true;
+	BMDDeckLinkConfigurationID configId = (dir == NOS_MEDIAIO_DIRECTION_INPUT)
+		? bmdDeckLinkConfigVideoInputConnection
+		: bmdDeckLinkConfigVideoOutputConnection;
+	auto res = configuration->SetInt(configId, connection);
+	if (res != S_OK)
+	{
+		nosEngine.LogW("SubDevice: Failed to set video connection for device: %s", modelName.c_str());
+		return false;
+	}
+	return true;
+}
+
+bool SubDevice::OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat, BMDVideoConnection connection)
 {
 	if (!Output) 
 	{
 		nosEngine.LogE("SubDevice: Output interface is not available for device: %s", ModelName.c_str());
 		return false;
 	}
+	ApplyVideoConnection(Configuration, NOS_MEDIAIO_DIRECTION_OUTPUT, connection, ModelName);
 	return Output.OpenStream(displayMode, pixelFormat);
 }
 
@@ -277,13 +297,14 @@ std::optional<nosDeckLinkReferenceStatus> SubDevice::GetOutputReferenceStatus()
 	return ref;
 }
 
-bool SubDevice::OpenInput(BMDPixelFormat pixelFormat)
+bool SubDevice::OpenInput(BMDPixelFormat pixelFormat, BMDVideoConnection connection)
 {
 	if (!Input)
 	{
 		nosEngine.LogE("SubDevice: Input interface is not available for device: %s", ModelName.c_str());
 		return false;
 	}
+	ApplyVideoConnection(Configuration, NOS_MEDIAIO_DIRECTION_INPUT, connection, ModelName);
 	return Input.OpenStream(bmdModeNTSC, pixelFormat); // Display mode will be auto-detected
 }
 

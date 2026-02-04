@@ -331,6 +331,19 @@ constexpr nosMediaIOPixelFormat GetPixelFormatFromDeckLink(BMDPixelFormat fmt)
 	}
 	return NOS_MEDIAIO_PIXEL_FORMAT_INVALID;
 }
+
+constexpr BMDVideoConnection GetDeckLinkVideoConnectionType(nosMediaIOVideoConnectionType connection)
+{
+	switch (connection)
+	{
+	case NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_SDI:
+		return bmdVideoConnectionSDI;
+	case NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_OPTICAL_ETHERNET:
+		return bmdVideoConnectionOpticalEthernet;
+	default:
+		return bmdVideoConnectionUnspecified;
+	}
+}
 	
 constexpr nosMediaIOFrameRate GetFrameRateFromDisplayMode(BMDDisplayMode displayMode)
 {
