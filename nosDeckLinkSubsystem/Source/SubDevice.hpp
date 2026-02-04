@@ -17,8 +17,8 @@ public:
 	SubDevice(IDeckLink* deviceInterface);
 	~SubDevice();
 	bool IsBusyWith(nosMediaIODirection mode);
-	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoScanType scanType, std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats);
-	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> GetSupportedOutputVideoFormats(nosMediaIOVideoScanType scanType);
+	std::map<nosMediaIOFrameGeometry, std::set<nosMediaIOFrameRate>> GetSupportedOutputFrameGeometryAndFrameRates(nosMediaIOVideoConnectionType connectionType, nosMediaIOVideoScanType scanType, std::unordered_set<nosMediaIOPixelFormat> const& pixelFormats);
+	std::map<nosMediaIOFrameGeometry, std::map<nosMediaIOFrameRate, std::set<nosMediaIOPixelFormat>>> GetSupportedOutputVideoFormats(nosMediaIOVideoConnectionType connectionType, nosMediaIOVideoScanType scanType);
 	int32_t AddInputVideoFormatChangeCallback(nosDeckLinkInputVideoFormatChangeCallback callback, void* userData);
 	void RemoveInputVideoFormatChangeCallback(uint32_t callbackId);
 	int32_t AddFrameResultCallback(nosMediaIODirection dir, nosDeckLinkFrameResultCallback callback, void* userData);
@@ -34,13 +34,13 @@ public:
 	std::string Handle;
 
 	// Output
-	bool DoesSupportOutputVideoMode(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
-	bool OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
+	bool DoesSupportOutputVideoMode(BMDVideoConnection connection, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
+	bool OpenOutput(BMDDisplayMode displayMode, BMDPixelFormat pixelFormat, BMDVideoConnection connection);
 	bool CloseOutput();
 	std::optional<nosDeckLinkReferenceStatus> GetOutputReferenceStatus();
 
 	// Input
-	bool OpenInput(BMDPixelFormat pixelFormat);
+	bool OpenInput(BMDPixelFormat pixelFormat, BMDVideoConnection connection);
 	bool CloseInput();
 	bool ResetInputFrames();
 

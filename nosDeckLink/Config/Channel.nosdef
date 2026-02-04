@@ -47,40 +47,55 @@
                         "type_name": "nos.sys.device.DeviceInfo",
                         "show_as": "PROPERTY",
                         "can_show_as": "PROPERTY_ONLY",
-                        "data": {}
+                        "data": {
+                            "vendor_name": "None"
+                        }
                     },
                     {
                         "name": "ChannelName",
                         "type_name": "string",
                         "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
+                    },
+                    {
+                        "name": "ConnectionType",
+                        "display_name": "Connection Type",
+                        "type_name": "string",
+                        "show_as": "PROPERTY",
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
                     },
                     {
                         "name": "Resolution",
                         "type_name": "string",
                         "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
                     },
                     {
                         "name": "FrameRate",
                         "display_name": "Frame Rate",
                         "type_name": "string",
                         "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
                     },
                     {
                         "name": "VideoScanType",
                         "display_name": "Video Scan Type",
                         "type_name": "string",
                         "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
                     },
                     {
                         "name": "PixelFormat",
                         "display_name": "Pixel Format",
                         "type_name": "string",
                         "show_as": "PROPERTY",
-                        "can_show_as": "PROPERTY_ONLY"
+                        "can_show_as": "PROPERTY_ONLY",
+                        "data": "None"
                     },
                     {
                         "name": "ChannelResolution",

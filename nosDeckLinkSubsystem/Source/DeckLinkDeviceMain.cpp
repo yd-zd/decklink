@@ -145,7 +145,11 @@ nosResult NOSAPI_CALL GetDeviceInfoByIndex(uint32_t deviceIndex, nosDeckLinkDevi
 }
 
 
-nosResult NOSAPI_CALL GetSupportedOutputFrameGeometries(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometryList* outGeometries)
+nosResult NOSAPI_CALL GetSupportedOutputFrameGeometries(uint32_t deviceIndex,
+														nosMediaIOVideoConnectionType connectionType,
+														nosDeckLinkChannel channel,
+														nosMediaIOVideoScanType scanType,
+														nosMediaIOFrameGeometryList* outGeometries)
 {
 	if (!outGeometries)
 	{
@@ -156,7 +160,8 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameGeometries(uint32_t deviceIndex, no
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
+	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(
+		connectionType, scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
 	outGeometries->Count = supported.size();
 	int i = 0;
 	for (auto& [fg, _] : supported)
@@ -164,7 +169,12 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameGeometries(uint32_t deviceIndex, no
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeo, nosMediaIOFrameRateList* outFrameRates)
+nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceIndex,
+															  nosMediaIOVideoConnectionType connectionType,
+															  nosDeckLinkChannel channel,
+															  nosMediaIOVideoScanType scanType,
+															  nosMediaIOFrameGeometry frameGeo,
+															  nosMediaIOFrameRateList* outFrameRates)
 {
 	if (!outFrameRates)
 	{
@@ -175,7 +185,8 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceInd
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
+	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(
+		connectionType, scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
 	std::set<nosMediaIOFrameRate> frameRates;
 	for (auto& [curFrameGeo, frs] : supported)
 	{
@@ -192,7 +203,13 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceInd
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult NOSAPI_CALL GetSupportedOutputPixelFormats(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry frameGeo, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormatList* outList)
+nosResult NOSAPI_CALL GetSupportedOutputPixelFormats(uint32_t deviceIndex,
+													 nosMediaIOVideoConnectionType connectionType,
+													 nosDeckLinkChannel channel,
+													 nosMediaIOVideoScanType scanType,
+													 nosMediaIOFrameGeometry frameGeo,
+													 nosMediaIOFrameRate frameRate,
+													 nosMediaIOPixelFormatList* outList)
 {
 	if (!outList)
 	{
@@ -203,7 +220,7 @@ nosResult NOSAPI_CALL GetSupportedOutputPixelFormats(uint32_t deviceIndex, nosDe
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputVideoFormats(scanType);
+	auto supported = subDevice->GetSupportedOutputVideoFormats(connectionType, scanType);
 	auto& pixelFormats = supported[frameGeo][frameRate];
 	outList->Count = pixelFormats.size();
 	int i = 0;
@@ -223,7 +240,7 @@ nosResult NOSAPI_CALL OpenChannel(uint32_t deviceIndex, nosDeckLinkOpenChannelPa
 	}
 	if (params->Direction == NOS_MEDIAIO_DIRECTION_OUTPUT)
 	{
-		if (!device->OpenOutput(params->Channel, GetDeckLinkDisplayMode(params->Output.ScanType, params->Output.Geometry, params->Output.FrameRate), GetDeckLinkPixelFormat(params->PixelFormat)))
+		if (!device->OpenOutput(params->Channel, GetDeckLinkDisplayMode(params->Output.ScanType, params->Output.Geometry, params->Output.FrameRate), GetDeckLinkPixelFormat(params->PixelFormat), GetDeckLinkVideoConnectionType(params->ConnectionType)))
 		{
 			nosEngine.LogE("Failed to open output for channel %s", GetChannelName(params->Channel));
 			return NOS_RESULT_FAILED;
@@ -231,7 +248,7 @@ nosResult NOSAPI_CALL OpenChannel(uint32_t deviceIndex, nosDeckLinkOpenChannelPa
 	}
 	else
 	{
-		if (!device->OpenInput(params->Channel, GetDeckLinkPixelFormat(params->PixelFormat)))
+		if (!device->OpenInput(params->Channel, GetDeckLinkPixelFormat(params->PixelFormat), GetDeckLinkVideoConnectionType(params->ConnectionType)))
 		{
 			nosEngine.LogE("Failed to open input for channel %s", GetChannelName(params->Channel));
 			return NOS_RESULT_FAILED;

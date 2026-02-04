@@ -3,10 +3,11 @@
 
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
 #include <nosDeviceSubsystem/nosDeviceSubsystem.h>
+#include <nosMediaIO/nosMediaIO.h>
 
-#include "Generated/Conversion_generated.h"
+#include "Generated/nosMediaIO/Conversion_generated.h"
 #include "Generated/DeckLink_generated.h"
-#include "Generated/Device_generated.h"
+#include "Generated/nosDeviceSubsystem/Device_generated.h"
 
 #include <PrefixTree.hpp>
 
@@ -20,6 +21,7 @@ NOS_REGISTER_NAME(VideoScanType);
 NOS_REGISTER_NAME(Resolution);
 NOS_REGISTER_NAME(FrameRate);
 NOS_REGISTER_NAME(PixelFormat);
+NOS_REGISTER_NAME(ConnectionType);
 NOS_REGISTER_NAME(IsOpen);
 NOS_REGISTER_NAME(ChannelId);
 NOS_REGISTER_NAME(ChannelResolution);
@@ -32,6 +34,7 @@ enum class Config : int
 {
 	IsInput = 0,
 	Device,
+	ConnectionType,
 	ChannelName,
 	Resolution,
 	FrameRate,
@@ -59,6 +62,7 @@ struct ChannelHandler
 	bool IsStreamStarted = false;
 	uuid IsOpenPinId;
 	uuid DevicePinId;
+	uuid ConnectionTypePinId;
 	uuid ChannelNamePinId;
 	uuid VideoScanTypePinId;
 	uuid OutChannelPinId;
@@ -72,6 +76,7 @@ struct ChannelHandler
 	int32_t DeviceIndex = -1;
 	std::string ModelName;
 	nosMediaIODirection Direction = NOS_MEDIAIO_DIRECTION_OUTPUT;
+	nosMediaIOVideoConnectionType ConnectionType = NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_INVALID;
 	nosDeckLinkChannel Channel = NOS_DECKLINK_CHANNEL_INVALID;
 	nosMediaIOFrameGeometry Resolution = NOS_MEDIAIO_FRAME_GEOMETRY_INVALID;
 	nosMediaIOFrameRate FrameRate = NOS_MEDIAIO_FRAME_RATE_INVALID;
@@ -377,6 +382,7 @@ public:
 	ChannelNode(nosFbNodePtr node) : NodeContext(node), Channel(*this)
 	{
 		SetPinVisualizer(NSN_Device, {.type = nos::fb::VisualizerType::NAMED_VALUE, .name = sys::device::GetDeviceListNameForVendor(NOS_NAME(NOS_DECKLINK_VENDOR_NAME)), .hide_value = true});
+		SetPinVisualizer(NSN_ConnectionType, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::ConnectionType)});
 		SetPinVisualizer(NSN_ChannelName, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::ChannelName)});
 		SetPinVisualizer(NSN_Resolution, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::Resolution)});
 		SetPinVisualizer(NSN_FrameRate, {.type = nos::fb::VisualizerType::COMBO_BOX, .name = GetStringListName(Config::FrameRate)});
@@ -385,6 +391,7 @@ public:
 
 		Channel.IsOpenPinId = *GetPinId(NSN_IsOpen);
 		Channel.DevicePinId = *GetPinId(NSN_Device);
+		Channel.ConnectionTypePinId = *GetPinId(NSN_ConnectionType);
 		Channel.ChannelNamePinId = *GetPinId(NSN_ChannelName);
 		Channel.OutChannelPinId = *GetPinId(NSN_ChannelId);
 		Channel.OutResolutionPinId = *GetPinId(NSN_ChannelResolution);
@@ -443,7 +450,7 @@ public:
 				{
 					nosDeviceInfo foundDeviceInfo{};
 					auto res = nosDevice->GetDeviceInfo(newDeviceId, &foundDeviceInfo);
-					NOS_SOFT_CHECK(res == NOS_RESULT_SUCCESS, "Device must be found at this point")
+					NOS_SOFT_CHECK(res == NOS_RESULT_SUCCESS)
 						if (NOS_RESULT_SUCCESS == res)
 						{
 							auto foundDeviceObj = sys::device::ConvertDeviceInfo(foundDeviceInfo);
@@ -458,6 +465,21 @@ public:
 					AutoSelectIfSingle(NSN_Device, GetPossibleDevices());
 			}
 			UpdateAfter(Config::Device, !oldValue);
+		});
+		AddPinValueWatcher(NSN_ConnectionType, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
+			ConnectionTypePinValue = InterpretPinValue<const char>(newVal);
+			auto newConnectionType = nosMediaIO->GetVideoConnectionTypeFromString(ConnectionTypePinValue.c_str());
+			Channel.Update<&ChannelHandler::ConnectionType>(newConnectionType, !Channel.IsInput());
+			if (ConnectionTypePinValue != PIN_VALUE_NONE && newConnectionType == NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_INVALID)
+				ResetPin(NSN_ConnectionType);
+			else
+			{
+				if (oldValue)
+					ResetAfter(Config::ConnectionType);
+				else if (ConnectionTypePinValue == PIN_VALUE_NONE)
+					AutoSelectIfSingle(NSN_ConnectionType, GetPossibleValues(Config::ConnectionType));
+			}
+			UpdateAfter(Config::ConnectionType, !oldValue);
 		});
 		AddPinValueWatcher(NSN_ChannelName, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			ChannelPinValue = InterpretPinValue<const char>(newVal);
@@ -590,6 +612,7 @@ public:
 				AutoSelectIfSingle(GetPinName(next), values);
 			break;
 		}
+		case Config::ConnectionType:
 		case Config::ChannelName:
 		case Config::Resolution:
 		case Config::FrameRate:
@@ -611,13 +634,14 @@ public:
 		{
 			case Config::IsInput: return NSN_IsInput;
 			case Config::Device: return NSN_Device;
+			case Config::ConnectionType: return NSN_ConnectionType;
 			case Config::ChannelName: return NSN_ChannelName;
 			case Config::Resolution: return NSN_Resolution;
 			case Config::FrameRate: return NSN_FrameRate;
 			case Config::VideoScanType: return NSN_VideoScanType;
 			case Config::PixelFormat: return NSN_PixelFormat;
 			default:
-				NOS_SOFT_CHECK(false, "Invalid ChannelConfigEntry");
+				NOS_SOFT_CHECK(false);
 				return nos::Name();
 		}
 	}
@@ -686,13 +710,14 @@ public:
 		prefix << "decklink.";
 		switch (type)
 		{
+		case Config::ConnectionType: prefix << "ConnectionTypeList"; break;
 		case Config::ChannelName: prefix << "ChannelList"; break;
 		case Config::Resolution: prefix << "ResolutionList"; break;
 		case Config::FrameRate: prefix << "FrameRateList"; break;
 		case Config::VideoScanType: prefix << "VideoScanList"; break;
 		case Config::PixelFormat: prefix << "PixelFormatList"; break;
 		default:
-			NOS_SOFT_CHECK(false, "Invalid ChannelConfigEntry");
+			NOS_SOFT_CHECK(false);
 			break;
 		}
 		prefix << "." << std::string(NodeId);
@@ -703,7 +728,6 @@ public:
 
 	void BuildPossibleOutputConfigs()
 	{
-		// [(Device, Channel, Video Scan Type, Resolution, Frame Rate, Pixel Format)]
 		auto devices = GetPossibleDevices();
 		for (auto& device : devices)
 		{
@@ -714,28 +738,37 @@ public:
 			auto channels = GetPossibleChannels(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT);
 			for (auto& channel : channels)
 			{
-				for (int i = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; i <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; i++)
+				for (int j = NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_SDI; j <= NOS_MEDIAIO_VIDEO_CONNECTION_TYPE_MAX; j++)
 				{
-					auto videoScanType = (nosMediaIOVideoScanType)i;
-					auto resolutions = GetPossibleResolutions(deviceIndex, channel, videoScanType);
-					for (auto& resolution : resolutions)
+					auto connectionType = (nosMediaIOVideoConnectionType)j;
+					for (int i = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; i <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; i++)
 					{
-						auto frameRates = GetPossibleFrameRates(deviceIndex, channel, videoScanType, resolution);
-						for (auto& frameRate : frameRates)
+						auto videoScanType = (nosMediaIOVideoScanType)i;
+						auto resolutions = GetPossibleResolutions(deviceIndex, connectionType, channel, videoScanType);
+						for (auto& resolution : resolutions)
 						{
-							auto pixelFormats = GetPossiblePixelFormats(deviceIndex, channel, videoScanType, resolution, frameRate);
-							for (auto& pixelFormat : pixelFormats)
+							auto frameRates = GetPossibleFrameRates(deviceIndex, connectionType, channel, videoScanType, resolution);
+							for (auto& frameRate : frameRates)
 							{
-								auto deviceKey = std::to_string(deviceIndex);
-								std::string channelName = nosDeckLink->GetChannelName(channel);
-								std::string videoScanTypeName = nosMediaIO->GetVideoScanTypeName(videoScanType);
-								std::string resolutionName = nosMediaIO->GetFrameGeometryName(resolution);
-								std::string frameRateName = nosMediaIO->GetFrameRateName(frameRate);
-								std::string pixelFormatName = nosMediaIO->GetPixelFormatName(pixelFormat);
-								std::vector<std::string> key = {
-									deviceKey, channelName, resolutionName, frameRateName, videoScanTypeName,  pixelFormatName
-								};
-								PossibleOutputConfigs.Insert(key);
+								auto pixelFormats = GetPossiblePixelFormats(deviceIndex, connectionType, channel, videoScanType, resolution, frameRate);
+								for (auto& pixelFormat : pixelFormats)
+								{
+									auto deviceKey = std::to_string(deviceIndex);
+									std::string connectionTypeName = nosMediaIO->GetVideoConnectionTypeName(connectionType);
+									std::string channelName = nosDeckLink->GetChannelName(channel);
+									std::string resolutionName = nosMediaIO->GetFrameGeometryName(resolution);
+									std::string frameRateName = nosMediaIO->GetFrameRateName(frameRate);
+									std::string videoScanTypeName = nosMediaIO->GetVideoScanTypeName(videoScanType);
+									std::string pixelFormatName = nosMediaIO->GetPixelFormatName(pixelFormat);
+									std::vector<std::string> key = {deviceKey,
+																	connectionTypeName,
+																	channelName,
+																	resolutionName,
+																	frameRateName,
+																	videoScanTypeName,
+																	pixelFormatName};
+									PossibleOutputConfigs.Insert(key);
+								}
 							}
 						}
 					}
@@ -772,10 +805,10 @@ public:
 		return channelNames;
 	}
 
-	static std::vector<std::string> GetPossibleResolutionNames(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType)
+	static std::vector<std::string> GetPossibleResolutionNames(uint32_t deviceIndex, nosMediaIOVideoConnectionType connectionType, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType)
 	{
 		std::vector<std::string> resolutionNames = {PIN_VALUE_NONE};
-		auto resolutions = GetPossibleResolutions(deviceIndex, channel, videoScanType);
+		auto resolutions = GetPossibleResolutions(deviceIndex, connectionType, channel,videoScanType);
 		for (auto& resolution : resolutions)
 		{
 			auto name = nosMediaIO->GetFrameGeometryName(resolution);
@@ -784,11 +817,11 @@ public:
 		return resolutionNames;
 	}
 
-	static std::vector<nosMediaIOFrameGeometry> GetPossibleResolutions(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType)
+	static std::vector<nosMediaIOFrameGeometry> GetPossibleResolutions(uint32_t deviceIndex, nosMediaIOVideoConnectionType connectionType, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType)
 	{
 		std::vector<nosMediaIOFrameGeometry> resolutions;
 		nosMediaIOFrameGeometryList frameGeometryList{};
-		nosDeckLink->GetSupportedOutputFrameGeometries(deviceIndex, channel, videoScanType, &frameGeometryList);
+		nosDeckLink->GetSupportedOutputFrameGeometries(deviceIndex, connectionType,  channel, videoScanType,&frameGeometryList);
 		for (size_t i = 0; i < frameGeometryList.Count; i++)
 		{
 			resolutions.push_back(frameGeometryList.Geometries[i]);
@@ -796,10 +829,10 @@ public:
 		return resolutions;
 	}
 
-	static std::vector<std::string> GetPossibleFrameRateNames(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType, nosMediaIOFrameGeometry resolution)
+	static std::vector<std::string> GetPossibleFrameRateNames(uint32_t deviceIndex, nosMediaIOVideoConnectionType connectionType, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType, nosMediaIOFrameGeometry resolution)
 	{
 		std::vector<std::string> frameRateNames = {PIN_VALUE_NONE};
-		auto frameRates = GetPossibleFrameRates(deviceIndex, channel, videoScanType, resolution);
+		auto frameRates = GetPossibleFrameRates(deviceIndex, connectionType, channel, videoScanType, resolution);
 		for (auto& frameRate : frameRates)
 		{
 			auto name = nosMediaIO->GetFrameRateName(frameRate);
@@ -808,11 +841,11 @@ public:
 		return frameRateNames;
 	}
 
-	static std::vector<nosMediaIOFrameRate> GetPossibleFrameRates(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType, nosMediaIOFrameGeometry resolution)
+	static std::vector<nosMediaIOFrameRate> GetPossibleFrameRates(uint32_t deviceIndex, nosMediaIOVideoConnectionType connectionType, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType, nosMediaIOFrameGeometry resolution)
 	{
 		std::vector<nosMediaIOFrameRate> frameRates;
 		nosMediaIOFrameRateList frameRateList{};
-		nosDeckLink->GetSupportedOutputFrameRatesForGeometry(deviceIndex, channel, videoScanType, resolution, &frameRateList);
+		nosDeckLink->GetSupportedOutputFrameRatesForGeometry(deviceIndex, connectionType, channel, videoScanType, resolution, &frameRateList);
 		for (size_t i = 0; i < frameRateList.Count; i++)
 			frameRates.push_back(frameRateList.FrameRates[i]);
 		return frameRates;
@@ -832,7 +865,7 @@ public:
 	std::vector<std::string> GetCurrentConfigSearchKey()
 	{
 		return {
-			std::to_string(Channel.DeviceIndex), ChannelPinValue, ResolutionPinValue,
+			std::to_string(Channel.DeviceIndex), ConnectionTypePinValue, ChannelPinValue, ResolutionPinValue,
 			FrameRatePinValue, VideoScanTypePinValue, PixelFormatPinValue
 		};
 	}
@@ -851,12 +884,12 @@ public:
 			values.push_back(value);
 		return values;
 	}
-
-	static std::vector<std::string> GetPossiblePixelFormatNames(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType,
+	
+	static std::vector<std::string> GetPossiblePixelFormatNames(uint32_t deviceIndex, nosMediaIOVideoConnectionType connection, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType,
 		nosMediaIOFrameGeometry resolution, nosMediaIOFrameRate frameRate)
 	{
 		std::vector<std::string> pixelFormatNames = {PIN_VALUE_NONE};
-		auto pixelFormats = GetPossiblePixelFormats(deviceIndex, channel, videoScanType, resolution, frameRate);
+		auto pixelFormats = GetPossiblePixelFormats(deviceIndex, connection, channel, videoScanType, resolution, frameRate);
 		for (auto& pixelFormat : pixelFormats)
 		{
 			auto name = nosMediaIO->GetPixelFormatName(pixelFormat);
@@ -865,12 +898,12 @@ public:
 		return pixelFormatNames;
 	}
 
-	static std::vector<nosMediaIOPixelFormat> GetPossiblePixelFormats(uint32_t deviceIndex, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType,
+	static std::vector<nosMediaIOPixelFormat> GetPossiblePixelFormats(uint32_t deviceIndex, nosMediaIOVideoConnectionType connectionType, nosDeckLinkChannel channel, nosMediaIOVideoScanType videoScanType,
 		nosMediaIOFrameGeometry resolution, nosMediaIOFrameRate frameRate)
 	{
 		std::vector<nosMediaIOPixelFormat> pixelFormats;
 		nosMediaIOPixelFormatList pixelFormatList{};
-		nosDeckLink->GetSupportedOutputPixelFormats(deviceIndex, channel, videoScanType, resolution, frameRate, &pixelFormatList);
+		nosDeckLink->GetSupportedOutputPixelFormats(deviceIndex, connectionType, channel, videoScanType, resolution, frameRate, &pixelFormatList);
 		for (size_t i = 0; i < pixelFormatList.Count; i++)
 			pixelFormats.push_back(pixelFormatList.PixelFormats[i]);
 		return pixelFormats;
@@ -878,6 +911,7 @@ public:
 
 	sys::device::TDeviceInfo DevicePinValue;
 	std::string ChannelPinValue = PIN_VALUE_NONE;
+	std::string ConnectionTypePinValue = PIN_VALUE_NONE;
 	std::string ResolutionPinValue = PIN_VALUE_NONE;
 	std::string FrameRatePinValue = PIN_VALUE_NONE;
 	std::string VideoScanTypePinValue = PIN_VALUE_NONE;
@@ -911,7 +945,8 @@ bool ChannelHandler::Open()
 			.Direction = Direction,
 			.Channel = Channel,
 			.PixelFormat = IsInput() && PixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID ? NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT : PixelFormat,
-			.Output = {}
+			.Output = {},
+			.ConnectionType = ConnectionType,
 		};
 		if (!IsInput())
 		{

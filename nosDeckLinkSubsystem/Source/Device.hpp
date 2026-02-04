@@ -52,8 +52,8 @@ public:
 	SubDevice* GetMainSubDevice() const;
 
 	// Channels
-	bool OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat);
-	bool OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat);
+	bool OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, BMDPixelFormat pixelFormat, BMDVideoConnection connection);
+	bool OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat, BMDVideoConnection connection);
 	bool StartStream(nosDeckLinkChannel channel);
 	bool StopStream(nosDeckLinkChannel channel);
 	bool CloseChannel(nosDeckLinkChannel channel);

@@ -15,10 +15,10 @@ nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 set(FLATC_EXECUTABLE ${NOS_SDK_DIR}/bin/flatc${CMAKE_EXECUTABLE_SUFFIX})
 
 # nos.sys.decklink
-nos_get_module("nos.sys.decklink" "2.2" NOS_SYS_DECKLINK_TARGET)
+nos_get_module("nos.sys.decklink" "3.0" NOS_SYS_DECKLINK_TARGET)
 
 # nos.sys.mediaio: TODO: Add transitive dependency support to nosman or CMake Nodos toolchain
-nos_get_module("nos.sys.mediaio" "0.4" NOS_SYS_MEDIAIO_TARGET)
+nos_get_module("nos.sys.mediaio" "0.5" NOS_SYS_MEDIAIO_TARGET)
 
 # nos.sys.vulkan
 nos_get_module("nos.sys.vulkan" "6.0" NOS_SYS_VULKAN_TARGET)
@@ -26,18 +26,17 @@ nos_get_module("nos.sys.vulkan" "6.0" NOS_SYS_VULKAN_TARGET)
 # nos.mediaio
 nos_get_module("nos.mediaio" "2.5" NOS_MEDIAIO_TARGET)
 nos_find_module_path("nos.mediaio" "2.5" NOS_MEDIAIO_PATH)
-nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
+nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated/nosMediaIO" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
 
 # nos.utilities
 nos_get_module("nos.utilities" "3.8" NOS_UTILITIES_TARGET)
 nos_find_module_path("nos.utilities" "3.8" NOS_UTILITIES_PATH)
-nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosUtilities)
+nos_generate_flatbuffers("${NOS_UTILITIES_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated/nosUtilities" "cpp" "${NOS_UTILITIES_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosUtilities)
 
 # nos.sys.device
 nos_get_module("nos.sys.device" "0.3" NOS_SYS_DEVICE_TARGET)
 nos_find_module_path("nos.sys.device" "0.3" NOS_SYS_DEVICE_PATH)
-nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosSysDevice)
-
+nos_generate_flatbuffers("${NOS_SYS_DEVICE_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated/nosDeviceSubsystem" "cpp" "${NOS_SYS_DEVICE_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosSysDevice)
 # nos.sync
 nos_get_module("nos.sync" "3.1" NOS_SYNC_TARGET)
 
