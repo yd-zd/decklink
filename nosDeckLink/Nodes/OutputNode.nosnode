@@ -2259,7 +2259,7 @@
 						{
 							"id": "31ada60f-cbb2-4291-95b3-c8d48b0f0f0e",
 							"name": "Auto Resize",
-							"class_name": "nos.utilities.AutoResize",
+							"class_name": "nos.imageprocessing.AutoResize",
 							"pins": [
 								{
 									"id": "ab229c06-e156-41a8-be90-f573ff6c441e",
@@ -2580,7 +2580,7 @@
 									{
 										"id": "ff18bcee-2659-444f-b1b9-564c0b76be8b",
 										"name": "Resize",
-										"class_name": "nos.utilities.Resize",
+										"class_name": "nos.imageprocessing.Resize",
 										"pins": [
 											{
 												"id": "a3676304-f1cb-42c1-a4c3-9eff652acef9",
@@ -2671,7 +2671,7 @@
 											{
 												"id": "ea2fbbdd-6d45-48a3-86ee-2fde7a6d2c13",
 												"name": "Method",
-												"type_name": "nos.utilities.ResizeMethod",
+												"type_name": "nos.imageprocessing.ResizeMethod",
 												"show_as": "PROPERTY",
 												"can_show_as": "INPUT_OUTPUT_PROPERTY",
 												"visualizers": [],
@@ -3457,7 +3457,7 @@
 									{
 										"id": "a237efb0-6bec-4a9d-8456-8bc3e815d63d",
 										"name": "ShowStatus",
-										"class_name": "nos.utilities.ShowStatus",
+										"class_name": "nos.flow.ShowStatus",
 										"pins": [
 											{
 												"id": "8485795a-68d3-46fa-b001-3f420b2f2a55",
@@ -4557,7 +4557,7 @@
 						{
 							"id": "e305e60b-db36-4f2c-9313-fb6562af9e10",
 							"name": "DeinterlacedBufferRing",
-							"class_name": "nos.utilities.DeinterlacedBufferRing",
+							"class_name": "nos.resource.DeinterlacedBufferRing",
 							"pins": [
 								{
 									"id": "aa1d642c-6b3d-4fb6-a996-32850852fc6e",
@@ -7439,7 +7439,7 @@
 						{
 							"id": "acb12a72-3487-4917-83f7-49b2285a5e05",
 							"name": "GetFieldType (2)",
-							"class_name": "nos.mediaio.GetFieldType",
+							"class_name": "nos.resource.GetFieldType",
 							"pins": [
 								{
 									"id": "2e42e860-9f8a-403a-bb1d-99ff6484a344",

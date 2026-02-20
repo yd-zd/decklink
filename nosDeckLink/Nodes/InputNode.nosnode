@@ -1710,7 +1710,7 @@
 						{
 							"id": "46ea08aa-7d12-4de6-85b4-8b58e47825a2",
 							"name": "DeinterlacedBoundedTextureQueue",
-							"class_name": "nos.utilities.DeinterlacedBoundedTextureQueue",
+							"class_name": "nos.resource.DeinterlacedBoundedTextureQueue",
 							"pins": [
 								{
 									"id": "381982b2-17b8-4e48-bc25-750a3439c223",
@@ -2943,7 +2943,7 @@
 						{
 							"id": "f045d8b4-1da0-4002-90cb-291573fe51f4",
 							"name": "UploadBufferProvider (1)",
-							"class_name": "nos.utilities.UploadBufferProvider",
+							"class_name": "nos.resource.UploadBufferProvider",
 							"pins": [
 								{
 									"id": "54005523-2c8d-44d8-9f42-b71dab3affd3",
@@ -3102,7 +3102,7 @@
 						{
 							"id": "bd0b3b75-8826-483b-8510-154645489104",
 							"name": "UploadBuffer (1)",
-							"class_name": "nos.utilities.UploadBuffer",
+							"class_name": "nos.resource.UploadBuffer",
 							"pins": [
 								{
 									"id": "f5cb18d5-712a-452e-a020-6f519a2bf225",

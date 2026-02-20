@@ -1293,7 +1293,7 @@
 									{
 										"id": "0cc25bea-fa13-4198-8c45-0dadc8bda704",
 										"name": "Auto Resize",
-										"class_name": "nos.utilities.AutoResize",
+										"class_name": "nos.imageprocessing.AutoResize",
 										"pins": [
 											{
 												"id": "332225dd-4064-4cb6-8ce1-e05eb357acbe",
@@ -1442,7 +1442,7 @@
 												{
 													"id": "4baa9036-e4e2-4a5d-bfbf-5997d0a01dc5",
 													"name": "ShowStatus",
-													"class_name": "nos.utilities.ShowStatus",
+													"class_name": "nos.flow.ShowStatus",
 													"pins": [
 														{
 															"id": "f006c106-e677-4f9b-a0a1-5554b5af0fb6",
@@ -1766,7 +1766,7 @@
 												{
 													"id": "4200e2d1-4d02-449f-849e-20bf4af8e198",
 													"name": "Resize",
-													"class_name": "nos.utilities.Resize",
+													"class_name": "nos.imageprocessing.Resize",
 													"pins": [
 														{
 															"id": "fd6ec45d-856f-43f9-8a37-d4424a3b89f5",
@@ -1836,7 +1836,7 @@
 														{
 															"id": "288c680e-9f2f-4be7-8738-fba59c67fdd3",
 															"name": "Method",
-															"type_name": "nos.utilities.ResizeMethod",
+															"type_name": "nos.imageprocessing.ResizeMethod",
 															"show_as": "PROPERTY",
 															"can_show_as": "INPUT_OUTPUT_PROPERTY",
 															"data": "BILINEAR",
@@ -4175,7 +4175,7 @@
 									{
 										"id": "d4e22544-14a4-4c3c-afca-a66745db923f",
 										"name": "DeinterlacedBufferRing",
-										"class_name": "nos.utilities.DeinterlacedBufferRing",
+										"class_name": "nos.resource.DeinterlacedBufferRing",
 										"pins": [
 											{
 												"id": "e401e85d-2357-47ca-8f01-8dfe240d9aed",
@@ -6930,7 +6930,7 @@
 						{
 							"id": "bd230c99-1646-4c54-980b-ad34680e9538",
 							"name": "ChannelViewer",
-							"class_name": "nos.utilities.ChannelViewer",
+							"class_name": "nos.compositing.ChannelViewer",
 							"pins": [
 								{
 									"id": "2fa4ad1f-d64d-44e0-8c46-f8d8ffecefc7",
@@ -6962,7 +6962,7 @@
 								{
 									"id": "dfdb3f14-ff6b-4299-8799-43d38f2eb2ee",
 									"name": "Channel",
-									"type_name": "nos.utilities.ChannelViewerChannels",
+									"type_name": "nos.compositing.ChannelViewerChannels",
 									"show_as": "PROPERTY",
 									"can_show_as": "PROPERTY_ONLY",
 									"data": "A",
@@ -6980,7 +6980,7 @@
 								{
 									"id": "f3ffc681-4850-4769-9c31-bf9f95bd4b68",
 									"name": "Format",
-									"type_name": "nos.utilities.ChannelViewerFormats",
+									"type_name": "nos.compositing.ChannelViewerFormats",
 									"show_as": "PROPERTY",
 									"can_show_as": "PROPERTY_ONLY",
 									"data": "Rec_709",
@@ -8090,7 +8090,7 @@
 									{
 										"id": "f8ce956a-76ff-4a92-ac14-d8f88ad97dc5",
 										"name": "DeinterlacedBufferRing",
-										"class_name": "nos.utilities.DeinterlacedBufferRing",
+										"class_name": "nos.resource.DeinterlacedBufferRing",
 										"pins": [
 											{
 												"id": "c453c0ee-22ac-468f-bd00-c04b58cf9453",
@@ -9798,7 +9798,7 @@
 									{
 										"id": "ba8dad84-8e82-4472-bbb6-56636c917496",
 										"name": "Auto Resize",
-										"class_name": "nos.utilities.AutoResize",
+										"class_name": "nos.imageprocessing.AutoResize",
 										"pins": [
 											{
 												"id": "216b5929-5a42-4429-865a-7ba353b7ffca",
@@ -10044,7 +10044,7 @@
 												{
 													"id": "6928f738-eada-4b69-a7ee-3f9980e91b44",
 													"name": "Resize",
-													"class_name": "nos.utilities.Resize",
+													"class_name": "nos.imageprocessing.Resize",
 													"pins": [
 														{
 															"id": "65a86535-6775-411a-a597-603ff0e334d8",
@@ -10114,7 +10114,7 @@
 														{
 															"id": "248d0430-4d3a-4835-a54c-5a39c295257b",
 															"name": "Method",
-															"type_name": "nos.utilities.ResizeMethod",
+															"type_name": "nos.imageprocessing.ResizeMethod",
 															"show_as": "PROPERTY",
 															"can_show_as": "INPUT_OUTPUT_PROPERTY",
 															"data": "BILINEAR",
@@ -10653,7 +10653,7 @@
 												{
 													"id": "f6466811-63cf-4bf7-b04f-1642c932c9c1",
 													"name": "ShowStatus",
-													"class_name": "nos.utilities.ShowStatus",
+													"class_name": "nos.flow.ShowStatus",
 													"pins": [
 														{
 															"id": "0e1a72bb-5c79-4ac0-8121-5853ae07017f",
@@ -13264,7 +13264,7 @@
 						{
 							"id": "5dcc86bb-74bb-4051-8f99-fd19a19ce6e1",
 							"name": "SyncMultiOutlet",
-							"class_name": "nos.utilities.SyncMultiOutlet",
+							"class_name": "nos.flow.SyncMultiOutlet",
 							"pins": [
 								{
 									"id": "98369e59-1fda-4769-a1a0-9888b9bdd112",
