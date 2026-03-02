@@ -337,9 +337,9 @@ struct ChannelHandler
 		Reference,
 		ReferenceInvalid,
 		DeltaSecondsCompatible,
-		Firmware,
 		DropCount,
-		Profile
+		Profile,
+		Diagnostics
 	};
 
 	void SetStatus(StatusType statusType, fb::NodeStatusMessageType msgType, std::string text);

@@ -35,6 +35,11 @@ struct WaitFrameNode : NodeContext
 		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outRes);
 	}
 
+	static void OnSyncHealthNotification(void* ctx, const nosEventGroupHealth* status)
+	{
+		return static_cast<WaitFrameNode*>(ctx)->OnSyncHealthNotification(status);
+	}
+
 	int32_t GetDeviceIndex() const
 	{
 		return CurChannelId.device_index();
@@ -110,6 +115,18 @@ struct WaitFrameNode : NodeContext
 		return NOS_RESULT_SUCCESS;
 	}
 
+	nosBool IsExternallySynced()
+	{
+		if (!IsInput())
+		{
+			// Get Reference Status and update status
+			nosDeckLinkReferenceStatus refStatus;
+			if (NOS_RESULT_SUCCESS == nosDeckLink->GetOutputReferenceStatus(GetDeviceIndex(), GetChannel(), &refStatus))
+				return refStatus == NOS_DECKLINK_REFERENCE_STATUS_LOCKED ? NOS_TRUE : NOS_FALSE;
+		}
+		return NOS_FALSE;
+	}
+
 	void OnPathStartInitiated() override
 	{
 		// This possibly takes a long time(more than a frame)
@@ -131,6 +148,9 @@ struct WaitFrameNode : NodeContext
 			.UserData = this,
 			.ResetFn = nullptr,
 			.WaitFn = WaitFrameNode::SyncPathStarts,
+			.NotifyHealthFn = WaitFrameNode::OnSyncHealthNotification,
+			.DriftTolerance = 1.0 / 4.0, // Allow 1 frame drift per 4 hours,
+			.IsExternallySynchronized = IsExternallySynced(),
 			.OutEventId = &WaitId,
 		};
 		nosSync->RegisterEvent(&params);
@@ -156,6 +176,68 @@ struct WaitFrameNode : NodeContext
 			WaitId = 0;
 		}
 	}
+
+	
+	enum class Status
+	{
+		Ok,
+		ReferenceSourcesMixed,
+		UnhealthySync
+	} CurrentStatus;
+	uint32_t FramesLostPerDay;
+
+	void SetStatus(Status newStatus, double driftsPerHour = 0)
+	{
+		uint32_t driftsPerDay = 24 * driftsPerHour;
+		if (CurrentStatus == newStatus && FramesLostPerDay == driftsPerDay)
+			return;
+		switch (newStatus)
+		{
+		case Status::Ok: {
+			ClearNodeStatusMessages();
+			FramesLostPerDay = 0;
+			break;
+		}
+		case Status::ReferenceSourcesMixed: {
+			if (IsExternallySynced())
+				ClearNodeStatusMessages();
+			else
+			{
+				std::stringstream ss;
+				ss << "Sync Error:\n"
+				   << "\tOutput is not synced to a reference source!\n"
+				   << "\tCheck reference source property and cabling.";
+				SetNodeStatusMessage(ss.str(), fb::NodeStatusMessageType::FAILURE);
+			}
+			break;
+		}
+		case Status::UnhealthySync: {
+			std::stringstream ss;
+			ss << "Sync Error:\n"
+			   << "\tVertical blank times of video I/O nodes\n"
+				  "\tare drifting apart. Check your reference source\n"
+				  "\tand cabling. In free-run or with unknown\n"
+				  "\tgenlock, this can happen. Currently, around "
+			   << driftsPerDay << " frames\n"
+			   << "\tcan be lost per day at this drift rate.";
+			FramesLostPerDay = driftsPerDay;
+			SetNodeStatusMessage(ss.str(), fb::NodeStatusMessageType::FAILURE);
+			break;
+		}
+		}
+		CurrentStatus = newStatus;
+	}
+
+	void OnSyncHealthNotification(const nosEventGroupHealth* status)
+	{
+		if (status->AreSyncSourcesMixed)
+			SetStatus(Status::ReferenceSourcesMixed);
+		else if (status->DriftDetected)
+			SetStatus(Status::UnhealthySync, status->DriftsPerHour);
+		else
+			SetStatus(Status::Ok);
+	}
+
 
 	ChannelId CurChannelId{};
 	uint64_t WaitId = 0; // Event ID for the wait event
