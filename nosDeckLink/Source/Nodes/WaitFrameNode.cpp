@@ -38,6 +38,11 @@ struct WaitFrameNode : NodeContext
 		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outRes);
 	}
 
+	static void OnSyncHealthNotification(void* ctx, const nosSyncGroupHealth* status)
+	{
+		return static_cast<WaitFrameNode*>(ctx)->OnSyncHealthNotification(status);
+	}
+
 	int32_t GetDeviceIndex() const
 	{
 		return CurChannelId.device_index();
@@ -113,6 +118,18 @@ struct WaitFrameNode : NodeContext
 		return NOS_RESULT_SUCCESS;
 	}
 
+	nosBool IsExternallySynced()
+	{
+		if (!IsInput())
+		{
+			// Get Reference Status and update status
+			nosDeckLinkReferenceStatus refStatus;
+			if (NOS_RESULT_SUCCESS == nosDeckLink->GetOutputReferenceStatus(GetDeviceIndex(), GetChannel(), &refStatus))
+				return refStatus == NOS_DECKLINK_REFERENCE_STATUS_LOCKED ? NOS_TRUE : NOS_FALSE;
+		}
+		return NOS_FALSE;
+	}
+
 	void OnPathStartInitiated() override
 	{
 		// This possibly takes a long time(more than a frame)
@@ -135,6 +152,8 @@ struct WaitFrameNode : NodeContext
 			.ResetFn = nullptr,
 			.WaitFn = WaitFrameNode::SyncPathStarts,
 			.OutEventId = &WaitId,
+			.NotifyHealthFn = WaitFrameNode::OnSyncHealthNotification,
+			.IsExternallySynchronized = IsExternallySynced(),
 		};
 		nosSync->RegisterEvent(&params);
 	}
@@ -158,6 +177,69 @@ struct WaitFrameNode : NodeContext
 			nosSync->UnregisterEvent(WaitId);
 			WaitId = 0;
 		}
+	}
+	
+	enum class Status
+	{
+		Ok,
+		ReferenceSourcesMixed,
+		ConsensusFailed,
+	};
+
+	void SetStatus(Status newStatus)
+	{
+		switch (newStatus)
+		{
+		case Status::Ok: {
+			ClearNodeStatusMessages();
+			break;
+		}
+		case Status::ReferenceSourcesMixed: {
+			if (IsExternallySynced())
+				ClearNodeStatusMessages();
+			else
+			{
+				std::stringstream ss;
+				ss << "Sync Error:\n"
+				   << "\tOutput is not synced to a reference source!\n"
+				   << "\tCheck reference source property and cabling.";
+				SetNodeStatusMessage(ss.str(), fb::NodeStatusMessageType::FAILURE);
+			}
+			break;
+		}
+		case Status::ConsensusFailed: {
+			std::stringstream ss;
+			ss << "Sync Error:\n"
+			   << "\tUnable to synchronize vertical blanks of\n"
+			   << "\tconnected video I/O nodes.\n"
+			   << "\tEnsure proper reference source and cabling.";
+			SetNodeStatusMessage(ss.str(), fb::NodeStatusMessageType::FAILURE);
+			break;
+		}
+		}
+	}
+
+	void OnSyncHealthNotification(const nosSyncGroupHealth* status)
+	{
+		if (status->AreSyncSourcesMixed)
+			SetStatus(Status::ReferenceSourcesMixed);
+		else if (status->ConsensusStatus != NOS_CONSENSUS_ACHIEVED)
+		{
+			switch (status->ConsensusStatus)
+			{
+			case NOS_CONSENSUS_ATTEMPT_FAILED:
+			case NOS_CONSENSUS_TIMEOUT: {
+				SetStatus(Status::ConsensusFailed);
+				break;
+			}
+			default: {
+				SetStatus(Status::Ok);
+				break;
+			}
+			}
+		}
+		else
+			SetStatus(Status::Ok);
 	}
 
 	ChannelId CurChannelId{};

@@ -3547,7 +3547,7 @@
 				"meta_data_map": [
 					{
 						"key": "NodeStatusPortal",
-						"value": "/Channel"
+						"value": "/Channel;/WaitFrame"
 					},
 					{
 						"key": "PluginVersion",
