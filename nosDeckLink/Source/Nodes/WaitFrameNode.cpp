@@ -35,7 +35,7 @@ struct WaitFrameNode : NodeContext
 		return static_cast<WaitFrameNode*>(ctx)->SyncPathStarts(outRes);
 	}
 
-	static void OnSyncHealthNotification(void* ctx, const nosEventGroupHealth* status)
+	static void OnSyncHealthNotification(void* ctx, const nosSyncGroupHealth* status)
 	{
 		return static_cast<WaitFrameNode*>(ctx)->OnSyncHealthNotification(status);
 	}
@@ -148,10 +148,9 @@ struct WaitFrameNode : NodeContext
 			.UserData = this,
 			.ResetFn = nullptr,
 			.WaitFn = WaitFrameNode::SyncPathStarts,
-			.NotifyHealthFn = WaitFrameNode::OnSyncHealthNotification,
-			.DriftTolerance = 1.0 / 4.0, // Allow 1 frame drift per 4 hours,
-			.IsExternallySynchronized = IsExternallySynced(),
 			.OutEventId = &WaitId,
+			.NotifyHealthFn = WaitFrameNode::OnSyncHealthNotification,
+			.IsExternallySynchronized = IsExternallySynced(),
 		};
 		nosSync->RegisterEvent(&params);
 	}
@@ -176,26 +175,20 @@ struct WaitFrameNode : NodeContext
 			WaitId = 0;
 		}
 	}
-
 	
 	enum class Status
 	{
 		Ok,
 		ReferenceSourcesMixed,
-		UnhealthySync
-	} CurrentStatus;
-	uint32_t FramesLostPerDay;
+		ConsensusFailed,
+	};
 
-	void SetStatus(Status newStatus, double driftsPerHour = 0)
+	void SetStatus(Status newStatus)
 	{
-		uint32_t driftsPerDay = 24 * driftsPerHour;
-		if (CurrentStatus == newStatus && FramesLostPerDay == driftsPerDay)
-			return;
 		switch (newStatus)
 		{
 		case Status::Ok: {
 			ClearNodeStatusMessages();
-			FramesLostPerDay = 0;
 			break;
 		}
 		case Status::ReferenceSourcesMixed: {
@@ -211,33 +204,40 @@ struct WaitFrameNode : NodeContext
 			}
 			break;
 		}
-		case Status::UnhealthySync: {
+		case Status::ConsensusFailed: {
 			std::stringstream ss;
 			ss << "Sync Error:\n"
-			   << "\tVertical blank times of video I/O nodes\n"
-				  "\tare drifting apart. Check your reference source\n"
-				  "\tand cabling. In free-run or with unknown\n"
-				  "\tgenlock, this can happen. Currently, around "
-			   << driftsPerDay << " frames\n"
-			   << "\tcan be lost per day at this drift rate.";
-			FramesLostPerDay = driftsPerDay;
+			   << "\tUnable to synchronize vertical blanks of\n"
+			   << "\tconnected video I/O nodes.\n"
+			   << "\tEnsure proper reference source and cabling.";
 			SetNodeStatusMessage(ss.str(), fb::NodeStatusMessageType::FAILURE);
 			break;
 		}
 		}
-		CurrentStatus = newStatus;
 	}
 
-	void OnSyncHealthNotification(const nosEventGroupHealth* status)
+	void OnSyncHealthNotification(const nosSyncGroupHealth* status)
 	{
 		if (status->AreSyncSourcesMixed)
 			SetStatus(Status::ReferenceSourcesMixed);
-		else if (status->DriftDetected)
-			SetStatus(Status::UnhealthySync, status->DriftsPerHour);
+		else if (status->ConsensusStatus != NOS_CONSENSUS_ACHIEVED)
+		{
+			switch (status->ConsensusStatus)
+			{
+			case NOS_CONSENSUS_ATTEMPT_FAILED:
+			case NOS_CONSENSUS_TIMEOUT: {
+				SetStatus(Status::ConsensusFailed);
+				break;
+			}
+			default: {
+				SetStatus(Status::Ok);
+				break;
+			}
+			}
+		}
 		else
 			SetStatus(Status::Ok);
 	}
-
 
 	ChannelId CurChannelId{};
 	uint64_t WaitId = 0; // Event ID for the wait event
