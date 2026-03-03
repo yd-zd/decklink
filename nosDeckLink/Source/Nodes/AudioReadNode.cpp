@@ -23,7 +23,7 @@ struct AudioReadNode : NodeContext
 
     nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
     {
-  //       const auto& channelId = *params.GetPinData<ChannelId>(NOS_NAME("ChannelId"));
+  //       const auto& channelId = *params.GetPinValue<ChannelId>(NOS_NAME("ChannelId"));
   //       auto deviceIndex = channelId.device_index();
   //       auto channel = static_cast<nosDeckLinkChannel>(channelId.channel_index());
   //

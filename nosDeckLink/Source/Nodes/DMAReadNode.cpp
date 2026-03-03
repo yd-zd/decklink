@@ -19,7 +19,7 @@ struct DMAReadNode : NodeContext
 	nosResult ExecuteNode(nos::NodeExecuteParams const& params) override
 	{
 		auto bufferToWrite = params.GetPinObject(NOS_NAME("BufferToWrite"));
-		const auto& channelId = *params.GetPinData<ChannelId>(NOS_NAME("ChannelId"));
+		const auto& channelId = *params.GetPinValue<ChannelId>(NOS_NAME("ChannelId"));
 
 		if (!bufferToWrite)
 		{
