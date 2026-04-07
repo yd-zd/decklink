@@ -562,6 +562,84 @@ nosResult NOSAPI_CALL GetOutputReferenceStatus(uint32_t deviceIndex, nosDeckLink
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult NOSAPI_CALL GetAvailableChannelConfigurations(uint32_t deviceIndex, nosDeckLinkChannelConfig* outConfigs, size_t* inoutCount)
+{
+	if (!inoutCount)
+		return NOS_RESULT_INVALID_ARGUMENT;
+
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+	{
+		nosEngine.LogE("No such device with index %d", deviceIndex);
+		return NOS_RESULT_NOT_FOUND;
+	}
+
+	std::vector<nosDeckLinkChannelConfig> configs;
+
+	// Input channels: one entry per (channel, pixelFormat)
+	auto inputChannels = device->GetAvailableChannels(NOS_MEDIAIO_DIRECTION_INPUT);
+	for (auto channel : inputChannels)
+	{
+		for (int pf = NOS_MEDIAIO_PIXEL_FORMAT_MIN; pf <= NOS_MEDIAIO_PIXEL_FORMAT_MAX; pf++)
+		{
+			auto pixelFormat = static_cast<nosMediaIOPixelFormat>(pf);
+			if (pixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID)
+				continue;
+			nosDeckLinkChannelConfig config{};
+			config.Direction = NOS_MEDIAIO_DIRECTION_INPUT;
+			config.Channel = channel;
+			config.Input.PixelFormat = pixelFormat;
+			configs.push_back(config);
+		}
+	}
+
+	// Output channels: one entry per (channel, scanType, geometry, frameRate, pixelFormat)
+	auto outputChannels = device->GetAvailableChannels(NOS_MEDIAIO_DIRECTION_OUTPUT);
+	for (auto channel : outputChannels)
+	{
+		auto* subDevice = device->GetSubDeviceOfChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
+		if (!subDevice)
+			continue;
+		for (int st = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; st <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; st++)
+		{
+			auto scanType = static_cast<nosMediaIOVideoScanType>(st);
+			auto supported = subDevice->GetSupportedOutputVideoFormats(scanType);
+			for (auto& [geometry, frameRateMap] : supported)
+			{
+				for (auto& [frameRate, pixelFormats] : frameRateMap)
+				{
+					for (auto& pixelFormat : pixelFormats)
+					{
+						nosDeckLinkChannelConfig config{};
+						config.Direction = NOS_MEDIAIO_DIRECTION_OUTPUT;
+						config.Channel = channel;
+						config.Output.Resolution = geometry;
+						config.Output.FrameRate = frameRate;
+						config.Output.ScanType = scanType;
+						config.Output.PixelFormat = pixelFormat;
+						configs.push_back(config);
+					}
+				}
+			}
+		}
+	}
+
+	if (!outConfigs)
+	{
+		*inoutCount = configs.size();
+		return NOS_RESULT_SUCCESS;
+	}
+
+	if (*inoutCount < configs.size())
+		return NOS_RESULT_INSUFFICIENT_BUFFER_SIZE;
+
+	*inoutCount = configs.size();
+	for (size_t i = 0; i < configs.size(); i++)
+		outConfigs[i] = configs[i];
+	return NOS_RESULT_SUCCESS;
+}
+
 nosResult NOSAPI_CALL GetChannelState(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* out)
 {
 	DeviceLock lock(deviceIndex);
@@ -649,6 +727,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->ResetDropDetection = ResetDropDetection;
 	subsystem->GetAudioFormat = GetAudioFormat;
 	subsystem->FlushBufferedAudioSamples = FlushBufferedAudioSamples;
+	subsystem->GetAvailableChannelConfigurations = GetAvailableChannelConfigurations;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;

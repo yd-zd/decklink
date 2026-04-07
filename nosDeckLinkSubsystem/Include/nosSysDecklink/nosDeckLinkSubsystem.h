@@ -142,6 +142,27 @@ typedef struct nosDeckLinkChannelState {
 	uint64_t TimeInFrameNs;
 } nosDeckLinkChannelState;
 
+// For input, we have device, channel, and pixel format selection
+// For output, we have device, channel, pixel format, resolution, frame rate, and video scan type selection.
+typedef struct nosDeckLinkChannelConfig
+{
+	nosMediaIODirection Direction;
+	nosDeckLinkChannel Channel;
+	union {
+		struct
+		{
+			nosMediaIOPixelFormat PixelFormat;
+		} Input;
+		struct
+		{
+			nosMediaIOFrameGeometry Resolution;
+			nosMediaIOFrameRate FrameRate;
+			nosMediaIOVideoScanType ScanType;
+			nosMediaIOPixelFormat PixelFormat;
+		} Output;
+	};
+} nosDeckLinkChannelConfig;
+
 typedef void (NOSAPI_CALL* nosDeckLinkInputVideoFormatChangeCallback)(void* userData, nosMediaIOVideoScanType scanType, nosMediaIOFrameGeometry geometry, nosMediaIOFrameRate frameRate, nosMediaIOPixelFormat pixelFormat);
 typedef void (NOSAPI_CALL* nosDeckLinkFrameResultCallback)(void* userData, nosDeckLinkFrameResult result, uint32_t processedFrameNumber);
 typedef void (NOSAPI_CALL* nosDeckLinkDeviceInvalidatedCallback)(void* userData);
@@ -194,6 +215,12 @@ typedef struct nosDeckLinkSubsystem {
 
 	nosResult (NOSAPI_CALL* GetChannelState)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkChannelState* outState);
 	nosResult (NOSAPI_CALL* ResetDropDetection)(uint32_t deviceIndex, nosDeckLinkChannel channel);
+
+	/// Returns all available channel configurations for a device.
+	/// Call with outConfigs=NULL to get the count in *inoutCount.
+	/// Call with outConfigs pointing to a buffer of *inoutCount elements to fill it.
+	/// Returns NOS_RESULT_INSUFFICIENT_BUFFER_SIZE if *inoutCount is too small.
+	nosResult (NOSAPI_CALL* GetAvailableChannelConfigurations)(uint32_t deviceIndex, nosDeckLinkChannelConfig* outConfigs, size_t* inoutCount);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros
