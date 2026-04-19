@@ -4,6 +4,8 @@
 // DeckLink
 #if _WIN32
 #include <comdef.h>
+#elif defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 #include <DeckLinkAPI.h>
 
@@ -11,6 +13,7 @@
 #include <Nodos/Types.h>
 
 // stl
+#include <cstring>
 #include <functional>
 #include <optional>
 #include <atomic>
@@ -31,15 +34,15 @@ namespace nos::decklink
 #define NOS_DECKLINK_AUDIO_DIAGNOSTICS 0
 
 template <typename T>
-auto Release(T& obj)
+ULONG Release(T& obj)
 {
 	if (obj)
 	{
-		auto refCount = obj->Release();
+		ULONG refCount = obj->Release();
 		obj = nullptr;
 		return refCount;
 	}
-	return 0ul;
+	return 0;
 }
 
 #if _WIN32
@@ -75,6 +78,31 @@ inline HRESULT GetDeckLinkIterator(IDeckLinkIterator **deckLinkIterator)
 	if (FAILED(result))
 		nosEngine.LogE("A DeckLink iterator could not be created. The DeckLink drivers may not be installed.");
 
+	return result;
+}
+#elif defined(__APPLE__)
+#define dlbool_t	bool
+#define dlstring_t	CFStringRef
+#define BOOL bool
+const auto DeleteString = [](dlstring_t dl_str) { if (dl_str) CFRelease(dl_str); };
+const auto DlToStdString = [](dlstring_t dl_str) -> std::string {
+	if (!dl_str) return {};
+	CFIndex length = CFStringGetLength(dl_str);
+	CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+	std::string result(static_cast<size_t>(maxSize), '\0');
+	if (!CFStringGetCString(dl_str, result.data(), maxSize, kCFStringEncodingUTF8))
+		return {};
+	result.resize(std::strlen(result.c_str()));
+	return result;
+};
+inline HRESULT GetDeckLinkIterator(IDeckLinkIterator **deckLinkIterator)
+{
+	HRESULT result = S_OK;
+	*deckLinkIterator = CreateDeckLinkIteratorInstance();
+	if (*deckLinkIterator == NULL)
+		result = E_FAIL;
+	if (FAILED(result))
+		nosEngine.LogE("A DeckLink iterator could not be created. The DeckLink drivers may not be installed.");
 	return result;
 }
 #else
