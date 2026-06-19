@@ -11,6 +11,7 @@
 
 // External
 #include <nosSysDevice/nosDeviceSubsystem.h>
+#include <DeckLinkAPI_v15_3_1.h>
 
 namespace nos::decklink
 {
@@ -137,7 +138,10 @@ public:
 			std::unique_lock lock(StatusMutex);
 			switch (statusId)
 			{
-			case bmdDeckLinkStatusDeviceTemperature:
+			// TODO: Temperature moved to IDeckLinkStatistics in SDK 15.3.1. Poll
+			// statistics->GetInt(bmdDeckLinkStatisticDeviceTemperature, ...) instead of
+			// relying on this deprecated Status enum (kept via the _v15_3_1 compat header).
+			case bmdDeckLinkStatusDeviceTemperature_v15_3_1:
 				{
 					StatusInterface->GetInt(statusId, &Status.Temperature);
 					updated = true;
