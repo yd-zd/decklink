@@ -915,7 +915,7 @@ bool ChannelHandler::Open()
 		nosDeckLinkOpenChannelParams params {
 			.Direction = Direction,
 			.Channel = Channel,
-			.PixelFormat = IsInput() && PixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID ? NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT : PixelFormat,
+			.PixelFormat = IsInput() && PixelFormat == NOS_MEDIAIO_PIXEL_FORMAT_INVALID ? NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT : PixelFormat,
 			.Output = {}
 		};
 		if (!IsInput())
