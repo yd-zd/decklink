@@ -119,6 +119,9 @@ public:
 	NotificationCallback(Device* device) : DevicePtr(device), StatusInterface(device->StatusInterface.GetPtr())
 	{
 		StatusInterface->AddRef();
+		if (auto mainSubDevice = DevicePtr->GetMainSubDevice())
+			mainSubDevice->DLDevice->QueryInterface(IID_IDeckLinkStatistics, (void**)&StatisticsInterface);
+		RefreshTemperature();
 		ReadStatus(bmdDeckLinkStatusPCIExpressLinkWidth);
 		ReadStatus(bmdDeckLinkStatusPCIExpressLinkSpeed);
 		ReadStatus(bmdDeckLinkStatusReferenceSignalMode);
@@ -127,7 +130,17 @@ public:
 
 	virtual ~NotificationCallback()
 	{
+		if (StatisticsInterface)
+			StatisticsInterface->Release();
 		StatusInterface->Release();
+	}
+
+	void RefreshTemperature()
+	{
+		if (!StatisticsInterface)
+			return;
+		std::unique_lock lock(StatusMutex);
+		StatisticsInterface->GetInt(bmdDeckLinkStatisticDeviceTemperature, &Status.Temperature);
 	}
 
 	void ReadStatus(BMDDeckLinkStatusID statusId)
@@ -137,12 +150,6 @@ public:
 			std::unique_lock lock(StatusMutex);
 			switch (statusId)
 			{
-			case bmdDeckLinkStatusDeviceTemperature:
-				{
-					StatusInterface->GetInt(statusId, &Status.Temperature);
-					updated = true;
-					break;
-				}
 			case bmdDeckLinkStatusReferenceSignalLocked:
 				{
 					BOOL referenceSignalLocked;
@@ -199,6 +206,7 @@ public:
 			return S_OK;
 
 		// TODO: Add & call necessary callbacks for these status changes.
+		RefreshTemperature();
 		BMDDeckLinkStatusID statusId = (BMDDeckLinkStatusID)param1;
 		ReadStatus(statusId);
 
@@ -313,6 +321,7 @@ protected:
 	BMDDisplayMode ReferenceSignalMode = bmdModeUnknown;
 	nosDeckLinkDeviceStatus Status{};
 	std::shared_mutex StatusMutex;
+	IDeckLinkStatistics* StatisticsInterface = nullptr;
 	int ProfileStatusMessageIndex = -1;
 	int ApiVersionStatusMessageIndex = -1;
 };
