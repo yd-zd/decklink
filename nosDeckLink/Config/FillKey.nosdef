@@ -12886,13 +12886,13 @@
                 {
                   "id": "6a2d7a8a-bbc8-4091-8f56-2fc2f7e44c4c",
                   "name": "Format",
-                  "type_name": "nos.utilities.ChannelViewerFormats",
+                  "type_name": "nos.mediaio.ColorSpace",
                   "show_as": "PROPERTY",
                   "can_show_as": "PROPERTY_ONLY",
                   "visualizer": {
                   },
-                  "data": "Rec_709",
-                  "def": "Rec_709",
+                  "data": "REC709",
+                  "def": "REC709",
                   "meta_data_map": [
                     { "key": "AdvancedProperty", "value": "false" }
                   ],

@@ -24,8 +24,8 @@ nos_get_module("nos.sys.mediaio" "0.4" NOS_SYS_MEDIAIO_TARGET)
 nos_get_module("nos.sys.vulkan" "6.0" NOS_SYS_VULKAN_TARGET)
 
 # nos.mediaio
-nos_get_module("nos.mediaio" "2.5" NOS_MEDIAIO_TARGET)
-nos_find_module_path("nos.mediaio" "2.5" NOS_MEDIAIO_PATH)
+nos_get_module("nos.mediaio" "2.12" NOS_MEDIAIO_TARGET)
+nos_find_module_path("nos.mediaio" "2.12" NOS_MEDIAIO_PATH)
 nos_generate_flatbuffers("${NOS_MEDIAIO_PATH}/Config" "${CMAKE_CURRENT_SOURCE_DIR}/Source/Generated" "cpp" "${NOS_MEDIAIO_PATH};${NOS_SDK_DIR}/types" generated_nosDeckLink_dep_nosMediaIO)
 
 # nos.utilities
