@@ -7,7 +7,7 @@
 
 #include <nosUtil/Stopwatch.hpp>
 
-#include "Generated/DeckLink_generated.h"
+#include "DeckLink_generated.h"
 
 namespace nos::decklink
 {

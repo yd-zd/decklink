@@ -1,7 +1,7 @@
 // Copyright MediaZ Teknoloji A.S. All Rights Reserved.
 #include <Nodos/PluginHelpers.hpp>
 
-#include "Generated/DeckLink_generated.h"
+#include "DeckLink_generated.h"
 
 #include <nosDeckLinkSubsystem/nosDeckLinkSubsystem.h>
 #include <nosUtil/Stopwatch.hpp>
