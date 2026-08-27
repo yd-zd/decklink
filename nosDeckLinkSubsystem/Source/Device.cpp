@@ -50,9 +50,20 @@ std::vector<std::unique_ptr<SubDevice>> CreateAllSubDevices()
 
 	// Obtain an IDeckLink instance for each device on the system
 	std::vector<std::unique_ptr<SubDevice>> subDevices;
-	while (deckLinkIterator->Next(&deckLink) == S_OK)
+	// DeckLink IP 100G firmware quirk: after the last real sub-device the
+	// iterator returns S_OK with a NULL deckLink forever. Stop on the first
+	// NULL entry; also cap iterations so a firmware variation that keeps
+	// returning bogus non-NULL devices cannot spin the loop.
+	for (uint32_t i = 0; i < 16 && deckLinkIterator->Next(&deckLink) == S_OK; ++i)
 	{
+		if (!deckLink)
+			break;
 		auto bmDevice = std::make_unique<SubDevice>(deckLink);
+		if (!bmDevice->IsValid())
+		{
+			nosEngine.LogW("DeckLinkDevice: Skipping invalid device entry #%u", deviceNumber + 1);
+			continue;
+		}
 		subDevices.push_back(std::move(bmDevice));
 		deviceNumber++;
 	}
@@ -483,6 +494,16 @@ std::string Device::GetUniqueDisplayName() const
 	return ModelName + " - " + std::to_string(Index);
 }
 
+bool Device::IsIPDevice() const
+{
+	for (auto& subDevice : SubDevices)
+	{
+		if (subDevice && subDevice->IsIPCapable())
+			return true;
+	}
+	return false;
+}
+
 std::vector<nosDeckLinkChannel> Device::GetAvailableChannels(nosMediaIODirection mode)
 {
 	std::vector<nosDeckLinkChannel> channels;
@@ -511,31 +532,41 @@ bool Device::CanOpenChannel(nosMediaIODirection dir, nosDeckLinkChannel channel,
 		return false;
 		
 	auto& [subDeviceIndex, subDevice] = cit->second;
-	auto& chMap = GetChannelMap();
-	auto modelIt = chMap.find(ModelName);
-	if (modelIt == chMap.end())
-		return false;
-	auto profileIt = modelIt->second.find(ActiveProfile);
-	if (profileIt == modelIt->second.end())
-		if (modelIt->second.find(std::nullopt) == modelIt->second.end())
-			// No profile support for this device
+	if (IsIPChannel(channel))
+	{
+		// IP channels are discovered from IDeckLinkIPExtensions and have no
+		// corresponding SDI connector-map entry.
+		if (!subDevice->IsIPCapable())
 			return false;
-		else
-			profileIt = modelIt->second.begin();
-	auto subDeviceIt = profileIt->second.find(subDeviceIndex);
-	if (subDeviceIt == profileIt->second.end())
-		return false;
+	}
+	else
+	{
+		auto& chMap = GetChannelMap();
+		auto modelIt = chMap.find(ModelName);
+		if (modelIt == chMap.end())
+			return false;
+		auto profileIt = modelIt->second.find(ActiveProfile);
+		if (profileIt == modelIt->second.end())
+			if (modelIt->second.find(std::nullopt) == modelIt->second.end())
+				// No profile support for this device
+				return false;
+			else
+				profileIt = modelIt->second.begin();
+		auto subDeviceIt = profileIt->second.find(subDeviceIndex);
+		if (subDeviceIt == profileIt->second.end())
+			return false;
 
-	std::unordered_set<nosMediaIODirection> supportedDirections; // For this channel and subdevice
-	auto channelIt = subDeviceIt->second.find(channel);
-	if (channelIt == subDeviceIt->second.end())
-		return false;
+		std::unordered_set<nosMediaIODirection> supportedDirections; // For this channel and subdevice
+		auto channelIt = subDeviceIt->second.find(channel);
+		if (channelIt == subDeviceIt->second.end())
+			return false;
 
-	for (auto& dirForCh : channelIt->second)
-		supportedDirections.insert(dirForCh);
+		for (auto& dirForCh : channelIt->second)
+			supportedDirections.insert(dirForCh);
 
-	if (supportedDirections.find(dir) == supportedDirections.end())
-		return false;
+		if (supportedDirections.find(dir) == supportedDirections.end())
+			return false;
+	}
 
 	// Now, check subdevice is busy with our direction.
 	// TODO: Full-duplexity?
@@ -569,7 +600,7 @@ std::pair<SubDevice*, nosMediaIODirection> Device::GetSubDeviceOfOpenChannel(nos
 
 SubDevice* Device::GetSubDevice(int64_t index) const
 {
-	if (index < SubDevices.size())
+	if (index >= 0 && static_cast<size_t>(index) < SubDevices.size())
 		return SubDevices[index].get();
 	return nullptr;
 }
@@ -604,6 +635,8 @@ std::pair<std::optional<BMDProfileID>, std::optional<BMDDeviceInterface>> Device
 		return {std::nullopt, std::nullopt};
 	auto mainSubDevice = GetMainSubDevice();
 	if (!mainSubDevice)
+		return {std::nullopt, std::nullopt};
+	if (!mainSubDevice->ProfileAttributes)
 		return {std::nullopt, std::nullopt};
 	if (!mainSubDevice->ProfileManager)
 		return GetProfileIdAndDeviceInterface(mainSubDevice->ProfileAttributes);
@@ -682,7 +715,7 @@ bool Device::OpenOutput(nosDeckLinkChannel channel, BMDDisplayMode displayMode, 
 		nosEngine.LogE("No sub-device found for channel %s", GetChannelName(channel));
 		return false;
 	}
-	if (subDevice->OpenOutput(displayMode, pixelFormat))
+	if (subDevice->OpenOutput(displayMode, pixelFormat, IsIPChannel(channel)))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_OUTPUT };
 		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
@@ -752,6 +785,14 @@ bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 	return true;
 }
 
+std::optional<std::string> Device::GetIPFlowSDP(nosDeckLinkChannel channel, nosDeckLinkIPFlowType flowType) const
+{
+	auto it = OpenChannels.find(channel);
+	if (it == OpenChannels.end() || it->second.second != NOS_MEDIAIO_DIRECTION_OUTPUT)
+		return std::nullopt;
+	return it->second.first->GetIPFlowSDP(flowType);
+}
+
 bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
 {
 	auto subDevice = GetSubDeviceOfChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);
@@ -760,7 +801,7 @@ bool Device::OpenInput(nosDeckLinkChannel channel, BMDPixelFormat pixelFormat)
 		nosEngine.LogE("No sub-device found for channel %s", GetChannelName(channel));
 		return false;
 	}
-	if (subDevice->OpenInput(pixelFormat))
+	if (subDevice->OpenInput(pixelFormat, IsIPChannel(channel)))
 	{
 		OpenChannels[channel] = { subDevice, NOS_MEDIAIO_DIRECTION_INPUT };
 		subDevice->TagChannel(NOS_MEDIAIO_DIRECTION_INPUT, channel);
@@ -889,32 +930,66 @@ void Device::PrepareChannelSubDeviceMap()
 {
 	auto& channelMap = GetChannelMap();
 	auto modelIt = channelMap.find(ModelName);
-	if (modelIt == channelMap.end())
-	{
-		nosEngine.LogE("No channel map found for device: %s", ModelName.c_str());
-		return;
-	}
-	auto& mapping = modelIt->second;
 
 	SupportedProfiles.clear();
-	for (auto& [profile, rest2] : mapping)
+	if (modelIt != channelMap.end())
 	{
-		SupportedProfiles.insert(profile);
-		if (profile && ActiveProfile != profile)
-			continue;
-		for (auto& [subDeviceIndex, rest3] : rest2)
+		auto& mapping = modelIt->second;
+		for (auto& [profile, rest2] : mapping)
 		{
-			for (auto& [curChannel, modes] : rest3)
+			SupportedProfiles.insert(profile);
+			if (profile && ActiveProfile != profile)
+				continue;
+			for (auto& [subDeviceIndex, rest3] : rest2)
 			{
-				if (auto subDevice = GetSubDevice(subDeviceIndex))
+				for (auto& [curChannel, modes] : rest3)
 				{
-					for (auto mode : modes)
+					if (auto subDevice = GetSubDevice(subDeviceIndex))
 					{
-						Channel2SubDevice[mode][curChannel] = {subDeviceIndex, subDevice};
+						for (auto mode : modes)
+						{
+							Channel2SubDevice[mode][curChannel] = {subDeviceIndex, subDevice};
+						}
 					}
 				}
 			}
 		}
+	}
+	else if (!IsIPDevice())
+	{
+		nosEngine.LogE("No channel map found for device: %s", ModelName.c_str());
+		return;
+	}
+
+	// IP cards expose flows instead of SDI connectors. Keep this mapping
+	// separate from the SDI map so hybrid cards retain their SDI channels.
+	if (IsIPDevice())
+	{
+		std::unordered_set<int64_t> assignedSubDeviceIndices;
+		int64_t fallbackIndex = 0;
+		for (auto& subDevice : SubDevices)
+		{
+			if (!subDevice || !subDevice->IsIPCapable())
+				continue;
+			int64_t subDeviceIndex = subDevice->SubDeviceIndex;
+			if (subDeviceIndex < 0 || subDeviceIndex >= 8 || assignedSubDeviceIndices.contains(subDeviceIndex))
+			{
+				while (fallbackIndex < 8 && assignedSubDeviceIndices.contains(fallbackIndex))
+					++fallbackIndex;
+				subDeviceIndex = fallbackIndex++;
+			}
+			if (subDeviceIndex < 0 || subDeviceIndex >= 8)
+			{
+				nosEngine.LogE("Could not map IP sub-device for device: %s", ModelName.c_str());
+				continue;
+			}
+			assignedSubDeviceIndices.insert(subDeviceIndex);
+			auto channel = static_cast<nosDeckLinkChannel>(NOS_DECKLINK_CHANNEL_IP_1 + subDeviceIndex);
+			Channel2SubDevice[NOS_MEDIAIO_DIRECTION_INPUT][channel] = {subDeviceIndex, subDevice.get()};
+			Channel2SubDevice[NOS_MEDIAIO_DIRECTION_OUTPUT][channel] = {subDeviceIndex, subDevice.get()};
+		}
+		if (modelIt == channelMap.end())
+			SupportedProfiles.insert(std::nullopt);
 	}
 }
 

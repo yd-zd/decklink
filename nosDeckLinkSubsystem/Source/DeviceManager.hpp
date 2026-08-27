@@ -4,7 +4,13 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <shared_mutex>
+#include <array>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <Nodos/Modules.h>
 
 #include "DeckLink_generated.h"
@@ -23,6 +29,27 @@ namespace nos::decklink
 {
 class Device;
 
+struct IPConnectorSettings
+{
+	bool Configured = false;
+	bool UseDHCP = true;
+	std::string StaticLocalIPAddress;
+	std::string StaticSubnetMask;
+	std::string StaticGatewayIPAddress;
+	std::string VideoOutputAddress;
+	std::string AudioOutputAddress;
+	std::string AncillaryOutputAddress;
+};
+
+struct IPRuntimeSettings
+{
+	bool Configured = false;
+	int64_t PersistentId = -1;
+	int64_t PTPDomain = 127;
+	std::array<IPConnectorSettings, 2> Connectors{};
+	std::array<std::string, 3> PeerSDP{};
+};
+
 class DeviceManager
 {
 public:
@@ -39,6 +66,8 @@ public:
 	void LoadDefaultSettings();
 	void LoadSettings(sys::decklink::Settings const& settings);
 	bool ValidatePortMappings();
+	bool ValidateIPSettings();
+	std::optional<IPRuntimeSettings> GetIPSettings(std::string_view modelName, int64_t persistentId) const;
 	void InitializeDeviceList();
 	void FetchApiVersion();
 	std::optional<std::string> GetPortMappedChannelName(uint32_t deviceIndex, nosDeckLinkChannel channel);

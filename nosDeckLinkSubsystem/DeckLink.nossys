@@ -9,11 +9,11 @@
 		"dependencies": [
 			{
 				"name": "nos.sys.mediaio",
-				"version": "0.4"
+				"version": "0.5"
 			},
 			{
 				"name": "nos.sys.device",
-				"version": "0.2"
+				"version": "0.4"
 			}
 		],
 		"category": "Device"

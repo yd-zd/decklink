@@ -34,6 +34,11 @@ public:
 	void RemoveNotifications();
 
 	std::string GetUniqueDisplayName() const;
+	bool IsIPDevice() const;
+	static constexpr bool IsIPChannel(nosDeckLinkChannel channel)
+	{
+		return channel >= NOS_DECKLINK_CHANNEL_IP_1 && channel <= NOS_DECKLINK_CHANNEL_IP_8;
+	}
 
 	std::vector<nosDeckLinkChannel> GetAvailableChannels(nosMediaIODirection mode);
 
@@ -62,6 +67,7 @@ public:
 
 	bool WaitFrame(nosDeckLinkChannel channel, std::chrono::milliseconds timeout);
 	bool DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size);
+	std::optional<std::string> GetIPFlowSDP(nosDeckLinkChannel channel, nosDeckLinkIPFlowType flowType) const;
 
 	void ClearSubDevices();
 

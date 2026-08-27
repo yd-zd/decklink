@@ -10,6 +10,28 @@ table SDIPortMappingSetting {
     sdi_port_mapping: [SDIPortMappingEntry];
 }
 
+table EthernetConnectorSetting {
+    connector_index: int;
+    use_dhcp: bool = true;
+    static_local_ip_address: string;
+    static_subnet_mask: string;
+    static_gateway_ip_address: string;
+    video_output_address: string;
+    audio_output_address: string;
+    ancillary_output_address: string;
+}
+
+table IPDeviceSetting {
+    model_name: string;
+    persistent_id: long = -1;
+    ptp_domain: long = 127;
+    ethernet_connectors: [EthernetConnectorSetting];
+    video_peer_sdp: string;
+    audio_peer_sdp: string;
+    ancillary_peer_sdp: string;
+}
+
 table Settings {
     sdi_port_mappings: [SDIPortMappingSetting];
+    ip_device_settings: [IPDeviceSetting];
 }

@@ -15,6 +15,7 @@
 #include <optional>
 #include <atomic>
 #include <chrono>
+#include <shared_mutex>
 #include <string>
 
 #include "nosDeckLinkSubsystem/nosDeckLinkSubsystem.h"
@@ -205,6 +206,9 @@ protected:
 	virtual bool Stop() = 0;
 	void OnFrameEnd(nosDeckLinkFrameResult result);
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
+	// Application callbacks point into nos.decklink. Unregister must wait for any
+	// invocation already in progress before that DLL can be safely unloaded.
+	std::shared_mutex FrameResultCallbacksMutex;
 	std::mutex LastHardwareFrameInfoMutex;
 	nosDeckLinkFrameTimingInfo LastHardwareFrameInfo{};
 private:

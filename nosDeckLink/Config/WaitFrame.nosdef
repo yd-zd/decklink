@@ -36,7 +36,7 @@
                         "type_name": "bool",
                         "show_as": "PROPERTY",
                         "can_show_as": "INPUT_PIN_OR_PROPERTY",
-                        "description": "Synchronize VBL with other I/O nodes' VBLs. If no common reference lock is used, this won't make much difference.",
+                        "description": "Join Nodos cross-node frame consensus. DeckLink IP channels remain hardware-paced by the card's PTP clock; this setting does not select or configure PTP.",
                         "data": true
                     }
                 ],

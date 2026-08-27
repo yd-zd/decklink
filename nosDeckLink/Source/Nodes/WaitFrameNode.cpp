@@ -50,6 +50,12 @@ struct WaitFrameNode : NodeContext
 		return static_cast<nosDeckLinkChannel>(CurChannelId.channel_index());
 	}
 
+	bool IsIPChannel() const
+	{
+		auto channelName = std::string_view(nosDeckLink->GetChannelName(GetChannel()));
+		return channelName.starts_with("IP ");
+	}
+
 	bool IsInput() const { return CurChannelId.is_input(); }
 
 	bool IsChannelOpen()
@@ -119,6 +125,12 @@ struct WaitFrameNode : NodeContext
 	{
 		if (!IsInput())
 		{
+			// DeckLink IP channels run from the card's PTP clock. The generic
+			// reference-status API describes SDI genlock and cannot report that
+			// PTP state, so treating its readback as authoritative would mark every
+			// IP output unsynchronized and poison Nodos VBL consensus.
+			if (IsIPChannel())
+				return NOS_TRUE;
 			// Get Reference Status and update status
 			nosDeckLinkReferenceStatus refStatus;
 			if (NOS_RESULT_SUCCESS == nosDeckLink->GetOutputReferenceStatus(GetDeviceIndex(), GetChannel(), &refStatus))

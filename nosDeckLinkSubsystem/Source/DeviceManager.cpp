@@ -4,6 +4,8 @@
 #include "ChannelMapping.inl"
 #include "Device.hpp"
 
+#include <cstdio>
+
 namespace nos::decklink
 {
 
@@ -35,9 +37,9 @@ void DeviceManager::LoadDefaultSettings()
 void DeviceManager::LoadSettings(sys::decklink::Settings const& settings)
 {
 	settings.UnPackTo(&Settings);
-	if (!ValidatePortMappings())
+	if (!ValidatePortMappings() || !ValidateIPSettings())
 	{
-		nosEngine.LogE("DeviceManager: Invalid port mappings in settings. Loading default settings.");
+		nosEngine.LogE("DeviceManager: Invalid settings. Loading default settings.");
 		LoadDefaultSettings();
 	}
 }
@@ -101,6 +103,87 @@ bool DeviceManager::ValidatePortMappings()
 		nosEngine.SendModuleStatusMessageUpdate(&msg);
 	}
 	return success;
+}
+
+bool DeviceManager::ValidateIPSettings()
+{
+	for (auto& ipSetting : Settings.ip_device_settings)
+	{
+		if (!ipSetting)
+			continue;
+		if (ipSetting->model_name.empty())
+		{
+			nosEngine.LogE("DeviceManager: Empty model name in IP device settings.");
+			return false;
+		}
+		if (ipSetting->persistent_id < -1)
+		{
+			nosEngine.LogE("DeviceManager: Invalid persistent ID %lld for IP device %s.", ipSetting->persistent_id, ipSetting->model_name.c_str());
+			return false;
+		}
+		if (ipSetting->ptp_domain < 0 || ipSetting->ptp_domain > 127)
+		{
+			nosEngine.LogE("DeviceManager: Invalid PTP domain %lld for IP device %s.", ipSetting->ptp_domain, ipSetting->model_name.c_str());
+			return false;
+		}
+		if (ipSetting->video_peer_sdp.size() >= 1000 || ipSetting->audio_peer_sdp.size() >= 1000 || ipSetting->ancillary_peer_sdp.size() >= 1000)
+		{
+			nosEngine.LogE("DeviceManager: Peer SDP must be less than 1000 bytes for IP device %s.", ipSetting->model_name.c_str());
+			return false;
+		}
+
+		std::unordered_set<int32_t> connectorIndices;
+		for (auto& connector : ipSetting->ethernet_connectors)
+		{
+			if (!connector)
+				continue;
+			if (connector->connector_index < 0 || connector->connector_index >= 2 || !connectorIndices.insert(connector->connector_index).second)
+			{
+				nosEngine.LogE("DeviceManager: Invalid or duplicate Ethernet connector index for IP device %s.", ipSetting->model_name.c_str());
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+std::optional<IPRuntimeSettings> DeviceManager::GetIPSettings(std::string_view modelName, int64_t persistentId) const
+{
+	for (auto& ipSetting : Settings.ip_device_settings)
+	{
+		if (!ipSetting)
+			continue;
+		std::string configuredModel = ipSetting->model_name;
+		bool modelMatches = modelName == configuredModel || modelName.starts_with(configuredModel + " (");
+		if (!modelMatches)
+			continue;
+		if (ipSetting->persistent_id >= 0 && ipSetting->persistent_id != persistentId)
+			continue;
+
+		IPRuntimeSettings result;
+		result.Configured = true;
+		result.PersistentId = ipSetting->persistent_id;
+		result.PTPDomain = ipSetting->ptp_domain;
+		result.PeerSDP[NOS_DECKLINK_IP_FLOW_VIDEO] = ipSetting->video_peer_sdp;
+		result.PeerSDP[NOS_DECKLINK_IP_FLOW_AUDIO] = ipSetting->audio_peer_sdp;
+		result.PeerSDP[NOS_DECKLINK_IP_FLOW_ANCILLARY] = ipSetting->ancillary_peer_sdp;
+		for (auto& connector : ipSetting->ethernet_connectors)
+		{
+			if (!connector || connector->connector_index < 0 || connector->connector_index >= int(result.Connectors.size()))
+				continue;
+			auto& target = result.Connectors[connector->connector_index];
+			target.Configured = true;
+			target.UseDHCP = connector->use_dhcp;
+			target.StaticLocalIPAddress = connector->static_local_ip_address;
+			target.StaticSubnetMask = connector->static_subnet_mask;
+			target.StaticGatewayIPAddress = connector->static_gateway_ip_address;
+			target.VideoOutputAddress = connector->video_output_address;
+			target.AudioOutputAddress = connector->audio_output_address;
+			target.AncillaryOutputAddress = connector->ancillary_output_address;
+		}
+		return result;
+	}
+	return std::nullopt;
 }
 
 void DeviceManager::InitializeDeviceList()

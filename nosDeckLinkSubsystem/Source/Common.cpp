@@ -97,11 +97,13 @@ std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const
 
 int32_t IOHandlerBaseI::AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData)
 {
+	std::unique_lock lock(FrameResultCallbacksMutex);
 	return FrameResultCallbacks.Add(callback, userData);
 }
 
 void IOHandlerBaseI::RemoveFrameResultCallback(int32_t callbackId)
 {
+	std::unique_lock lock(FrameResultCallbacksMutex);
 	FrameResultCallbacks.Remove(callbackId);
 }
 
@@ -134,6 +136,9 @@ void IOHandlerBaseI::OnFrameEnd(nosDeckLinkFrameResult result)
 	nosEngine.WatchLog(title, value);
 	nosEngine.LogD("(%s) Frame %d ended with result %d", GetDeviceChannelString().c_str(), FramesProcessed, result);
 #endif
+	// Keep the shared lock through invocation. A concurrent unregister therefore
+	// does not return until no call can still enter an unloading application DLL.
+	std::shared_lock lock(FrameResultCallbacksMutex);
 	for (auto& [callbackId, pair] : FrameResultCallbacks)
 	{
 		auto& [callback, userData] = pair;

@@ -199,10 +199,7 @@ struct ChannelHandler
 		return ChannelUpdateResult::Opened;
 	}
 
-	ChannelHandler(ChannelNode& node) : Node(node)
-	{
-		UpdateChannelStatus();
-	}
+	ChannelHandler(ChannelNode& node) : Node(node) {}
 
 	~ChannelHandler()
 	{
@@ -485,6 +482,7 @@ public:
 		Channel.FrameRatePinId = *GetPinId(NSN_FrameRate);
 		Channel.VideoScanTypePinId = *GetPinId(NSN_VideoScanType);
 		Channel.PixelFormatPinId = *GetPinId(NSN_PixelFormat);
+		Channel.UpdateChannelStatus();
 
 		BuildPossibleConfigs();
 
@@ -932,7 +930,6 @@ bool ChannelHandler::Open()
 		if (res == NOS_RESULT_SUCCESS)
 		{
 			IsOpen = true;
-			Node.SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ACTIVE, nullptr);
 			ChannelId id(DeviceIndex, Channel, Direction);
 			nosEngine.SetPinValue(OutChannelPinId, nos::Buffer::From(id));
 			nosEngine.SendPathRestart(OutChannelPinId);
@@ -945,6 +942,11 @@ bool ChannelHandler::Open()
 			}
 			UpdateStatus();
 		}
+		else if (IsInput() && VideoInputChangeCallbackId != -1)
+		{
+			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
+			VideoInputChangeCallbackId = -1;
+		}
 		UpdateStatusAndOutPins();
 		return res == NOS_RESULT_SUCCESS;
 	}
@@ -952,13 +954,20 @@ bool ChannelHandler::Open()
 
 void ChannelHandler::Close()
 {
-	nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
+	if (FrameResultCallbackId != -1)
+	{
+		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
+		FrameResultCallbackId = -1;
+	}
 	UnregisterDeviceCallbacks();
 	ClearMiscMessages();
 	if (IsOpen)
 	{
-		if (IsInput())
+		if (IsInput() && VideoInputChangeCallbackId != -1)
+		{
 			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
+			VideoInputChangeCallbackId = -1;
+		}
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
 	}
 	IsOpen = false;
@@ -990,7 +999,6 @@ void ChannelHandler::UpdateChannelStatus()
 	{
 		type = fb::NodeStatusMessageType::INFO;
 		statusText = channelString.str();
-		Node.SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ACTIVE);
 	}
 	else
 	{
@@ -1010,7 +1018,6 @@ void ChannelHandler::UpdateChannelStatus()
 			type = fb::NodeStatusMessageType::WARNING;
 			statusText = "Idle";
 		}
-		Node.SetPinOrphanState(OutChannelPinId, fb::PinOrphanStateType::ORPHAN, statusText.c_str());
 	}
 	SetStatus(StatusType::Channel, type, statusText);
 	UpdateStatus();

@@ -46,7 +46,15 @@ typedef enum nosDeckLinkChannel
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT_B,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_IN,
 	NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT,
-	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_SINGLE_LINK_OUT
+	NOS_DECKLINK_CHANNEL_IP_1,
+	NOS_DECKLINK_CHANNEL_IP_2,
+	NOS_DECKLINK_CHANNEL_IP_3,
+	NOS_DECKLINK_CHANNEL_IP_4,
+	NOS_DECKLINK_CHANNEL_IP_5,
+	NOS_DECKLINK_CHANNEL_IP_6,
+	NOS_DECKLINK_CHANNEL_IP_7,
+	NOS_DECKLINK_CHANNEL_IP_8,
+	NOS_DECKLINK_CHANNEL_MAX = NOS_DECKLINK_CHANNEL_IP_8
 } nosDeckLinkChannel;
 
 #define NOS_DECKLINK_CHANNEL_COUNT (NOS_DECKLINK_CHANNEL_MAX - NOS_DECKLINK_CHANNEL_INVALID)
@@ -66,8 +74,23 @@ inline const char* NOS_DECKLINK_CHANNEL_NAMES[] = {
 	"Single Link Out A",
 	"Single Link Out B",
 	"Single Link In",
-	"Single Link Out"
+	"Single Link Out",
+	"IP 1",
+	"IP 2",
+	"IP 3",
+	"IP 4",
+	"IP 5",
+	"IP 6",
+	"IP 7",
+	"IP 8"
 };
+
+typedef enum nosDeckLinkIPFlowType
+{
+	NOS_DECKLINK_IP_FLOW_VIDEO = 0,
+	NOS_DECKLINK_IP_FLOW_AUDIO = 1,
+	NOS_DECKLINK_IP_FLOW_ANCILLARY = 2
+} nosDeckLinkIPFlowType;
 
 typedef struct nosDeckLinkChannelList {
 	size_t Count;
@@ -220,6 +243,10 @@ typedef struct nosDeckLinkSubsystem {
 	/// Call with outConfigs pointing to a buffer of *inoutCount elements to fill it.
 	/// Returns NOS_RESULT_INSUFFICIENT_BUFFER_SIZE if *inoutCount is too small.
 	nosResult (NOSAPI_CALL* GetAvailableChannelConfigurations)(uint32_t deviceIndex, nosDeckLinkChannelConfig* outConfigs, size_t* inoutCount);
+
+	/// Copies the sender SDP for an open IP output channel.
+	/// The SDP is available after OpenChannel succeeds. The buffer includes a null terminator.
+	nosResult (NOSAPI_CALL* GetIPFlowSDP)(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkIPFlowType flowType, char* outSDP, size_t maxSize);
 } nosDeckLinkSubsystem;
 
 #pragma region Helper Declarations & Macros

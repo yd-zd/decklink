@@ -279,7 +279,7 @@
             "def": true,
             "contents_type": "PortalPin",
             "contents": { "source_id": "5914ef92-6877-430f-9ff9-f1cc1d1daf27" },
-            "description": "Synchronize VBL with other I/O nodes' VBLs. If no common reference lock is used, this won't make much difference.",
+            "description": "Join Nodos cross-node frame consensus. DeckLink IP channels remain hardware-paced by the card's PTP clock; this setting does not select or configure PTP.",
             "display_name": "Enable Sync"
           }
         ],
@@ -3991,7 +3991,7 @@
                   "def": true,
                   "contents_type": "JobPin",
                   "contents": { },
-                  "description": "Synchronize VBL with other I/O nodes' VBLs. If no common reference lock is used, this won't make much difference."
+                  "description": "Join Nodos cross-node frame consensus. DeckLink IP channels remain hardware-paced by the card's PTP clock; this setting does not select or configure PTP."
                 }
               ],
               "pos": { "x": 2144.524414, "y": -418.594788 },

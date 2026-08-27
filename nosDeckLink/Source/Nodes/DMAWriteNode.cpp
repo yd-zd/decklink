@@ -68,7 +68,13 @@ struct DMAWriteNode : NodeContext
 			return NOS_RESULT_FAILED;
 
 		auto buffer = nosVulkan->Map(&inputBuffer);
-		nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBuffer.Info.Buffer.Size);
+		if (!buffer)
+		{
+			nosEngine.LogE("DeckLink DMA Write could not map the input buffer for reading");
+			return NOS_RESULT_FAILED;
+		}
+		if (nosDeckLink->DMATransfer(deviceIndex, channel, buffer, inputBuffer.Info.Buffer.Size) != NOS_RESULT_SUCCESS)
+			return NOS_RESULT_FAILED;
 
 		nosScheduleNodeParams schedule {
 			.NodeId = NodeId,

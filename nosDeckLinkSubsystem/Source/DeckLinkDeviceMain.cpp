@@ -23,6 +23,8 @@ NOS_END_IMPORT_DEPS()
 #include "DeviceManager.hpp"
 #include <Nodos/Helpers.hpp>
 
+#include <cstring>
+
 namespace nos::decklink
 {
 std::unordered_map<uint32_t, nosDeckLinkSubsystem*> GExportedSubsystemVersions;
@@ -156,7 +158,12 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameGeometries(uint32_t deviceIndex, no
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
+	auto connection = Device::IsIPChannel(channel) && subDevice->IsIPCapable()
+		? subDevice->GetIPVideoConnection(NOS_MEDIAIO_DIRECTION_OUTPUT)
+		: std::optional<BMDVideoConnection>(bmdVideoConnectionSDI);
+	if (!connection)
+		return NOS_RESULT_FAILED;
+	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(*connection, scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
 	outGeometries->Count = supported.size();
 	int i = 0;
 	for (auto& [fg, _] : supported)
@@ -175,7 +182,12 @@ nosResult NOSAPI_CALL GetSupportedOutputFrameRatesForGeometry(uint32_t deviceInd
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
+	auto connection = Device::IsIPChannel(channel) && subDevice->IsIPCapable()
+		? subDevice->GetIPVideoConnection(NOS_MEDIAIO_DIRECTION_OUTPUT)
+		: std::optional<BMDVideoConnection>(bmdVideoConnectionSDI);
+	if (!connection)
+		return NOS_RESULT_FAILED;
+	auto supported = subDevice->GetSupportedOutputFrameGeometryAndFrameRates(*connection, scanType, {NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_8BIT, NOS_MEDIAIO_PIXEL_FORMAT_YCBCR_10BIT});
 	std::set<nosMediaIOFrameRate> frameRates;
 	for (auto& [curFrameGeo, frs] : supported)
 	{
@@ -203,7 +215,12 @@ nosResult NOSAPI_CALL GetSupportedOutputPixelFormats(uint32_t deviceIndex, nosDe
 	auto* subDevice = internal::GetSubDevice(deviceIndex, NOS_MEDIAIO_DIRECTION_OUTPUT, channel);
 	if (!subDevice)
 		return NOS_RESULT_NOT_FOUND;
-	auto supported = subDevice->GetSupportedOutputVideoFormats(scanType);
+	auto connection = Device::IsIPChannel(channel) && subDevice->IsIPCapable()
+		? subDevice->GetIPVideoConnection(NOS_MEDIAIO_DIRECTION_OUTPUT)
+		: std::optional<BMDVideoConnection>(bmdVideoConnectionSDI);
+	if (!connection)
+		return NOS_RESULT_FAILED;
+	auto supported = subDevice->GetSupportedOutputVideoFormats(*connection, scanType);
 	auto& pixelFormats = supported[frameGeo][frameRate];
 	outList->Count = pixelFormats.size();
 	int i = 0;
@@ -237,6 +254,25 @@ nosResult NOSAPI_CALL OpenChannel(uint32_t deviceIndex, nosDeckLinkOpenChannelPa
 			return NOS_RESULT_FAILED;
 		}
 	}
+	return NOS_RESULT_SUCCESS;
+}
+
+nosResult NOSAPI_CALL GetIPFlowSDP(uint32_t deviceIndex, nosDeckLinkChannel channel, nosDeckLinkIPFlowType flowType, char* outSDP, size_t maxSize)
+{
+	if (!outSDP || maxSize == 0)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	if (flowType < NOS_DECKLINK_IP_FLOW_VIDEO || flowType > NOS_DECKLINK_IP_FLOW_ANCILLARY)
+		return NOS_RESULT_INVALID_ARGUMENT;
+	DeviceLock lock(deviceIndex);
+	auto* device = DeviceManager::Instance()->GetDevice(deviceIndex);
+	if (!device)
+		return NOS_RESULT_NOT_FOUND;
+	auto sdp = device->GetIPFlowSDP(channel, flowType);
+	if (!sdp)
+		return NOS_RESULT_NOT_FOUND;
+	if (maxSize < sdp->size() + 1)
+		return NOS_RESULT_INSUFFICIENT_BUFFER_SIZE;
+	std::memcpy(outSDP, sdp->c_str(), sdp->size() + 1);
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -553,7 +589,12 @@ nosResult NOSAPI_CALL GetAvailableChannelConfigurations(uint32_t deviceIndex, no
 		for (int st = NOS_MEDIAIO_VIDEO_PROGRESSIVE_SCAN; st <= NOS_MEDIAIO_VIDEO_SCAN_TYPE_MAX; st++)
 		{
 			auto scanType = static_cast<nosMediaIOVideoScanType>(st);
-			auto supported = subDevice->GetSupportedOutputVideoFormats(scanType);
+			auto connection = Device::IsIPChannel(channel) && subDevice->IsIPCapable()
+				? subDevice->GetIPVideoConnection(NOS_MEDIAIO_DIRECTION_OUTPUT)
+				: std::optional<BMDVideoConnection>(bmdVideoConnectionSDI);
+			if (!connection)
+				continue;
+			auto supported = subDevice->GetSupportedOutputVideoFormats(*connection, scanType);
 			for (auto& [geometry, frameRateMap] : supported)
 			{
 				for (auto& [frameRate, pixelFormats] : frameRateMap)
@@ -674,6 +715,7 @@ nosResult NOSAPI_CALL Export(uint32_t minorVersion, void** outSubsystemContext)
 	subsystem->GetChannelState = GetChannelState;
 	subsystem->ResetDropDetection = ResetDropDetection;
 	subsystem->GetAvailableChannelConfigurations = GetAvailableChannelConfigurations;
+	subsystem->GetIPFlowSDP = GetIPFlowSDP;
 	*outSubsystemContext = subsystem;
 	GExportedSubsystemVersions[minorVersion] = subsystem;
 	return NOS_RESULT_SUCCESS;
@@ -710,7 +752,7 @@ nosResult NOSAPI_CALL Initialize()
 			DeviceManager::Instance()->LoadSettings(*settingsBuffer->As<sys::decklink::Settings>());
 			settingsLoaded = true;
 			msg.MessageType = NOS_MODULE_STATUS_MESSAGE_TYPE_INFO;
-			messageString = "Using SDI port mappings from " + settingsFilePath.string();
+			messageString = "Using DeckLink settings from " + settingsFilePath.string();
 		}
 		else
 			messageString =
