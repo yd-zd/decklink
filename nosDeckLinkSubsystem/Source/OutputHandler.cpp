@@ -115,6 +115,7 @@ bool OutputHandler::Start()
 		DMATarget = {};
 		NextDMATarget = {};
 	}
+	DMATargetReady = false;
 	{
 		std::unique_lock lock(PlaybackStoppedMutex);
 		PlaybackStopped = false;
@@ -174,7 +175,7 @@ bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 {
 	std::unique_lock lock(LastHardwareFrameInfoMutex);
 	bool res = FrameCompletedCV.wait_for(lock, timeout, [this] {
-		return LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
+		return DMATargetReady && LastWaitedFrame != LastHardwareFrameInfo.FrameNumber;
 	});
 	LastWaitedFrame = LastHardwareFrameInfo.FrameNumber;
 	if (!res)
@@ -182,13 +183,13 @@ bool OutputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
+bool OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
 	std::unique_lock lock(DMATargetMutex);
 	if (!DMATarget.Data)
 	{
-		nosEngine.LogE("(%s) Output: Buffer already in use, cannot write new data", GetDeviceChannelString().c_str());
-		return;
+		nosEngine.LogE("(%s) Output: No writable DMA buffer is available", GetDeviceChannelString().c_str());
+		return false;
 	}
 	memcpy(DMATarget.Data, buffer, std::min(size, DMATarget.Size));
 
@@ -211,6 +212,7 @@ void OutputHandler::DmaTransferImpl(void* buffer, size_t size)
 		}
 	}
 	LastProcessedFrame = nextFrame;
+	return true;
 }
 
 std::optional<uint64_t> OutputHandler::GetNanosecondsSinceStreamStarted()
@@ -252,15 +254,16 @@ void OutputHandler::ScheduleNextFrame(IDeckLinkVideoFrame* frameToSchedule)
 void OutputHandler::ScheduledFrameCompleted_DeckLinkThread(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result)
 {
 	auto time = std::chrono::steady_clock::now().time_since_epoch().count();
-	{
-		std::unique_lock lock(DMATargetMutex);
-		DMATarget = NextDMATarget;
-	}
 	VideoFrame output(completedFrame);
 	output.StartAccess(bmdBufferAccessWrite);
 	size_t actualBufferSize = completedFrame->GetRowBytes() * completedFrame->GetHeight();
 	auto videoBufferBytes = output.GetBytes();
-	NextDMATarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
+	{
+		std::unique_lock lock(DMATargetMutex);
+		DMATarget = NextDMATarget;
+		NextDMATarget = { .Data = videoBufferBytes, .Size = actualBufferSize };
+		DMATargetReady = DMATarget.Data != nullptr;
+	}
 	auto streamTimeNs = GetNanosecondsSinceStreamStarted();
 	auto frameTimeNs = TimeToNanoseconds(FrameDuration, TimeScale);
 	output.EndAccess();

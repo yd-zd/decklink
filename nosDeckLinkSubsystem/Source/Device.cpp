@@ -781,8 +781,7 @@ bool Device::DmaTransfer(nosDeckLinkChannel channel, void* buffer, size_t size)
 		return false;
 	}
 	auto [subDevice, mode] = it->second;
-	subDevice->DmaTransfer(mode, buffer, size);
-	return true;
+	return subDevice->DmaTransfer(mode, buffer, size);
 }
 
 std::optional<std::string> Device::GetIPFlowSDP(nosDeckLinkChannel channel, nosDeckLinkIPFlowType flowType) const

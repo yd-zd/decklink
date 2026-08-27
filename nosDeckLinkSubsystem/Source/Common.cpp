@@ -73,19 +73,23 @@ bool IOHandlerBaseI::WaitFrame(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
+bool IOHandlerBaseI::DmaTransfer(void* buffer, size_t size)
 {
 	util::Stopwatch sw;
-	DmaTransferImpl(buffer, size);
+	bool transferred = DmaTransferImpl(buffer, size);
 	char watchLogBuf[128];
 	snprintf(watchLogBuf, sizeof(watchLogBuf), "(%s) DMA", GetDeviceChannelString().c_str());
 	nosEngine.WatchLog(watchLogBuf, sw.ElapsedString().c_str());
 #if NOS_DECKLINK_DIAGNOSTICS
-	char title[128], value[128];
-	snprintf(title, sizeof(title), "(%s) Last Processed Frame", GetDeviceChannelString().c_str());
-	snprintf(value, sizeof(value), "%llu", *LastProcessedFrame);
-	nosEngine.WatchLog(title, value);
+	if (transferred && LastProcessedFrame)
+	{
+		char title[128], value[128];
+		snprintf(title, sizeof(title), "(%s) Last Processed Frame", GetDeviceChannelString().c_str());
+		snprintf(value, sizeof(value), "%llu", *LastProcessedFrame);
+		nosEngine.WatchLog(title, value);
+	}
 #endif
+	return transferred;
 }
 
 std::optional<nosVec2u> IOHandlerBaseI::GetDeltaSeconds() const

@@ -14,7 +14,7 @@ struct OutputHandler : IOHandlerBase<IDeckLinkOutput>
 	~OutputHandler() override;
 
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
-	void DmaTransferImpl(void* buffer, size_t size) override;
+	bool DmaTransferImpl(void* buffer, size_t size) override;
 	std::optional<uint64_t> GetNanosecondsSinceStreamStarted();
 	std::optional<BMDTimeValue> GetCurrentStreamTime();
 	
@@ -36,5 +36,6 @@ protected:
 	std::mutex DMATargetMutex;
 	nosBuffer DMATarget{};
 	nosBuffer NextDMATarget{};
+	std::atomic_bool DMATargetReady = false;
 };
 }

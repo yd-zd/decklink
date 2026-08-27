@@ -215,7 +215,7 @@ bool InputHandler::WaitFrameImpl(std::chrono::milliseconds timeout)
 	return res;
 }
 
-void InputHandler::DmaTransferImpl(void* buffer, size_t size)
+bool InputHandler::DmaTransferImpl(void* buffer, size_t size)
 {
 	nosBuffer readBuffer{};
 	{
@@ -223,13 +223,13 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 		if (!ReadFrameBuffer.Size)
 		{
 			nosEngine.LogE("(%s) DMA Read: No frame available to read", GetDeviceChannelString().c_str());
-			return;
+			return false;
 		}
 		readBuffer = ReadFrameBuffer;
 	}
 	size_t actualSize = readBuffer.Size;
 	if (!actualSize)
-		return;
+		return false;
 	if (size != actualSize)
 	{
 		nosEngine.LogW("(%s) DMA Read: Buffer size does not match frame size", GetDeviceChannelString().c_str());
@@ -255,6 +255,7 @@ void InputHandler::DmaTransferImpl(void* buffer, size_t size)
 		}
 	}
 	LastProcessedFrame = lastFrame;
+	return true;
 }
 
 bool InputHandler::UpdateFrameRate(BMDDisplayMode displayMode)

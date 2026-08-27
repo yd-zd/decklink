@@ -54,7 +54,7 @@ public:
 	// Input/Output
 	bool StartStream(nosMediaIODirection mode);
 	bool WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds timeout);
-	void DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
+	bool DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size);
 	std::optional<nosVec2u> GetDeltaSeconds(nosMediaIODirection dir);
 	bool StopStream(nosMediaIODirection mode);
 

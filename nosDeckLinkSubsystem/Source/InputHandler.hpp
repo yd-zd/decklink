@@ -19,7 +19,7 @@ struct InputHandler : IOHandlerBase<IDeckLinkInput>
 
 	bool Flush();
 	bool WaitFrameImpl(std::chrono::milliseconds timeout) override;
-	void DmaTransferImpl(void* buffer, size_t size) override;
+	bool DmaTransferImpl(void* buffer, size_t size) override;
 	bool UpdateFrameRate(BMDDisplayMode displayMode);
 
 	void OnInputFrameArrived_DeckLinkThread(IDeckLinkVideoInputFrame* frame);

@@ -749,9 +749,9 @@ bool SubDevice::WaitFrame(nosMediaIODirection dir, std::chrono::milliseconds tim
 	return GetIO(dir).WaitFrame(timeout);
 }
 
-void SubDevice::DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size)
+bool SubDevice::DmaTransfer(nosMediaIODirection dir, void* buffer, size_t size)
 {
-	GetIO(dir).DmaTransfer(buffer, size);
+	return GetIO(dir).DmaTransfer(buffer, size);
 }
 
 std::optional<nosVec2u> SubDevice::GetDeltaSeconds(nosMediaIODirection dir)

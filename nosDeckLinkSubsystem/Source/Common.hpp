@@ -187,7 +187,7 @@ struct IOHandlerBaseI
 	bool CloseStream();
 
 	bool WaitFrame(std::chrono::milliseconds timeout);
-	void DmaTransfer(void* buffer, size_t size);
+	bool DmaTransfer(void* buffer, size_t size);
 	std::optional<nosVec2u> GetDeltaSeconds() const;
 	int32_t AddFrameResultCallback(nosDeckLinkFrameResultCallback callback, void* userData);
 	void RemoveFrameResultCallback(int32_t callbackId);
@@ -202,7 +202,7 @@ struct IOHandlerBaseI
 protected:
 	virtual bool Start() = 0;
 	virtual bool WaitFrameImpl(std::chrono::milliseconds timeout) = 0;
-	virtual void DmaTransferImpl(void* buffer, size_t size) = 0;
+	virtual bool DmaTransferImpl(void* buffer, size_t size) = 0;
 	virtual bool Stop() = 0;
 	void OnFrameEnd(nosDeckLinkFrameResult result);
 	Callbacks<nosDeckLinkFrameResultCallback> FrameResultCallbacks;
