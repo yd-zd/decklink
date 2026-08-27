@@ -127,6 +127,7 @@ protected:
 	IDeckLinkIPExtensions* IPExtensions = nullptr;
 	std::vector<IPFlowInfo> IPFlows;
 	std::array<std::string, 3> SenderSDPs{};
+	bool MissingIPReceiverSDPReported = false;
 	IDeckLinkConfiguration* Configuration = nullptr;
 
 	OutputHandler Output{};

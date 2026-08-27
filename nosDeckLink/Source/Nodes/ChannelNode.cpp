@@ -359,6 +359,11 @@ struct ChannelHandler
 
 	void UpdateChannelStatus();
 
+	bool IsIPInput() const
+	{
+		return IsInput() && GetChannelName().starts_with("IP ");
+	}
+
 	void UpdateOutPins()
 	{
 		nosVec2u resolution{};
@@ -1004,8 +1009,8 @@ void ChannelHandler::UpdateChannelStatus()
 	{
 		if (ShouldOpen && !IsOpen && CanOpen())
 		{
-			type = fb::NodeStatusMessageType::FAILURE;
-			statusText = "Failed to open: " + channelString.str();
+			type = IsIPInput() ? fb::NodeStatusMessageType::WARNING : fb::NodeStatusMessageType::FAILURE;
+			statusText = (IsIPInput() ? "Waiting for IP receiver configuration/stream: " : "Failed to open: ") + channelString.str();
 				
 		}
 		else if (!ShouldOpen)

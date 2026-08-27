@@ -367,9 +367,14 @@ bool SubDevice::EnableIPReceiverFlows()
 	auto settings = DeviceManager::Instance()->GetIPSettings(ModelName, PersistentId);
 	if (!settings || settings->PeerSDP[NOS_DECKLINK_IP_FLOW_VIDEO].empty())
 	{
-		nosEngine.LogE("DeckLinkDevice: Video peer SDP is required to capture from IP device: %s", ModelName.c_str());
+		if (!MissingIPReceiverSDPReported)
+		{
+			nosEngine.LogW("DeckLinkDevice: IP receiver is not configured; video peer SDP is required for device: %s", ModelName.c_str());
+			MissingIPReceiverSDPReported = true;
+		}
 		return false;
 	}
+	MissingIPReceiverSDPReported = false;
 
 	std::array<int64_t, 3> flowTypes = {
 		bmdDeckLinkIPFlowTypeVideo,
