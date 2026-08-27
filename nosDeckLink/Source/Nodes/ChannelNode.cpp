@@ -359,7 +359,7 @@ struct ChannelHandler
 
 	void UpdateChannelStatus();
 
-	bool IsIPInput() const
+	bool IsIPInput()
 	{
 		return IsInput() && GetChannelName().starts_with("IP ");
 	}
