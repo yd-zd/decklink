@@ -195,7 +195,11 @@ struct ChannelHandler
 		UpdateStatusAndOutPins();
 		if (reopen && !Open())
 			return ChannelUpdateResult::UnsupportedSettings;
-		StartIfOpen();
+		if (IsOpen && !StartIfOpen())
+		{
+			Close();
+			return ChannelUpdateResult::UnsupportedSettings;
+		}
 		return ChannelUpdateResult::Opened;
 	}
 
@@ -318,20 +322,26 @@ struct ChannelHandler
 
 	bool Open();
 
-	void StartIfOpen()
+	bool StartIfOpen()
 	{
-		if (IsOpen)
-		{
-			nosDeckLink->StartStream(DeviceIndex, Channel);
+		if (!IsOpen)
+			return false;
+		if (IsStreamStarted)
+			return true;
+		IsStreamStarted = nosDeckLink->StartStream(DeviceIndex, Channel) == NOS_RESULT_SUCCESS;
+		if (IsStreamStarted)
 			ResetDropState();
-		}
+		else
+			nosEngine.LogE("Failed to start stream for device %d, channel %s", DeviceIndex, GetChannelName().c_str());
+		return IsStreamStarted;
 	}
 
 	void StopIfOpen()
 	{
-		if (IsOpen)
+		if (IsOpen && IsStreamStarted)
 		{
 			nosDeckLink->StopStream(DeviceIndex, Channel);
+			IsStreamStarted = false;
 			ResetDropState();
 		}
 	}
@@ -496,8 +506,8 @@ public:
 			Channel.ShouldOpen = *InterpretPinValue<bool>(newVal);
 			if (!Channel.ShouldOpen)
 				Channel.Close();
-			else
-				Channel.Open();
+			else if (Channel.Open() && !Channel.StartIfOpen())
+				Channel.Close();
 		});
 		AddPinValueWatcher(NSN_IsInput, [this](const nos::Buffer& newVal, std::optional<nos::Buffer> oldValue) {
 			auto newValue = *InterpretPinValue<bool>(newVal) ? NOS_MEDIAIO_DIRECTION_INPUT : NOS_MEDIAIO_DIRECTION_OUTPUT;
@@ -773,7 +783,10 @@ public:
 				}
 			}
 		}
-		return Channel.IsOpen ? NOS_RESULT_SUCCESS : NOS_RESULT_FAILED;
+		// A disabled or temporarily unavailable channel is an expected idle state.
+		// Keep this path asleep until a ChannelId update restarts it instead of
+		// failing the runner shared by the other DeckLink channels.
+		return Channel.IsOpen && Channel.IsStreamStarted ? NOS_RESULT_SUCCESS : NOS_RESULT_PENDING;
 	}
 
 	std::string GetStringListName(Config type)
@@ -959,6 +972,7 @@ bool ChannelHandler::Open()
 
 void ChannelHandler::Close()
 {
+	StopIfOpen();
 	if (FrameResultCallbackId != -1)
 	{
 		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
@@ -976,6 +990,7 @@ void ChannelHandler::Close()
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
 	}
 	IsOpen = false;
+	IsStreamStarted = false;
 	ReferenceStatus = std::nullopt;
 	nosEngine.SetPinValue(OutChannelPinId, nos::Buffer::From(ChannelId(-1, 0, false)));
 	nosEngine.SetPinValue(OutResolutionPinId, nos::Buffer::From(nosVec2u{ 0, 0 }));

@@ -32,6 +32,8 @@ struct DMAReadNode : NodeContext
 
 		auto deviceIndex = channelId->device_index();
 		auto channel = static_cast<nosDeckLinkChannel>(channelId->channel_index());
+		if (deviceIndex < 0)
+			return NOS_RESULT_PENDING;
 
 		uint8_t* buffer = nosVulkan->Map(&bufferToWrite);
 		auto inputBufferSize = bufferToWrite.Memory.Size;

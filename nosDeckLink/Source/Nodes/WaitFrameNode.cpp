@@ -117,6 +117,10 @@ struct WaitFrameNode : NodeContext
 
 	nosResult ExecuteNode(nosNodeExecuteParams* params) override
 	{
+		// Channel close and path restart are asynchronous. Do not call into the
+		// subsystem with the invalid ChannelId published during that transition.
+		if (!IsChannelOpen())
+			return NOS_RESULT_PENDING;
 		nosDeckLink->WaitFrame(GetDeviceIndex(), GetChannel(), TIMEOUT_MS);
 		return NOS_RESULT_SUCCESS;
 	}
