@@ -249,11 +249,21 @@ struct ChannelHandler
 		{
 			if (DeckLinkThreadStatus.DropDetected)
 				++DeckLinkThreadStatus.FramesSinceLastDrop;
-			if (!DeckLinkThreadStatus.PathRestartRequested && DeckLinkThreadStatus.FramesSinceLastDrop > 50)
+			if (DeckLinkThreadStatus.FramesSinceLastDrop > 50)
 			{
-				nosEngine.LogW("Requesting path restart due to frame drops");
-				nosEngine.SendPathRestart(OutChannelPinId);
-				DeckLinkThreadStatus.PathRestartRequested = true;
+				if (std::string_view(DeckLinkThreadStatus.ChannelName).starts_with("IP "))
+				{
+					// An IP channel is paced by PTP. Restarting its Nodos path after
+					// a recovered gap creates another gap and an endless restart loop.
+					DeckLinkThreadStatus.DropDetected = false;
+					DeckLinkThreadStatus.FramesSinceLastDrop = 0;
+				}
+				else if (!DeckLinkThreadStatus.PathRestartRequested)
+				{
+					nosEngine.LogW("Requesting path restart due to frame drops");
+					nosEngine.SendPathRestart(OutChannelPinId);
+					DeckLinkThreadStatus.PathRestartRequested = true;
+				}
 			}
 			break;
 		}
@@ -972,7 +982,6 @@ bool ChannelHandler::Open()
 
 void ChannelHandler::Close()
 {
-	StopIfOpen();
 	if (FrameResultCallbackId != -1)
 	{
 		nosDeckLink->UnregisterFrameResultCallback(DeviceIndex, Channel, FrameResultCallbackId);
@@ -987,6 +996,7 @@ void ChannelHandler::Close()
 			nosDeckLink->UnregisterInputVideoFormatChangeCallback(DeviceIndex, Channel, VideoInputChangeCallbackId);
 			VideoInputChangeCallbackId = -1;
 		}
+		StopIfOpen();
 		nosDeckLink->CloseChannel(DeviceIndex, Channel);
 	}
 	IsOpen = false;
